@@ -43,6 +43,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local working notes (session handoff memory, not project docs)
+memory.md
+
 # vercel
 .vercel
 
