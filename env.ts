@@ -14,6 +14,10 @@ export const env = createEnv({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     // --- Supabase (server) --- new-format secret key (sb_secret_...)
     SUPABASE_SECRET_KEY: z.string().min(1),
+    // --- Resend (server) --- transactional email (F1.5). Optional: with no key,
+    // the email layer logs payloads instead of sending (dev/CI safe default).
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
     // --- PayMongo ---
     // PAYMONGO_SECRET_KEY: z.string().min(1),
     // PAYMONGO_WEBHOOK_SECRET: z.string().min(1),
@@ -26,6 +30,8 @@ export const env = createEnv({
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     // PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
     // PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
