@@ -27,16 +27,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
 
-  e2e:
-    runs-on: ubuntu-latest
-    env:
-      SKIP_ENV_VALIDATION: "1"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+  # NOTE: no `e2e` job. The Playwright suite is stack-dependent — it boots the app
+  # (needs Supabase env) and the magic-link spec reads email out of Mailpit, a
+  # local-only service. Like the integration tests (tests/**, run via
+  # `npm run test:integration`), e2e is a LOCAL gate: `npm run test:e2e` against a
+  # running local Supabase + Mailpit. To run it in CI later, add a job that does
+  # `supabase start` (which provides Mailpit) before `npm run test:e2e`.
