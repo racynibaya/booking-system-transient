@@ -110,8 +110,8 @@ export function Hero() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <CtaButton href="#">Get started free</CtaButton>
-          <CtaButton href="#how-it-works" variant="secondary">
+          <CtaButton href="/login">Get started free</CtaButton>
+          <CtaButton href="/#how-it-works" variant="secondary">
             See how it works
           </CtaButton>
         </div>
