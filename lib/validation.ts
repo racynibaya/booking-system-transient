@@ -8,6 +8,9 @@ import { z } from "zod";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 
+// HTML <input type="time"> emits "HH:MM" (24h). Matches the `time` columns on properties.
+const timeStr = z.string().regex(/^\d{2}:\d{2}$/, "Invalid time");
+
 export const propertyInput = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   // Optional: the Server Action derives a slug from the name when omitted.
@@ -21,9 +24,20 @@ export const propertyInput = z.object({
   area: optionalText(60),
   address: optionalText(200),
   description: optionalText(2000),
+  about: optionalText(2000),
+  check_in_time: timeStr,
+  check_out_time: timeStr,
   dot_accredited: z.boolean(),
 });
 export type PropertyInput = z.infer<typeof propertyInput>;
+
+// Operator GCash payout identity (tenant-level). Persisted on the tenants row; the QR image
+// path is handled separately like the property cover image.
+export const gcashInput = z.object({
+  gcash_name: optionalText(80),
+  gcash_number: optionalText(20),
+});
+export type GcashInput = z.infer<typeof gcashInput>;
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 

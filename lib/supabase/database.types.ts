@@ -1,14 +1,30 @@
-// Generated from the Supabase schema (project dmnjmzntkzexnanwctnr) — do not edit by hand.
-// Regenerate after any migration with the Supabase MCP `generate_typescript_types`,
-// or `npx supabase gen types typescript --local` once the CLI is logged in.
-
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5";
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
   public: {
     Tables: {
@@ -195,9 +211,12 @@ export type Database = {
       };
       properties: {
         Row: {
+          about: string | null;
           address: string | null;
           amenities: Json;
           area: string | null;
+          check_in_time: string;
+          check_out_time: string;
           cover_image_path: string | null;
           created_at: string;
           deposit_percent: number;
@@ -210,9 +229,12 @@ export type Database = {
           tenant_id: string;
         };
         Insert: {
+          about?: string | null;
           address?: string | null;
           amenities?: Json;
           area?: string | null;
+          check_in_time?: string;
+          check_out_time?: string;
           cover_image_path?: string | null;
           created_at?: string;
           deposit_percent?: number;
@@ -225,9 +247,12 @@ export type Database = {
           tenant_id: string;
         };
         Update: {
+          about?: string | null;
           address?: string | null;
           amenities?: Json;
           area?: string | null;
+          check_in_time?: string;
+          check_out_time?: string;
           cover_image_path?: string | null;
           created_at?: string;
           deposit_percent?: number;
@@ -411,10 +436,7 @@ export type Database = {
       current_tenant_id: { Args: never; Returns: string };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       submit_proof: {
-        Args: {
-          p_booking_id: string;
-          p_proof_url: string;
-        };
+        Args: { p_booking_id: string; p_proof_url: string };
         Returns: {
           check_in: string;
           check_out: string;
@@ -575,6 +597,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       booking_status: [

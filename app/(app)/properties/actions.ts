@@ -36,7 +36,17 @@ export async function createProperty(input: PropertyInput): Promise<ActionResult
   const t = await authedTenant();
   if (!t.ok) return t;
 
-  const { name, slug, area, address, description, dot_accredited } = parsed.data;
+  const {
+    name,
+    slug,
+    area,
+    address,
+    description,
+    about,
+    check_in_time,
+    check_out_time,
+    dot_accredited,
+  } = parsed.data;
   const base = slug && slug.length > 0 ? slug : slugify(name);
   if (!base) return { ok: false, error: "Add a name we can turn into a link." };
 
@@ -47,6 +57,9 @@ export async function createProperty(input: PropertyInput): Promise<ActionResult
     area: area || null,
     address: address || null,
     description: description || null,
+    about: about || null,
+    check_in_time,
+    check_out_time,
     dot_accredited,
   };
 
@@ -83,7 +96,8 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
   const t = await authedTenant();
   if (!t.ok) return t;
 
-  const { name, area, address, description, dot_accredited } = parsed.data;
+  const { name, area, address, description, about, check_in_time, check_out_time, dot_accredited } =
+    parsed.data;
   const supabase = await createClient();
   const { error } = await supabase
     .from("properties")
@@ -92,6 +106,9 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
       area: area || null,
       address: address || null,
       description: description || null,
+      about: about || null,
+      check_in_time,
+      check_out_time,
       dot_accredited,
     })
     .eq("id", id); // RLS scopes to the operator's own row
@@ -171,6 +188,23 @@ export async function updateRoomType(
     .from("room_types")
     .update({ ...parsed.data, description: parsed.data.description || null })
     .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/properties/${propertyId}`);
+  return { ok: true };
+}
+
+// The photo uploads themselves happen browser-side (RLS scopes the storage path to the
+// operator's tenant); this persists the resulting array of paths on the room type.
+export async function setRoomPhotos(
+  id: string,
+  propertyId: string,
+  paths: string[],
+): Promise<ActionResult> {
+  const t = await authedTenant();
+  if (!t.ok) return t;
+  const supabase = await createClient();
+  const { error } = await supabase.from("room_types").update({ photos: paths }).eq("id", id); // RLS scopes to the operator's own row
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/properties/${propertyId}`);

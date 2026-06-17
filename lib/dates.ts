@@ -28,3 +28,14 @@ export function addDays(s: DateStr, n: number): DateStr {
 export function todayStr(): DateStr {
   return toDateStr(new Date());
 }
+
+// Format a 24h "HH:MM" (or "HH:MM:SS") time string as a friendly "2:00 PM". Pure string
+// math — no Date, no timezone. Returns the input unchanged if it doesn't look like a time.
+export function formatTime(t: string): string {
+  const m = /^(\d{2}):(\d{2})/.exec(t);
+  if (!m) return t;
+  const h = Number(m[1]);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m[2]} ${period}`;
+}
