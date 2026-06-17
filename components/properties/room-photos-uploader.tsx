@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { setRoomPhotos } from "@/app/(app)/properties/actions";
 import { Button } from "@/components/ui/button";
+import { compressImage } from "@/lib/image";
 import { createClient } from "@/lib/supabase/client";
 
 const BUCKET = "property-images";
@@ -57,16 +58,18 @@ export function RoomPhotosUploader({
         toast.error(`${file.name} isn't an image — skipped.`);
         continue;
       }
-      if (file.size > MAX_BYTES) {
+      // Downscale/re-encode before upload to cut storage + public-page egress.
+      const img = await compressImage(file, { maxDim: 1600, quality: 0.8 });
+      if (img.size > MAX_BYTES) {
         toast.error(`${file.name} is over 5MB — skipped.`);
         continue;
       }
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const ext = img.name.split(".").pop()?.toLowerCase() || "jpg";
       const rand = crypto.randomUUID().slice(0, 8);
       const objectPath = `${tenantId}/${propertyId}/rooms/${roomTypeId}/${rand}.${ext}`;
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(objectPath, file, { cacheControl: "3600" });
+        .upload(objectPath, img, { cacheControl: "3600" });
       if (error) {
         toast.error(error.message);
         continue;

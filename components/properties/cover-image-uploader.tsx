@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { setCoverImage } from "@/app/(app)/properties/actions";
 import { Button } from "@/components/ui/button";
+import { compressImage } from "@/lib/image";
 import { createClient } from "@/lib/supabase/client";
 
 const BUCKET = "property-images";
@@ -36,18 +37,21 @@ export function CoverImageUploader({
       toast.error("Please choose an image file.");
       return;
     }
-    if (file.size > MAX_BYTES) {
+    setBusy(true);
+    // Downscale/re-encode before upload (hero image) to cut storage + public-page egress.
+    const upload = await compressImage(file, { maxDim: 2000, quality: 0.82 });
+    if (upload.size > MAX_BYTES) {
+      setBusy(false);
       toast.error("Image must be under 5MB.");
       return;
     }
-    setBusy(true);
     // Path's first folder is the tenant id — storage RLS only allows the operator
     // to write under their own tenant. One cover per property (upsert overwrites).
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const ext = upload.name.split(".").pop()?.toLowerCase() || "jpg";
     const objectPath = `${tenantId}/${propertyId}-cover.${ext}`;
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(objectPath, file, { upsert: true, cacheControl: "3600" });
+      .upload(objectPath, upload, { upsert: true, cacheControl: "3600" });
     if (error) {
       setBusy(false);
       toast.error(error.message);
