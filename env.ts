@@ -36,3 +36,25 @@ export const env = createEnv({
   // Lets `next lint`/Docker builds skip validation when needed.
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 });
+
+/**
+ * Hard environment guard: dev MUST talk to a local database, prod MUST talk to a
+ * remote one. Throws at build/startup on cross-wiring so a misconfigured env can
+ * never silently point the app at the wrong Supabase project. Never fires on a
+ * correct config (next dev → local, prod build → remote).
+ */
+if (!process.env.SKIP_ENV_VALIDATION && env.NEXT_PUBLIC_SUPABASE_URL) {
+  const isLocalDb = /\/\/(127\.0\.0\.1|localhost)/.test(env.NEXT_PUBLIC_SUPABASE_URL);
+  if (env.NODE_ENV === "production" && isLocalDb) {
+    throw new Error(
+      "Env guard: NODE_ENV=production but NEXT_PUBLIC_SUPABASE_URL points at a LOCAL database. " +
+        "Refusing to run prod against a local DB.",
+    );
+  }
+  if (env.NODE_ENV === "development" && !isLocalDb) {
+    throw new Error(
+      "Env guard: NODE_ENV=development but NEXT_PUBLIC_SUPABASE_URL points at a REMOTE database. " +
+        "Refusing to run dev against a remote DB.",
+    );
+  }
+}
