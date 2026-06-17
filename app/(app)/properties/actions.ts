@@ -102,6 +102,22 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
   return { ok: true };
 }
 
+// The cover image upload itself happens browser-side (RLS scopes the storage path
+// to the operator's tenant); this only persists the resulting path on the property.
+export async function setCoverImage(id: string, path: string): Promise<ActionResult> {
+  const t = await authedTenant();
+  if (!t.ok) return t;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("properties")
+    .update({ cover_image_path: path || null })
+    .eq("id", id); // RLS scopes to the operator's own row
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/properties/${id}`);
+  return { ok: true };
+}
+
 export async function deleteProperty(id: string): Promise<ActionResult> {
   const t = await authedTenant();
   if (!t.ok) return t;

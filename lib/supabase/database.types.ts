@@ -195,6 +195,7 @@ export type Database = {
           address: string | null;
           amenities: Json;
           area: string | null;
+          cover_image_path: string | null;
           created_at: string;
           description: string | null;
           dot_accredited: boolean;
@@ -208,6 +209,7 @@ export type Database = {
           address?: string | null;
           amenities?: Json;
           area?: string | null;
+          cover_image_path?: string | null;
           created_at?: string;
           description?: string | null;
           dot_accredited?: boolean;
@@ -221,6 +223,7 @@ export type Database = {
           address?: string | null;
           amenities?: Json;
           area?: string | null;
+          cover_image_path?: string | null;
           created_at?: string;
           description?: string | null;
           dot_accredited?: boolean;
@@ -359,6 +362,7 @@ export type Database = {
         };
       };
       current_tenant_id: { Args: never; Returns: string };
+      get_public_listing: { Args: { p_slug: string }; Returns: Json };
     };
     Enums: {
       booking_status:
