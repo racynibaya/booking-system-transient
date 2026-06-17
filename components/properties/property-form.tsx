@@ -30,7 +30,12 @@ export function PropertyForm({
     formState: { errors, isSubmitting },
   } = useForm<PropertyInput>({
     resolver: zodResolver(propertyInput),
-    defaultValues: { dot_accredited: false, ...defaultValues },
+    defaultValues: {
+      dot_accredited: false,
+      check_in_time: "14:00",
+      check_out_time: "14:00",
+      ...defaultValues,
+    },
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -49,9 +54,9 @@ export function PropertyForm({
         <Input {...register("name")} placeholder="Kahuna Beach House" />
       </Field>
 
-      <Field label="Area" error={errors.area?.message}>
+      <Field label="Barangay" error={errors.area?.message}>
         <Select {...register("area")} defaultValue="">
-          <option value="">Select an area…</option>
+          <option value="">Select a barangay…</option>
           {SAN_JUAN_AREAS.map((a) => (
             <option key={a} value={a}>
               {a}
@@ -64,8 +69,24 @@ export function PropertyForm({
         <Input {...register("address")} placeholder="Brgy. Urbiztondo, San Juan, La Union" />
       </Field>
 
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Check-in time" error={errors.check_in_time?.message}>
+          <Input type="time" {...register("check_in_time")} />
+        </Field>
+        <Field label="Check-out time" error={errors.check_out_time?.message}>
+          <Input type="time" {...register("check_out_time")} />
+        </Field>
+      </div>
+
       <Field label="Description" error={errors.description?.message}>
         <Textarea {...register("description")} placeholder="A short description guests will see." />
+      </Field>
+
+      <Field label="About this place" error={errors.about?.message}>
+        <Textarea
+          {...register("about")}
+          placeholder="Tell guests what makes your place special — the vibe, the location, what's nearby, why they'll love it."
+        />
       </Field>
 
       <label className="flex items-center gap-2">
