@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Waves } from "lucide-react";
 
 const FOOTER_LINKS = [
   { label: "Features", href: "/#features" },
@@ -12,11 +12,14 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-hairline bg-canvas px-6 py-12">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md bg-ink text-canvas">
-            <Waves className="size-4" />
-          </span>
-          <span className="text-title-md font-semibold text-ink">Tuloy</span>
+        <div className="flex items-center">
+          <Image
+            src="/logo/tuloy-logo.svg"
+            alt="Tuloy"
+            width={59}
+            height={32}
+            className="h-8 w-auto"
+          />
         </div>
 
         <nav className="flex flex-wrap items-center justify-center gap-6">

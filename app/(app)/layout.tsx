@@ -1,4 +1,4 @@
-import { Waves } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { signOut } from "@/app/auth/actions";
@@ -18,11 +18,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/80 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-4 md:h-20 md:px-6">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-md bg-ink text-canvas">
-                <Waves className="size-4" />
-              </span>
-              <span className="text-display-sm font-semibold text-ink">Tuloy</span>
+            <Link href="/dashboard" className="flex items-center">
+              <Image
+                src="/logo/tuloy-logo.svg"
+                alt="Tuloy"
+                width={52}
+                height={28}
+                priority
+                className="h-7 w-auto"
+              />
             </Link>
             <TopNav />
           </div>

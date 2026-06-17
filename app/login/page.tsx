@@ -1,6 +1,6 @@
 "use client";
 
-import { Waves } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
@@ -47,11 +47,15 @@ export default function LoginPage() {
       />
 
       <div className="relative w-full max-w-sm">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-ink text-canvas">
-            <Waves className="size-4" />
-          </span>
-          <span className="text-display-sm font-semibold text-ink">Tuloy</span>
+        <Link href="/" className="inline-flex items-center">
+          <Image
+            src="/logo/tuloy-logo.svg"
+            alt="Tuloy"
+            width={59}
+            height={32}
+            priority
+            className="h-8 w-auto"
+          />
         </Link>
 
         <Card elevated className="mt-5 p-6">
