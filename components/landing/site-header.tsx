@@ -32,12 +32,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-nav-link text-ink transition-colors hover:text-muted sm:block"
-          >
-            Sign in
-          </Link>
           <CtaButton href="/login">Get started</CtaButton>
         </div>
       </div>
