@@ -1,12 +1,13 @@
 "use client";
 
-import { Building2, LayoutGrid } from "lucide-react";
+import { Building2, CalendarCheck, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/properties", label: "Properties", icon: Building2 },
+  { href: "/bookings", label: "Bookings", icon: CalendarCheck },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -40,7 +41,7 @@ export function TopNav() {
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 border-t border-hairline bg-canvas/95 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 border-t border-hairline bg-canvas/95 backdrop-blur md:hidden">
       {ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
         const Icon = it.icon;
