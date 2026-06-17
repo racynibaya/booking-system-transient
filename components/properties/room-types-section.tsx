@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { createRoomType, deleteRoomType, updateRoomType } from "@/app/(app)/properties/actions";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import { RoomPhotosUploader } from "./room-photos-uploader";
 import { RoomTypeForm } from "./room-type-form";
@@ -30,6 +31,8 @@ export function RoomTypesSection({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   return (
     <section className="flex flex-col gap-4">
@@ -83,15 +86,7 @@ export function RoomTypesSection({
                   <Button size="sm" variant="ghost" onClick={() => setEditingId(rt.id)}>
                     Edit
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={async () => {
-                      const res = await deleteRoomType(rt.id, propertyId);
-                      if (res.ok) toast.success("Room type removed");
-                      else toast.error(res.error);
-                    }}
-                  >
+                  <Button size="sm" variant="secondary" onClick={() => setDeletingId(rt.id)}>
                     Delete
                   </Button>
                 </div>
@@ -124,6 +119,26 @@ export function RoomTypesSection({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete this room type?"
+        description={`This removes "${
+          roomTypes.find((rt) => rt.id === deletingId)?.name ?? "this room type"
+        }" and its photos. You can't undo it.`}
+        confirmLabel="Yes, delete"
+        pending={pending}
+        onCancel={() => setDeletingId(null)}
+        onConfirm={() => {
+          startTransition(async () => {
+            if (!deletingId) return;
+            const res = await deleteRoomType(deletingId, propertyId);
+            if (res.ok) toast.success("Room type removed");
+            else toast.error(res.error);
+            setDeletingId(null);
+          });
+        }}
+      />
     </section>
   );
 }
