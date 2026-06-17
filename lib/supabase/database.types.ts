@@ -69,6 +69,7 @@ export type Database = {
           hold_expires_at: string | null;
           id: string;
           num_guests: number;
+          proof_url: string | null;
           property_id: string;
           room_type_id: string;
           status: Database["public"]["Enums"]["booking_status"];
@@ -86,6 +87,7 @@ export type Database = {
           hold_expires_at?: string | null;
           id?: string;
           num_guests: number;
+          proof_url?: string | null;
           property_id: string;
           room_type_id: string;
           status?: Database["public"]["Enums"]["booking_status"];
@@ -103,6 +105,7 @@ export type Database = {
           hold_expires_at?: string | null;
           id?: string;
           num_guests?: number;
+          proof_url?: string | null;
           property_id?: string;
           room_type_id?: string;
           status?: Database["public"]["Enums"]["booking_status"];
@@ -197,6 +200,7 @@ export type Database = {
           area: string | null;
           cover_image_path: string | null;
           created_at: string;
+          deposit_percent: number;
           description: string | null;
           dot_accredited: boolean;
           id: string;
@@ -211,6 +215,7 @@ export type Database = {
           area?: string | null;
           cover_image_path?: string | null;
           created_at?: string;
+          deposit_percent?: number;
           description?: string | null;
           dot_accredited?: boolean;
           id?: string;
@@ -225,6 +230,7 @@ export type Database = {
           area?: string | null;
           cover_image_path?: string | null;
           created_at?: string;
+          deposit_percent?: number;
           description?: string | null;
           dot_accredited?: boolean;
           id?: string;
@@ -300,6 +306,9 @@ export type Database = {
       tenants: {
         Row: {
           created_at: string;
+          gcash_name: string | null;
+          gcash_number: string | null;
+          gcash_qr_path: string | null;
           id: string;
           name: string | null;
           subscription_status: string;
@@ -307,6 +316,9 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          gcash_name?: string | null;
+          gcash_number?: string | null;
+          gcash_qr_path?: string | null;
           id?: string;
           name?: string | null;
           subscription_status?: string;
@@ -314,6 +326,9 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          gcash_name?: string | null;
+          gcash_number?: string | null;
+          gcash_qr_path?: string | null;
           id?: string;
           name?: string | null;
           subscription_status?: string;
@@ -326,6 +341,37 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      confirm_booking: {
+        Args: {
+          p_amount?: number;
+          p_booking_id: string;
+          p_provider_ref?: string;
+        };
+        Returns: {
+          check_in: string;
+          check_out: string;
+          created_at: string;
+          deposit_amount: number | null;
+          guest_email: string | null;
+          guest_name: string;
+          guest_phone: string | null;
+          hold_expires_at: string | null;
+          id: string;
+          num_guests: number;
+          proof_url: string | null;
+          property_id: string;
+          room_type_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          tenant_id: string;
+          total_amount: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_booking_hold: {
         Args: {
           p_check_in: string;
@@ -348,6 +394,7 @@ export type Database = {
           hold_expires_at: string | null;
           id: string;
           num_guests: number;
+          proof_url: string | null;
           property_id: string;
           room_type_id: string;
           status: Database["public"]["Enums"]["booking_status"];
@@ -363,11 +410,42 @@ export type Database = {
       };
       current_tenant_id: { Args: never; Returns: string };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
+      submit_proof: {
+        Args: {
+          p_booking_id: string;
+          p_proof_url: string;
+        };
+        Returns: {
+          check_in: string;
+          check_out: string;
+          created_at: string;
+          deposit_amount: number | null;
+          guest_email: string | null;
+          guest_name: string;
+          guest_phone: string | null;
+          hold_expires_at: string | null;
+          id: string;
+          num_guests: number;
+          proof_url: string | null;
+          property_id: string;
+          room_type_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          tenant_id: string;
+          total_amount: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       booking_status:
         | "pending"
         | "held"
+        | "awaiting_confirmation"
         | "confirmed"
         | "cancelled"
         | "expired"
@@ -502,6 +580,7 @@ export const Constants = {
       booking_status: [
         "pending",
         "held",
+        "awaiting_confirmation",
         "confirmed",
         "cancelled",
         "expired",

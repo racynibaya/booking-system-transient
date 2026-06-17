@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 import { env } from "@/env";
@@ -43,4 +44,14 @@ export function createAnonClient() {
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     { cookies: { getAll: () => [], setAll: () => {} } },
   );
+}
+
+// Service-role client — BYPASSES RLS. SERVER-ONLY (uses the secret key); never import
+// into client code. Used by the public deposit flow (F1.4) for the few trusted reads/writes
+// anon can't do without an operator session: read a tenant's GCash details after a hold,
+// and upload the proof screenshot to the private payment-proofs bucket.
+export function createServiceClient() {
+  return createSupabaseClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
