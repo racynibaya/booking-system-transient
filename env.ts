@@ -45,13 +45,13 @@ export const env = createEnv({
  */
 if (!process.env.SKIP_ENV_VALIDATION && env.NEXT_PUBLIC_SUPABASE_URL) {
   const isLocalDb = /\/\/(127\.0\.0\.1|localhost)/.test(env.NEXT_PUBLIC_SUPABASE_URL);
-  if (env.NODE_ENV === "production" && isLocalDb) {
+  if (process.env.NODE_ENV === "production" && isLocalDb) {
     throw new Error(
       "Env guard: NODE_ENV=production but NEXT_PUBLIC_SUPABASE_URL points at a LOCAL database. " +
         "Refusing to run prod against a local DB.",
     );
   }
-  if (env.NODE_ENV === "development" && !isLocalDb) {
+  if (process.env.NODE_ENV === "development" && !isLocalDb) {
     throw new Error(
       "Env guard: NODE_ENV=development but NEXT_PUBLIC_SUPABASE_URL points at a REMOTE database. " +
         "Refusing to run dev against a remote DB.",
