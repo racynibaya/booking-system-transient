@@ -6,6 +6,7 @@ import { CoverImageUploader } from "@/components/properties/cover-image-uploader
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 import { PropertyForm } from "@/components/properties/property-form";
 import { RoomTypesSection } from "@/components/properties/room-types-section";
+import { ShareLinkButton } from "@/components/properties/share-link-button";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -32,7 +33,11 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           title={property.name}
           description={`Your booking page · /${property.slug}`}
           action={
-            <div className="flex flex-wrap gap-2">
+            // Three buttons (≈371px) overflow phones < ~412px in the header's shrink-0
+            // action slot, which won't wrap on its own. A definite width = viewport minus
+            // the px-4 gutters lets them wrap on mobile; sm:w-auto keeps desktop inline.
+            <div className="flex w-[calc(100vw-2rem)] flex-wrap gap-2 sm:w-auto">
+              <ShareLinkButton slug={property.slug} name={property.name} />
               <Link
                 href={`/${property.slug}`}
                 target="_blank"

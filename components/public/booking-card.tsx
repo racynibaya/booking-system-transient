@@ -9,6 +9,7 @@ import { DayPicker, type DateRange } from "react-day-picker";
 import { createPublicBooking, submitProof, type GcashDetails } from "@/app/[slug]/actions";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { fromDateStr, toDateStr, todayStr } from "@/lib/dates";
+import { compressImage } from "@/lib/image";
 import { computeTotal, nights } from "@/lib/pricing";
 
 export type PublicRoom = {
@@ -131,9 +132,11 @@ export function BookingCard({
     if (!bookingId || !proofFile) return;
     setError(null);
     setPending(true);
+    // Shrink the receipt screenshot before upload (keeps it legible; cuts proof storage).
+    const proof = await compressImage(proofFile, { maxDim: 1600, quality: 0.85 });
     const fd = new FormData();
     fd.set("bookingId", bookingId);
-    fd.set("proof", proofFile);
+    fd.set("proof", proof);
     const res = await submitProof(fd);
     setPending(false);
     if (res.ok) setStep("done");

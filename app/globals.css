@@ -232,3 +232,16 @@ body {
   outline-offset: 1px;
   border-radius: var(--radius-full);
 }
+
+/* ---- Operator availability calendar (mobile fit) -------------------------
+   The default react-day-picker grid (7 × 44px) is wider than the room-calendar
+   card on narrow phones, clipping the last column. Shrink the day cells below
+   the sm breakpoint only; desktop keeps the default size. */
+@media (max-width: 639px) {
+  .operator-calendar .rdp-root {
+    --rdp-day-width: 38px;
+    --rdp-day-height: 38px;
+    --rdp-day_button-width: 36px;
+    --rdp-day_button-height: 36px;
+  }
+}
