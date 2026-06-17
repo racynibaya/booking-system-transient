@@ -47,6 +47,22 @@ export const getCurrentTenant = cache(async () => {
   return data;
 });
 
+// The current operator's GCash payout settings (RLS-scoped). null if un-provisioned.
+export const getGcashSettings = cache(async () => {
+  const user = await getUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id, gcash_name, gcash_number, gcash_qr_path")
+    .eq("user_id", user.id)
+    .single();
+
+  if (error) return null;
+  return data;
+});
+
 // The current operator's properties (RLS-scoped — no explicit tenant filter
 // needed) with a room_type count for the list view.
 export const getProperties = cache(async () => {

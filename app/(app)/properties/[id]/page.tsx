@@ -78,13 +78,28 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               area: property.area ?? "",
               address: property.address ?? "",
               description: property.description ?? "",
+              about: property.about ?? "",
+              check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
+              check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
               dot_accredited: property.dot_accredited,
             }}
           />
         </Card>
       </section>
 
-      <RoomTypesSection propertyId={id} roomTypes={property.room_types ?? []} />
+      <RoomTypesSection
+        propertyId={id}
+        tenantId={property.tenant_id}
+        roomTypes={(property.room_types ?? []).map((rt) => ({
+          id: rt.id,
+          name: rt.name,
+          capacity: rt.capacity,
+          quantity: rt.quantity,
+          base_price: rt.base_price,
+          description: rt.description,
+          photos: Array.isArray(rt.photos) ? (rt.photos as string[]) : [],
+        }))}
+      />
 
       <section className="flex flex-col gap-3 border-t border-hairline pt-6">
         <h2 className="text-title-md text-ink">Danger zone</h2>

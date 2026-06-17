@@ -18,6 +18,7 @@ export type PublicRoom = {
   quantity: number;
   base_price: number;
   description: string | null;
+  photos: string[];
   bookings: { check_in: string; check_out: string }[];
   blocks: { start_date: string; end_date: string }[];
 };
@@ -242,7 +243,7 @@ export function BookingCard({
         <p className="text-title-md font-semibold text-canvas">{propertyName}</p>
         {(area || step === "details") && (
           <p className="text-caption text-white/60">
-            {step === "details" ? "Almost there — just your details" : `${area}, La Union`}
+            {step === "details" ? "Almost there — just your details" : area}
           </p>
         )}
       </div>
