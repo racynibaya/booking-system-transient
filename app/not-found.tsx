@@ -1,4 +1,5 @@
-import { Home, MapPinOff, Waves } from "lucide-react";
+import { Home, MapPinOff } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { buttonClassName } from "@/components/ui/button";
@@ -15,11 +16,14 @@ export default function NotFound() {
       />
 
       <div className="relative flex w-full max-w-md flex-col items-center">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-ink text-canvas">
-            <Waves className="size-4" />
-          </span>
-          <span className="text-display-sm font-semibold text-ink">Tuloy</span>
+        <Link href="/" className="inline-flex items-center">
+          <Image
+            src="/logo/tuloy-logo.svg"
+            alt="Tuloy"
+            width={59}
+            height={32}
+            className="h-8 w-auto"
+          />
         </Link>
 
         <span className="mt-10 flex size-14 items-center justify-center rounded-full border border-hairline bg-surface-soft text-muted">
