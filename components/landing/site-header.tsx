@@ -3,9 +3,9 @@ import { Waves } from "lucide-react";
 import { CtaButton } from "./cta-button";
 
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Features", href: "/#features" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Pricing", href: "/#pricing" },
 ];
 
 export function SiteHeader() {
@@ -33,12 +33,12 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="#"
+            href="/login"
             className="hidden text-nav-link text-ink transition-colors hover:text-muted sm:block"
           >
             Sign in
           </Link>
-          <CtaButton href="#">Get started</CtaButton>
+          <CtaButton href="/login">Get started</CtaButton>
         </div>
       </div>
     </header>

@@ -1,7 +1,8 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CoverImageUploader } from "@/components/properties/cover-image-uploader";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 import { PropertyForm } from "@/components/properties/property-form";
 import { RoomTypesSection } from "@/components/properties/room-types-section";
@@ -29,17 +30,42 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         </Link>
         <PageHeader
           title={property.name}
-          description={`tuloy.ph/${property.slug} · goes live soon`}
+          description={`Your booking page · /${property.slug}`}
           action={
-            <Link
-              href={`/properties/${id}/calendar`}
-              className={buttonClassName({ variant: "secondary", size: "sm" })}
-            >
-              <CalendarDays className="size-4" /> Availability
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/${property.slug}`}
+                target="_blank"
+                className={buttonClassName({ variant: "secondary", size: "sm" })}
+              >
+                <ExternalLink className="size-4" /> View page
+              </Link>
+              <Link
+                href={`/properties/${id}/calendar`}
+                className={buttonClassName({ variant: "secondary", size: "sm" })}
+              >
+                <CalendarDays className="size-4" /> Availability
+              </Link>
+            </div>
           }
         />
       </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-display-sm text-ink">Cover photo</h2>
+          <p className="text-body-sm text-muted">
+            The full-bleed background guests see on your booking page.
+          </p>
+        </div>
+        <Card className="p-5 md:p-6">
+          <CoverImageUploader
+            propertyId={id}
+            tenantId={property.tenant_id}
+            currentPath={property.cover_image_path}
+          />
+        </Card>
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-display-sm text-ink">Details</h2>

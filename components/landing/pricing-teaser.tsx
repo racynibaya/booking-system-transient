@@ -36,7 +36,7 @@ export function PricingTeaser() {
             ))}
           </ul>
 
-          <CtaButton href="#" className="mt-8 w-full">
+          <CtaButton href="/login" className="mt-8 w-full">
             Start free
           </CtaButton>
         </div>

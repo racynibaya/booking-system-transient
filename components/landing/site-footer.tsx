@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Waves } from "lucide-react";
 
 const FOOTER_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Contact", href: "#" },
+  { label: "Features", href: "/#features" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Sign in", href: "/login" },
 ];
 
 export function SiteFooter() {
