@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   Design tokens — sourced from context/ui-token.md (Airbnb-style system)
+   Tailwind v4 @theme. No dark mode (the system is white-canvas only).
+   Brand tokens layer on top of Tailwind's defaults (defaults not cleared).
+   ============================================================================= */
+
+@theme {
+  /* ---- Fonts -------------------------------------------------------------
+     Cereal VF is licensed/unavailable here; Inter is the documented OSS
+     substitute. Load Inter (or Cereal) in the app for full fidelity. */
+  --font-sans:
+    var(--font-inter), "Airbnb Cereal VF", Circular, Inter, -apple-system, system-ui, Roboto,
+    "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
+
+  /* ---- Colors · brand & accent ------------------------------------------ */
+  --color-primary: #ff385c; /* Rausch — the single brand color */
+  --color-primary-active: #e00b41; /* press / pointer-down */
+  --color-primary-disabled: #ffd1da; /* pale disabled CTA tint */
+  --color-luxe: #460479; /* sub-brand (Luxe) — scoped use only */
+  --color-plus: #92174d; /* sub-brand (Plus) — scoped use only */
+
+  /* ---- Colors · surface -------------------------------------------------- */
+  --color-canvas: #ffffff; /* default page floor */
+  --color-surface-soft: #f7f7f7; /* lightest fill */
+  --color-surface-strong: #f2f2f2; /* heavier fill / icon-button bg */
+
+  /* ---- Colors · hairlines & borders ------------------------------------- */
+  --color-hairline: #dddddd; /* default 1px border tone */
+  --color-hairline-soft: #ebebeb; /* lighter editorial divider */
+  --color-border-strong: #c1c1c1; /* heavier stroke / input outline */
+
+  /* ---- Colors · text ----------------------------------------------------- */
+  --color-ink: #222222; /* dominant text — never pure black */
+  --color-body: #3f3f3f; /* secondary running text */
+  --color-muted: #6a6a6a; /* sub-titles, inactive labels */
+  --color-muted-soft: #929292; /* disabled link text */
+  --color-star-rating: #222222; /* stars render in ink, not gold */
+  --color-on-primary: #ffffff; /* text on Rausch CTAs */
+
+  /* ---- Colors · semantic ------------------------------------------------- */
+  --color-error: #c13515; /* inline form error text */
+  --color-error-hover: #b32505; /* error link hover */
+  --color-legal-link: #428bff; /* legal-copy links only */
+  --color-scrim: #000000; /* modal backdrop base (render at 50%) */
+
+  /* ---- Colors · compatibility aliases (Next/shadcn) --------------------- */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink);
+
+  /* ---- Typography scale (size · line-height · weight · tracking) -------- */
+  --text-hero: clamp(2.5rem, 5vw + 1rem, 3.75rem); /* landing hero h1 */
+  --text-hero--line-height: 1.05;
+  --text-hero--font-weight: 700;
+  --text-hero--letter-spacing: -0.02em;
+
+  --text-rating-display: 64px;
+  --text-rating-display--line-height: 1.1;
+  --text-rating-display--font-weight: 700;
+  --text-rating-display--letter-spacing: -1px;
+
+  --text-display-xl: 28px;
+  --text-display-xl--line-height: 1.43;
+  --text-display-xl--font-weight: 700;
+
+  --text-display-lg: 22px;
+  --text-display-lg--line-height: 1.18;
+  --text-display-lg--font-weight: 500;
+  --text-display-lg--letter-spacing: -0.44px;
+
+  --text-display-md: 21px;
+  --text-display-md--line-height: 1.43;
+  --text-display-md--font-weight: 700;
+
+  --text-display-sm: 20px;
+  --text-display-sm--line-height: 1.2;
+  --text-display-sm--font-weight: 600;
+  --text-display-sm--letter-spacing: -0.18px;
+
+  --text-title-md: 16px;
+  --text-title-md--line-height: 1.25;
+  --text-title-md--font-weight: 600;
+
+  --text-title-sm: 16px;
+  --text-title-sm--line-height: 1.25;
+  --text-title-sm--font-weight: 500;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.43;
+  --text-body-sm--font-weight: 400;
+
+  --text-caption: 14px;
+  --text-caption--line-height: 1.29;
+  --text-caption--font-weight: 500;
+
+  --text-caption-sm: 13px;
+  --text-caption-sm--line-height: 1.23;
+  --text-caption-sm--font-weight: 400;
+
+  --text-badge: 11px;
+  --text-badge--line-height: 1.18;
+  --text-badge--font-weight: 600;
+
+  --text-micro-label: 12px;
+  --text-micro-label--line-height: 1.33;
+  --text-micro-label--font-weight: 700;
+
+  --text-uppercase-tag: 8px;
+  --text-uppercase-tag--line-height: 1.25;
+  --text-uppercase-tag--font-weight: 700;
+  --text-uppercase-tag--letter-spacing: 0.32px;
+
+  --text-button-md: 16px;
+  --text-button-md--line-height: 1.25;
+  --text-button-md--font-weight: 500;
+
+  --text-button-sm: 14px;
+  --text-button-sm--line-height: 1.29;
+  --text-button-sm--font-weight: 500;
+
+  --text-link: 14px;
+  --text-link--line-height: 1.43;
+  --text-link--font-weight: 400;
+
+  --text-nav-link: 16px;
+  --text-nav-link--line-height: 1.25;
+  --text-nav-link--font-weight: 600;
+
+  /* ---- Spacing (4px base) -----------------------------------------------
+     NOTE: named spacing aliases (sm/md/lg/xl/…) are intentionally NOT defined.
+     In Tailwind v4 they collide with the width scale, making `max-w-md` resolve
+     to a 12px spacing value instead of the 28rem container. The 4px base below
+     already yields every token step via the numeric scale (p-2=8, p-3=12,
+     p-4=16, p-6=24, p-8=32, p-12=48, p-16=64). */
+  --spacing: 4px;
+
+  /* ---- Radius (soft shape language) ------------------------------------- */
+  --radius-sm: 8px; /* buttons */
+  --radius-md: 14px; /* property cards */
+  --radius-xl: 32px; /* category strip */
+  --radius-full: 9999px; /* pills, orbs, hearts */
+
+  /* ---- Elevation (single shadow tier + flat baseline) ------------------- */
+  --shadow-card:
+    rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+
+  /* ---- Animations (landing decoration — gentle, scarce) ----------------- */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 8s ease-in-out infinite;
+}
+
+/* ---- Keyframes ------------------------------------------------------------ */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ---- Base ----------------------------------------------------------------- */
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect reduced-motion: kill decorative animation. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-slow {
+    animation: none;
+  }
+}
