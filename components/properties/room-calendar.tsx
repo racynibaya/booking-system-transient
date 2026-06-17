@@ -62,14 +62,14 @@ export function RoomCalendar({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-md border border-hairline p-6">
+    <section className="flex flex-col gap-4 rounded-md border border-hairline p-4 sm:p-6">
       <div>
         <h2 className="text-display-sm text-ink">{roomType.name}</h2>
         <p className="text-body-sm text-muted">{roomType.quantity} units</p>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        <div>
+        <div className="operator-calendar">
           <DayPicker
             mode="range"
             selected={range}
@@ -130,9 +130,9 @@ export function RoomCalendar({
               {blocks.map((b) => (
                 <li
                   key={b.id}
-                  className="flex items-center justify-between rounded-sm border border-hairline px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-sm border border-hairline px-3 py-2"
                 >
-                  <span className="text-body-sm text-ink">
+                  <span className="min-w-0 truncate text-body-sm text-ink">
                     {b.start} → {b.end}
                     {b.reason ? ` · ${b.reason}` : ""}
                   </span>
@@ -140,6 +140,7 @@ export function RoomCalendar({
                     type="button"
                     size="sm"
                     variant="ghost"
+                    className="shrink-0"
                     onClick={async () => {
                       const res = await deleteBlock(b.id, propertyId);
                       if (res.ok) toast.success("Block removed");
