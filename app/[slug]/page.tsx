@@ -1,4 +1,4 @@
-import { Waves } from "lucide-react";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
@@ -46,7 +46,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
   const { property } = listing;
 
   return (
-    <main className="relative min-h-dvh w-full overflow-hidden">
+    <main className="relative min-h-dvh w-full overflow-x-hidden">
       {/* base/fallback gradient, the operator photo, then a legibility overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-ink to-[#2a0d14]" />
       {coverUrl && (
@@ -57,20 +57,33 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/45" />
 
-      <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-6">
+      <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6">
         <header className="flex items-center justify-between text-canvas">
           <div className="flex min-w-0 items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-canvas/15 backdrop-blur">
-              <Waves className="size-4" />
+              <Image
+                src="/favicon/tuloy-icon-white.svg"
+                alt=""
+                width={64}
+                height={64}
+                className="size-4"
+              />
             </span>
             <span className="truncate text-title-md font-semibold">{property.name}</span>
           </div>
-          <span className="ml-3 hidden shrink-0 text-caption-sm text-white/60 sm:inline">
-            Powered by Tuloy
-          </span>
+          <div className="ml-3 hidden shrink-0 items-center gap-1.5 sm:flex">
+            <span className="text-caption-sm text-white/55">Powered by</span>
+            <Image
+              src="/logo/tuloy-logo-white.svg"
+              alt="Tuloy"
+              width={208}
+              height={112}
+              className="h-5 w-auto"
+            />
+          </div>
         </header>
 
-        <div className="flex flex-1 flex-col justify-end gap-10 py-10 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-1 flex-col justify-center gap-6 py-6 md:flex-row md:items-center md:justify-between md:gap-10 md:py-10">
           <div className="max-w-xl text-canvas">
             <h1 className="text-hero tracking-tight text-canvas">{property.name}</h1>
             {property.area && (

@@ -191,3 +191,44 @@ body {
     animation: none;
   }
 }
+
+/* ---- Public booking calendar (react-day-picker on dark glass) -------------
+   Scoped to .booking-calendar so the operator room-calendar (light card) stays
+   untouched. Days inherit the card's white text; accents retint to brand Rausch
+   and cells shrink so the month grid fits inside a narrow phone card. */
+.booking-calendar .rdp-root {
+  margin: 0;
+  --rdp-day-width: 40px;
+  --rdp-day-height: 40px;
+  --rdp-day_button-width: 38px;
+  --rdp-day_button-height: 38px;
+  --rdp-disabled-opacity: 0.3;
+  /* range middle: translucent primary tint with legible white text */
+  --rdp-range_middle-background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  --rdp-range_middle-color: var(--color-canvas);
+}
+
+/* Hover / focus-visible / active on selectable (non-selected) days. */
+.booking-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:not(:disabled):hover {
+  background-color: rgb(255 255 255 / 0.12);
+}
+.booking-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:not(:disabled):active {
+  background-color: rgb(255 255 255 / 0.2);
+}
+.booking-calendar .rdp-day_button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Month-nav chevron buttons. */
+.booking-calendar .rdp-button_previous:hover,
+.booking-calendar .rdp-button_next:hover {
+  background-color: rgb(255 255 255 / 0.12);
+  border-radius: var(--radius-full);
+}
+.booking-calendar .rdp-button_previous:focus-visible,
+.booking-calendar .rdp-button_next:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-radius: var(--radius-full);
+}
