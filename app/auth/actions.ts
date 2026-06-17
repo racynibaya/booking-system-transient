@@ -1,35 +1,42 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 
-const emailSchema = z.object({ email: z.email() });
+export type AuthResult = { error: string } | { notice: string };
 
-export type LoginState = { status: "idle" | "sent" | "error"; message?: string };
+const credentials = z.object({
+  email: z.email("Enter a valid email address."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
+});
 
-// Send a passwordless magic link (B5). shouldCreateUser defaults to true, so a
-// first-time operator is created on click → handle_new_user provisions their
-// tenant row. The link lands on /auth/confirm, which establishes the session.
-export async function sendMagicLink(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const parsed = emailSchema.safeParse({ email: formData.get("email") });
+// Email + password (Supabase-native — no third-party provider, no external billing).
+// On success the session cookie is set and we redirect to the dashboard; a first-time
+// operator's tenant is provisioned by the handle_new_user trigger. If the project has
+// email confirmation ON, signUp returns no session → we ask them to confirm.
+export async function passwordAuth(
+  mode: "signin" | "signup",
+  input: { email: string; password: string },
+): Promise<AuthResult> {
+  const parsed = credentials.safeParse(input);
   if (!parsed.success) {
-    return { status: "error", message: "Enter a valid email address." };
+    return { error: parsed.error.issues[0]?.message ?? "Please check your details." };
   }
-
-  const origin = (await headers()).get("origin") ?? "";
+  const { email, password } = parsed.data;
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data.email,
-    options: { emailRedirectTo: `${origin}/auth/confirm?next=/dashboard` },
-  });
 
-  if (error) {
-    return { status: "error", message: error.message };
+  if (mode === "signup") {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message };
+    if (!data.session) return { notice: "Check your email to confirm your account." };
+  } else {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: "Wrong email or password." };
   }
-  return { status: "sent" };
+
+  redirect("/dashboard");
 }
 
 export async function signOut(): Promise<void> {
