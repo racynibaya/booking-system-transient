@@ -73,6 +73,35 @@ export const getProperty = cache(async (id: string) => {
   return data;
 });
 
+// Bookings awaiting the operator's confirmation (F1.4/F1.5), RLS-scoped — newest
+// first. Each carries a short-lived signed URL for the guest's payment proof so the
+// operator can eyeball it before confirming (operator can read own-tenant proofs).
+export const getPendingConfirmations = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, deposit_amount, total_amount, proof_url, properties(name), room_types(name)",
+    )
+    .eq("status", "awaiting_confirmation")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return Promise.all(
+    data.map(async (b) => {
+      let proofUrl: string | null = null;
+      if (b.proof_url) {
+        const { data: signed } = await supabase.storage
+          .from("payment-proofs")
+          .createSignedUrl(b.proof_url, 60 * 10); // 10 min
+        proofUrl = signed?.signedUrl ?? null;
+      }
+      return { ...b, proofUrl };
+    }),
+  );
+});
+
 // Calendar data for one room_type (RLS-scoped): live held/confirmed bookings and
 // future blocks, as YYYY-MM-DD strings for lib/availability. Expired holds excluded.
 export const getRoomCalendarData = cache(async (roomTypeId: string) => {
