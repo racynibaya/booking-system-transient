@@ -9,7 +9,7 @@ export function FinalCta() {
           Set up your booking page in an afternoon. Free during the pilot — no card, no commission.
         </p>
         <div className="mt-8 flex justify-center">
-          <CtaButton href="#" variant="invert">
+          <CtaButton href="/login" variant="invert">
             Get started free
           </CtaButton>
         </div>

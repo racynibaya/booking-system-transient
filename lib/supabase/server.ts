@@ -33,3 +33,14 @@ export async function createClient() {
     },
   );
 }
+
+// Session-less server client for the PUBLIC booking path (architecture P2): it
+// carries no operator cookies, so it always acts as the `anon` role — never the
+// operator client. Used by app/[slug] to call get_public_listing / create_booking_hold.
+export function createAnonClient() {
+  return createServerClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    { cookies: { getAll: () => [], setAll: () => {} } },
+  );
+}

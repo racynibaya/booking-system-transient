@@ -167,6 +167,13 @@
 }
 
 /* ---- Base ----------------------------------------------------------------- */
+html {
+  /* Smooth in-page anchor nav; scroll-padding offsets the sticky header so a
+     section's heading lands below it (not hidden underneath). */
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
 body {
   background-color: var(--color-canvas);
   color: var(--color-ink);
@@ -174,8 +181,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Respect reduced-motion: kill decorative animation. */
+/* Respect reduced-motion: kill decorative animation + instant anchor jumps. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .animate-float,
   .animate-float-slow {
     animation: none;
