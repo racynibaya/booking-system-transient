@@ -37,8 +37,10 @@ export async function confirmBooking(bookingId: string): Promise<ActionResult> {
   });
   if (error) return { ok: false, error: "Couldn't confirm this booking. Please try again." };
 
-  // null → already confirmed (idempotent no-op). Nothing to send.
-  if (booking) {
+  // No-op re-confirm → nothing to send. The RPC "returns null" for an already-confirmed
+  // booking, but PostgREST renders a NULL composite as an all-null OBJECT ({id:null,…}) —
+  // which is truthy — so guard on a real field, not the row's truthiness.
+  if (booking?.id) {
     await sendConfirmationEmails(booking, user.email ?? null);
   }
 
