@@ -22,8 +22,8 @@ export function PricingTeaser() {
             Free during the pilot
           </span>
           <div className="mt-5 flex items-baseline gap-1">
-            <span className="text-rating-display text-ink">₱1,000</span>
-            <span className="text-body-md text-muted">–1,500 / month</span>
+            <span className="text-rating-display text-ink">₱2,500</span>
+            <span className="text-body-md text-muted">/ month</span>
           </div>
           <p className="mt-1 text-body-sm text-muted">after the pilot · flat rate</p>
 
