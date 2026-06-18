@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { BookingsTable } from "@/components/bookings/bookings-table";
+import { buttonClassName } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { getBookings, requireUser } from "@/lib/supabase/dal";
 
@@ -15,6 +18,11 @@ export default async function BookingsPage() {
       <PageHeader
         title="Bookings"
         description="See, filter, and confirm or cancel your bookings."
+        action={
+          <Link href="/bookings/new" className={buttonClassName({ size: "sm" })}>
+            + Add booking
+          </Link>
+        }
       />
       <BookingsTable bookings={bookings} />
     </div>

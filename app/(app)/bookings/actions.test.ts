@@ -14,19 +14,29 @@ const eqMock = vi.fn(() => ({ in: inMock }));
 const updateMock = vi.fn(() => ({ eq: eqMock }));
 const from = vi.fn(() => ({ update: updateMock }));
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ rpc, from })) }));
+// createManualBooking calls the RPC via the anon client (create_booking_hold is granted to
+// anon, not authenticated) and the guarded confirm UPDATE via the session client. Both share
+// the same rpc/from mocks so existing confirm/cancel assertions are unaffected.
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(async () => ({ rpc, from })),
+  createAnonClient: vi.fn(() => ({ rpc })),
+}));
 vi.mock("@/lib/supabase/dal", () => ({
   requireUser: vi.fn(async () => ({ email: "operator@example.com" })),
   getCurrentTenant: vi.fn(async () => ({ id: "tenant-1" })),
 }));
 vi.mock("@/lib/email/resend", () => ({ sendEmail: vi.fn(async () => true) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// createManualBooking redirects on success; mock it to a recordable no-op so the action
+// returns instead of throwing NEXT_REDIRECT.
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
 import { sendEmail } from "@/lib/email/resend";
 import { getCurrentTenant } from "@/lib/supabase/dal";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-import { cancelBooking, confirmBooking } from "./actions";
+import { cancelBooking, confirmBooking, createManualBooking } from "./actions";
 
 const sendEmailMock = vi.mocked(sendEmail);
 
@@ -56,6 +66,7 @@ beforeEach(() => {
   inMock.mockClear();
   inMock.mockResolvedValue({ error: null });
   vi.mocked(revalidatePath).mockClear();
+  vi.mocked(redirect).mockClear();
 });
 
 describe("confirmBooking — F1.5 notification idempotency", () => {
@@ -102,5 +113,111 @@ describe("cancelBooking — F2.1 guarded status write", () => {
     const res = await cancelBooking(BOOKING_ID);
     expect(res.ok).toBe(false);
     expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
+  });
+});
+
+describe("createManualBooking — F2.2 one-engine entry", () => {
+  const ROOM_ID = "3f1c6b88-9a4d-4f2e-9c7a-1d2e3f4a5b6c";
+  const PROPERTY_ID = "7a2b3c4d-5e6f-4a8b-9c0d-1e2f3a4b5c6d";
+
+  const baseInput = {
+    propertyId: PROPERTY_ID,
+    roomTypeId: ROOM_ID,
+    checkIn: "2026-08-01",
+    checkOut: "2026-08-03",
+    numGuests: 2,
+    guestName: "Walk-in Guest",
+    guestPhone: "",
+    guestEmail: "guest@example.com",
+    status: "confirmed" as const,
+  };
+
+  it("holds via the RPC then flips a confirmed booking with a guarded UPDATE", async () => {
+    rpc.mockResolvedValue({ data: confirmedRow, error: null });
+    await createManualBooking(baseInput);
+
+    expect(rpc).toHaveBeenCalledWith(
+      "create_booking_hold",
+      expect.objectContaining({
+        p_room_type_id: ROOM_ID,
+        p_check_in: "2026-08-01",
+        p_check_out: "2026-08-03",
+        p_num_guests: 2,
+        p_guest_name: "Walk-in Guest",
+        p_hold_minutes: 5,
+      }),
+    );
+    expect(updateMock).toHaveBeenCalledWith({ status: "confirmed", hold_expires_at: null });
+    expect(eqMock).toHaveBeenCalledWith("id", BOOKING_ID);
+    expect(inMock).toHaveBeenCalledWith("status", ["held"]);
+    expect(sendEmailMock).toHaveBeenCalledTimes(2); // guest + operator
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/bookings");
+  });
+
+  it("leaves a held booking alone — no UPDATE, no email", async () => {
+    rpc.mockResolvedValue({ data: confirmedRow, error: null });
+    await createManualBooking({ ...baseInput, status: "held" });
+
+    expect(rpc).toHaveBeenCalledWith(
+      "create_booking_hold",
+      expect.objectContaining({ p_hold_minutes: 5 }),
+    );
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/bookings");
+  });
+
+  it("maps RPC conflicts to friendly errors and does not write or redirect", async () => {
+    const cases: [string, string][] = [
+      ["NO_AVAILABILITY: sold out", "Those dates aren't available for this room."],
+      ["INVALID_GUESTS", "That's more guests than this room holds."],
+      ["INVALID_RANGE", "Check-out must be after check-in."],
+      ["UNKNOWN_ROOM_TYPE", "That room couldn't be found. Please pick again."],
+    ];
+    for (const [message, friendly] of cases) {
+      rpc.mockResolvedValue({ data: null, error: { message } });
+      updateMock.mockClear();
+      vi.mocked(redirect).mockClear();
+      const res = await createManualBooking(baseInput);
+      expect(res).toEqual({ ok: false, error: friendly });
+      expect(updateMock).not.toHaveBeenCalled();
+      expect(vi.mocked(redirect)).not.toHaveBeenCalled();
+    }
+  });
+
+  it("reports a real-but-unconfirmed booking when the confirm UPDATE fails", async () => {
+    rpc.mockResolvedValue({ data: confirmedRow, error: null });
+    inMock.mockResolvedValue({ error: { message: "boom" } });
+    const res = await createManualBooking(baseInput);
+
+    expect(res).toEqual({
+      ok: false,
+      error: "Booking saved but couldn't be marked confirmed. Open it from the dashboard.",
+    });
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+    expect(vi.mocked(redirect)).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid input without touching the RPC", async () => {
+    const res = await createManualBooking({ ...baseInput, roomTypeId: "not-a-uuid" });
+    expect(res.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("errors when the operator has no tenant", async () => {
+    vi.mocked(getCurrentTenant).mockResolvedValueOnce(null);
+    const res = await createManualBooking(baseInput);
+    expect(res.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("treats an all-null composite as a failure (no UPDATE, no redirect)", async () => {
+    rpc.mockResolvedValue({ data: allNullRow, error: null });
+    const res = await createManualBooking(baseInput);
+    expect(res).toEqual({ ok: false, error: "Something went wrong. Please try again." });
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(vi.mocked(redirect)).not.toHaveBeenCalled();
   });
 });
