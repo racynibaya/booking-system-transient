@@ -3,6 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { effectiveStatus } from "@/lib/bookings";
 import { todayStr } from "@/lib/dates";
 
 import { createClient } from "./server";
@@ -127,12 +128,17 @@ export const getBookings = cache(async () => {
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, deposit_amount, total_amount, properties(name), room_types(name)",
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, deposit_amount, total_amount, properties(name), room_types(name)",
     )
     .order("check_in", { ascending: false });
 
   if (error || !data) return [];
-  return data;
+  // Reconcile lapsed holds to 'expired' for display (see effectiveStatus) and drop the
+  // internal hold_expires_at from the shape the dashboard consumes.
+  return data.map(({ hold_expires_at, ...b }) => ({
+    ...b,
+    status: effectiveStatus(b.status, hold_expires_at),
+  }));
 });
 
 // Calendar data for one room_type (RLS-scoped): live held/confirmed bookings and

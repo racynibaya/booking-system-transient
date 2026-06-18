@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { toConfirmationBooking, type NotificationBookingRow } from "@/lib/email/notifications";
 import { sendEmail } from "@/lib/email/resend";
 import {
+  guestCancelledEmail,
   guestConfirmedEmail,
   operatorBookingEmail,
-  type ConfirmationBooking,
 } from "@/lib/email/templates";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 import { createAnonClient, createClient } from "@/lib/supabase/server";
@@ -58,6 +59,10 @@ export async function confirmBooking(bookingId: string): Promise<ActionResult> {
 //
 // The .in() guard keeps it idempotent: a re-cancel, or cancelling an already-
 // terminal booking (cancelled/expired/completed/no_show), updates 0 rows → no-op.
+//
+// F2.3: notify the guest once. The .select().maybeSingle() returns the flipped row on the
+// winning call and null on a no-op re-cancel (0 rows) — so we send the cancellation email
+// ONLY when a row actually changed, the same fire-once guard as confirmBooking.
 export async function cancelBooking(bookingId: string): Promise<ActionResult> {
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };
@@ -68,12 +73,23 @@ export async function cancelBooking(bookingId: string): Promise<ActionResult> {
   if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: cancelled, error } = await supabase
     .from("bookings")
     .update({ status: "cancelled" })
     .eq("id", bookingId)
-    .in("status", ["held", "awaiting_confirmation", "confirmed"]);
+    .in("status", ["held", "awaiting_confirmation", "confirmed"])
+    .select(
+      "guest_name, guest_email, guest_phone, check_in, check_out, num_guests, deposit_amount, total_amount",
+    )
+    .maybeSingle();
   if (error) return { ok: false, error: "Couldn't cancel this booking. Please try again." };
+
+  // Best-effort guest notification — never affects the result (the booking is cancelled
+  // either way). Only the winning call has a row to send for.
+  if (cancelled?.guest_email) {
+    const { subject, html } = guestCancelledEmail(toConfirmationBooking(cancelled));
+    await sendEmail({ to: cancelled.guest_email, subject, html });
+  }
 
   revalidatePath("/bookings");
   return { ok: true };
@@ -134,7 +150,7 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ac
 
   // Guard on a real field, not row truthiness (PostgREST renders a NULL composite as an
   // all-null OBJECT — same trap as confirmBooking).
-  const booking = data as (BookingRow & { id: string }) | null;
+  const booking = data as (NotificationBookingRow & { id: string }) | null;
   if (!booking?.id) return { ok: false, error: "Something went wrong. Please try again." };
 
   if (d.status === "confirmed") {
@@ -164,30 +180,13 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ac
   redirect("/bookings");
 }
 
-type BookingRow = {
-  guest_name: string;
-  guest_email: string | null;
-  guest_phone: string | null;
-  check_in: string;
-  check_out: string;
-  num_guests: number;
-  deposit_amount: number | null;
-  total_amount: number | null;
-};
-
 // Best-effort. sendEmail never throws, but we also never let an email outcome
 // affect the action result — the booking is already confirmed (build-plan F1.5).
-async function sendConfirmationEmails(b: BookingRow, operatorEmail: string | null): Promise<void> {
-  const data: ConfirmationBooking = {
-    guestName: b.guest_name,
-    guestEmail: b.guest_email,
-    guestPhone: b.guest_phone,
-    checkIn: b.check_in,
-    checkOut: b.check_out,
-    numGuests: b.num_guests,
-    depositAmount: b.deposit_amount,
-    totalAmount: b.total_amount,
-  };
+async function sendConfirmationEmails(
+  b: NotificationBookingRow,
+  operatorEmail: string | null,
+): Promise<void> {
+  const data = toConfirmationBooking(b);
 
   const sends: Promise<boolean>[] = [];
 

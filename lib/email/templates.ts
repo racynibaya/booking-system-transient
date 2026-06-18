@@ -97,6 +97,25 @@ export function guestConfirmedEmail(b: ConfirmationBooking): { subject: string; 
   };
 }
 
+// Guest-facing: "your booking was cancelled" (F2.3 lifecycle). No operator data; the
+// dates are released and the guest is invited to rebook.
+export function guestCancelledEmail(b: ConfirmationBooking): { subject: string; html: string } {
+  const rows =
+    row("Check-in", prettyDate(b.checkIn)) +
+    row("Check-out", prettyDate(b.checkOut)) +
+    row("Guests", String(b.numGuests));
+
+  return {
+    subject: "Your booking has been cancelled",
+    html: shell(
+      `Booking cancelled, ${b.guestName}`,
+      "The stay below has been cancelled and those dates released. If this is unexpected, just reply to the message thread with your host.",
+      rows,
+      "Still want to stay? You're welcome to book again anytime.",
+    ),
+  };
+}
+
 // Operator-facing: "new confirmed booking" + guest contact so they can reach out.
 export function operatorBookingEmail(b: ConfirmationBooking): { subject: string; html: string } {
   const rows =
