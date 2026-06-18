@@ -153,6 +153,8 @@
   /* ---- Animations (landing decoration — gentle, scarce) ----------------- */
   --animate-float: float 6s ease-in-out infinite;
   --animate-float-slow: float 8s ease-in-out infinite;
+  /* Entrance for the public room showcase when the selected room swaps. */
+  --animate-room-swap: room-swap 0.35s ease-out;
 }
 
 /* ---- Keyframes ------------------------------------------------------------ */
@@ -163,6 +165,17 @@
   }
   50% {
     transform: translateY(-10px);
+  }
+}
+
+@keyframes room-swap {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -187,7 +200,8 @@ body {
     scroll-behavior: auto;
   }
   .animate-float,
-  .animate-float-slow {
+  .animate-float-slow,
+  .animate-room-swap {
     animation: none;
   }
 }
