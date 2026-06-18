@@ -62,3 +62,25 @@ export const roomTypeInput = z.object({
   description: optionalText(2000),
 });
 export type RoomTypeInput = z.infer<typeof roomTypeInput>;
+
+// Operator manual booking entry (F2.2). The same trust-boundary discipline as the
+// public booking, plus a status the operator chooses: "confirmed" (walk-in / already
+// arranged) or "held" (awaiting payment). propertyId only scopes the room dropdown in
+// the form; the create_booking_hold RPC keys off roomTypeId.
+export const manualBookingInput = z
+  .object({
+    propertyId: z.uuid(),
+    roomTypeId: z.uuid(),
+    checkIn: dateStr,
+    checkOut: dateStr,
+    numGuests: z.number().int().positive(),
+    guestName: z.string().trim().min(1, "Guest name is required").max(120),
+    guestPhone: optionalText(40),
+    guestEmail: z.email().optional().or(z.literal("")),
+    status: z.enum(["confirmed", "held"]),
+  })
+  .refine((v) => v.checkOut > v.checkIn, {
+    message: "Check-out must be after check-in",
+    path: ["checkOut"],
+  });
+export type ManualBookingInput = z.infer<typeof manualBookingInput>;

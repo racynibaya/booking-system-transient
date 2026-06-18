@@ -170,3 +170,41 @@ export const getRoomCalendarData = cache(async (roomTypeId: string) => {
 
   return { bookings, blocks };
 });
+
+// Everything the manual booking-entry form (F2.2) needs in one RLS-scoped read:
+// the operator's properties (with deposit_percent for the live deposit preview),
+// each property's room_types, and per-room calendar data (live bookings + blocks)
+// so the date picker can disable sold-out days — the same availability source the
+// public flow and the RPC use. Operator scale is a handful of rooms, so the per-room
+// getRoomCalendarData fan-out is fine and keeps the page a thin Server Component.
+export const getManualBookingFormData = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, name, deposit_percent, room_types(id, name, capacity, quantity, base_price)")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return Promise.all(
+    data.map(async (p) => ({
+      id: p.id as string,
+      name: p.name as string,
+      deposit_percent: p.deposit_percent as number,
+      rooms: await Promise.all(
+        p.room_types.map(async (r) => {
+          const { bookings, blocks } = await getRoomCalendarData(r.id as string);
+          return {
+            id: r.id as string,
+            name: r.name as string,
+            capacity: r.capacity as number,
+            quantity: r.quantity as number,
+            base_price: r.base_price as number,
+            bookings, // StayRange[]: { checkIn, checkOut }
+            blocks: blocks.map((b) => ({ start: b.start, end: b.end })), // BlockRange[]
+          };
+        }),
+      ),
+    })),
+  );
+});
