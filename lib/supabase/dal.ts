@@ -118,6 +118,23 @@ export const getPendingConfirmations = cache(async () => {
   );
 });
 
+// Every booking for the current operator (RLS-scoped — no explicit tenant filter
+// needed), newest check-in first. Powers the F2.1 bookings dashboard: the client
+// table does its own status + date-scope filtering, so this stays a lean single
+// read (no per-row signed-proof round-trip like getPendingConfirmations).
+export const getBookings = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, deposit_amount, total_amount, properties(name), room_types(name)",
+    )
+    .order("check_in", { ascending: false });
+
+  if (error || !data) return [];
+  return data;
+});
+
 // Calendar data for one room_type (RLS-scoped): live held/confirmed bookings and
 // future blocks, as YYYY-MM-DD strings for lib/availability. Expired holds excluded.
 export const getRoomCalendarData = cache(async (roomTypeId: string) => {

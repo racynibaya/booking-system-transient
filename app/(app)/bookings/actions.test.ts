@@ -7,7 +7,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ rpc })) }));
+// cancelBooking uses the query builder: from(...).update(...).eq(...).in(...). The
+// terminal .in() is the awaited call → it resolves to { error }.
+const inMock = vi.fn(async (): Promise<{ error: { message: string } | null }> => ({ error: null }));
+const eqMock = vi.fn(() => ({ in: inMock }));
+const updateMock = vi.fn(() => ({ eq: eqMock }));
+const from = vi.fn(() => ({ update: updateMock }));
+
+vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ rpc, from })) }));
 vi.mock("@/lib/supabase/dal", () => ({
   requireUser: vi.fn(async () => ({ email: "operator@example.com" })),
   getCurrentTenant: vi.fn(async () => ({ id: "tenant-1" })),
@@ -16,8 +23,10 @@ vi.mock("@/lib/email/resend", () => ({ sendEmail: vi.fn(async () => true) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { sendEmail } from "@/lib/email/resend";
+import { getCurrentTenant } from "@/lib/supabase/dal";
+import { revalidatePath } from "next/cache";
 
-import { confirmBooking } from "./actions";
+import { cancelBooking, confirmBooking } from "./actions";
 
 const sendEmailMock = vi.mocked(sendEmail);
 
@@ -41,6 +50,12 @@ const allNullRow = Object.fromEntries(Object.keys(confirmedRow).map((k) => [k, n
 beforeEach(() => {
   rpc.mockReset();
   sendEmailMock.mockClear();
+  from.mockClear();
+  updateMock.mockClear();
+  eqMock.mockClear();
+  inMock.mockClear();
+  inMock.mockResolvedValue({ error: null });
+  vi.mocked(revalidatePath).mockClear();
 });
 
 describe("confirmBooking — F1.5 notification idempotency", () => {
@@ -56,5 +71,36 @@ describe("confirmBooking — F1.5 notification idempotency", () => {
     const res = await confirmBooking(BOOKING_ID);
     expect(res).toEqual({ ok: true });
     expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("cancelBooking — F2.1 guarded status write", () => {
+  it("flips an active booking to cancelled, guarding on the occupancy statuses", async () => {
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res).toEqual({ ok: true });
+    expect(updateMock).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(eqMock).toHaveBeenCalledWith("id", BOOKING_ID);
+    expect(inMock).toHaveBeenCalledWith("status", ["held", "awaiting_confirmation", "confirmed"]);
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+  });
+
+  it("rejects an invalid id without touching the database", async () => {
+    const res = await cancelBooking("not-a-uuid");
+    expect(res.ok).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("errors when the operator has no tenant", async () => {
+    vi.mocked(getCurrentTenant).mockResolvedValueOnce(null);
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res.ok).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a database error as a failed result", async () => {
+    inMock.mockResolvedValue({ error: { message: "boom" } });
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res.ok).toBe(false);
+    expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
   });
 });

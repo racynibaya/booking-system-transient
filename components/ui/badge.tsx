@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
 
-type Tone = "neutral" | "accent";
+type Tone = "neutral" | "accent" | "danger" | "muted";
 
+// Stays inside the one-color brand: Rausch for attention, the inline-error red for
+// dead/negative states, neutrals for everything else (no green/amber introduced).
 const TONES: Record<Tone, string> = {
   neutral: "bg-surface-strong text-body",
   accent: "bg-primary-disabled text-primary-active", // pale Rausch + active Rausch text
+  danger: "bg-error/10 text-error", // cancelled / expired / no-show
+  muted: "bg-surface-soft text-muted", // dim / terminal-neutral
 };
 
 // Small pill for meta (room counts, "DOT accredited", status). On tokens only.
