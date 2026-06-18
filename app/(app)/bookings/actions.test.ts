@@ -7,9 +7,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
 
-// cancelBooking uses the query builder: from(...).update(...).eq(...).in(...). The
-// terminal .in() is the awaited call → it resolves to { error }.
-const inMock = vi.fn(async (): Promise<{ error: { message: string } | null }> => ({ error: null }));
+// Query builder chain. Two callers share it with different terminals:
+//   cancelBooking            → ...update().eq().in().select().maybeSingle()  (F2.3)
+//   createManualBooking flip → ...update().eq().in()                         (awaited directly)
+// So .in() returns an object that is BOTH awaitable (→ { error }, for the manual flip) and
+// chainable (.select, for cancel). `flipError` drives the manual-flip await result.
+let flipError: { message: string } | null = null;
+type CancelResult = { data: Record<string, unknown> | null; error: { message: string } | null };
+const maybeSingleMock = vi.fn(
+  async (): Promise<CancelResult> => ({ data: cancelRow, error: null }),
+);
+const selectMock = vi.fn(() => ({ maybeSingle: maybeSingleMock }));
+const inMock = vi.fn(() => ({
+  select: selectMock,
+  then: (resolve: (v: { error: { message: string } | null }) => unknown) =>
+    resolve({ error: flipError }),
+}));
 const eqMock = vi.fn(() => ({ in: inMock }));
 const updateMock = vi.fn(() => ({ eq: eqMock }));
 const from = vi.fn(() => ({ update: updateMock }));
@@ -57,6 +70,19 @@ const confirmedRow = {
 // What PostgREST actually returns for a NULL composite (the no-op re-confirm).
 const allNullRow = Object.fromEntries(Object.keys(confirmedRow).map((k) => [k, null]));
 
+// The row cancelBooking's .select().maybeSingle() returns on a winning cancel (has a
+// guest_email so the cancellation email fires).
+const cancelRow = {
+  guest_name: "Guest Tester",
+  guest_email: "guest@example.com",
+  guest_phone: null,
+  check_in: "2026-08-01",
+  check_out: "2026-08-03",
+  num_guests: 2,
+  deposit_amount: 2500,
+  total_amount: 5000,
+};
+
 beforeEach(() => {
   rpc.mockReset();
   sendEmailMock.mockClear();
@@ -64,7 +90,10 @@ beforeEach(() => {
   updateMock.mockClear();
   eqMock.mockClear();
   inMock.mockClear();
-  inMock.mockResolvedValue({ error: null });
+  selectMock.mockClear();
+  maybeSingleMock.mockClear();
+  maybeSingleMock.mockResolvedValue({ data: cancelRow, error: null });
+  flipError = null;
   vi.mocked(revalidatePath).mockClear();
   vi.mocked(redirect).mockClear();
 });
@@ -95,6 +124,29 @@ describe("cancelBooking — F2.1 guarded status write", () => {
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
   });
 
+  it("sends the guest a cancellation email on the winning cancel", async () => {
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res).toEqual({ ok: true });
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "guest@example.com" }),
+    );
+  });
+
+  it("sends NOTHING on a no-op re-cancel (0 rows → null) but still succeeds", async () => {
+    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res).toEqual({ ok: true });
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("does not email when the cancelled booking has no guest email", async () => {
+    maybeSingleMock.mockResolvedValue({ data: { ...cancelRow, guest_email: null }, error: null });
+    const res = await cancelBooking(BOOKING_ID);
+    expect(res).toEqual({ ok: true });
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid id without touching the database", async () => {
     const res = await cancelBooking("not-a-uuid");
     expect(res.ok).toBe(false);
@@ -109,9 +161,10 @@ describe("cancelBooking — F2.1 guarded status write", () => {
   });
 
   it("surfaces a database error as a failed result", async () => {
-    inMock.mockResolvedValue({ error: { message: "boom" } });
+    maybeSingleMock.mockResolvedValue({ data: null, error: { message: "boom" } });
     const res = await cancelBooking(BOOKING_ID);
     expect(res.ok).toBe(false);
+    expect(sendEmailMock).not.toHaveBeenCalled();
     expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
   });
 });
@@ -188,7 +241,7 @@ describe("createManualBooking — F2.2 one-engine entry", () => {
 
   it("reports a real-but-unconfirmed booking when the confirm UPDATE fails", async () => {
     rpc.mockResolvedValue({ data: confirmedRow, error: null });
-    inMock.mockResolvedValue({ error: { message: "boom" } });
+    flipError = { message: "boom" };
     const res = await createManualBooking(baseInput);
 
     expect(res).toEqual({
