@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { guestConfirmedEmail, operatorBookingEmail, type ConfirmationBooking } from "./templates";
+import {
+  guestCancelledEmail,
+  guestConfirmedEmail,
+  operatorBookingEmail,
+  type ConfirmationBooking,
+} from "./templates";
 
 const base: ConfirmationBooking = {
   guestName: "Maria Santos",
@@ -28,6 +33,16 @@ describe("guestConfirmedEmail", () => {
   it("renders a dash when amounts are null", () => {
     const { html } = guestConfirmedEmail({ ...base, depositAmount: null, totalAmount: null });
     expect(html).toContain("—");
+  });
+});
+
+describe("guestCancelledEmail", () => {
+  it("tells the guest the booking was cancelled and shows the dates", () => {
+    const { subject, html } = guestCancelledEmail(base);
+    expect(subject).toMatch(/cancelled/i);
+    expect(html).toContain("Booking cancelled, Maria Santos");
+    expect(html).toContain("Oct 10, 2026");
+    expect(html).toContain("Oct 13, 2026");
   });
 });
 
