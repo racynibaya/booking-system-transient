@@ -69,13 +69,29 @@ export function PropertyForm({
         <Input {...register("address")} placeholder="Brgy. Urbiztondo, San Juan, La Union" />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Check-in time" error={errors.check_in_time?.message}>
-          <Input type="time" {...register("check_in_time")} />
-        </Field>
-        <Field label="Check-out time" error={errors.check_out_time?.message}>
-          <Input type="time" {...register("check_out_time")} />
-        </Field>
+      {/* Native time pickers are NOT wrapped in <label> here: on iOS Safari a
+          label-wrapped date/time input forwards the tap and the picker opens then
+          instantly closes (reads as "unresponsive"). Associate via htmlFor instead,
+          and stack full-width on phones so the native control isn't cramped. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="check_in_time" className="text-caption text-muted">
+            Check-in time
+          </label>
+          <Input id="check_in_time" type="time" {...register("check_in_time")} />
+          {errors.check_in_time?.message && (
+            <span className="text-body-sm text-error">{errors.check_in_time.message}</span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="check_out_time" className="text-caption text-muted">
+            Check-out time
+          </label>
+          <Input id="check_out_time" type="time" {...register("check_out_time")} />
+          {errors.check_out_time?.message && (
+            <span className="text-body-sm text-error">{errors.check_out_time.message}</span>
+          )}
+        </div>
       </div>
 
       <Field label="Description" error={errors.description?.message}>
