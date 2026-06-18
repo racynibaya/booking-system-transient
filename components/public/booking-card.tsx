@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
 import { createPublicBooking, submitProof, type GcashDetails } from "@/app/[slug]/actions";
+import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { fromDateStr, toDateStr, todayStr } from "@/lib/dates";
 import { compressImage } from "@/lib/image";
@@ -37,7 +38,7 @@ export function BookingCard({
   propertyName: string;
   area: string | null;
 }) {
-  const [roomId, setRoomId] = useState(rooms[0]?.id ?? "");
+  const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
   const [range, setRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const [step, setStep] = useState<"select" | "details" | "payment" | "done">("select");
