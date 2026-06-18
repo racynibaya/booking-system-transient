@@ -48,6 +48,35 @@ export async function confirmBooking(bookingId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// Operator cancels a booking (F2.1). A plain status write — no RPC needed: the
+// bookings_update_own RLS policy already scopes the update to the operator's own
+// tenant, and flipping status to 'cancelled' drops the row out of the occupancy
+// predicate (held/awaiting_confirmation/confirmed) shared by create_booking_hold,
+// get_public_listing and the calendar — so inventory frees automatically.
+//
+// The .in() guard keeps it idempotent: a re-cancel, or cancelling an already-
+// terminal booking (cancelled/expired/completed/no_show), updates 0 rows → no-op.
+export async function cancelBooking(bookingId: string): Promise<ActionResult> {
+  if (!z.uuid().safeParse(bookingId).success) {
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+
+  await requireUser();
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled" })
+    .eq("id", bookingId)
+    .in("status", ["held", "awaiting_confirmation", "confirmed"]);
+  if (error) return { ok: false, error: "Couldn't cancel this booking. Please try again." };
+
+  revalidatePath("/bookings");
+  return { ok: true };
+}
+
 type BookingRow = {
   guest_name: string;
   guest_email: string | null;

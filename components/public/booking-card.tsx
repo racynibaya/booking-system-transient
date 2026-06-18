@@ -311,21 +311,33 @@ export function BookingCard({
             <p className="text-body-sm text-white/80">Not available for those dates.</p>
           )}
 
-          <div className="mt-1 flex items-baseline justify-between border-t border-white/15 pt-3">
-            <p className="text-display-md text-canvas">
-              ₱{room?.base_price ?? "—"}
-              <span className="text-body-sm font-normal text-white/60"> / night</span>
-            </p>
+          <div className="mt-1 border-t border-white/15 pt-3">
             {datesValid ? (
-              <p className="text-caption text-white/70">
-                ₱{total} total · {stayNights} {stayNights === 1 ? "night" : "nights"}
-              </p>
-            ) : (
-              room && (
-                <p className="hidden text-caption text-white/60 sm:block">
-                  up to {room.capacity} guests
+              // Once dates are picked the TOTAL is the headline (with an explicit label),
+              // and the nightly rate × nights drops to a small breakdown — so guests don't
+              // mistake the per-night price for what they'll actually pay.
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-caption tracking-wide text-white/55 uppercase">Total</span>
+                  <p className="text-display-md leading-none text-canvas">₱{total}</p>
+                </div>
+                <p className="shrink-0 pb-0.5 text-right text-caption text-white/65">
+                  ₱{room?.base_price} / night
+                  <br />× {stayNights} {stayNights === 1 ? "night" : "nights"}
                 </p>
-              )
+              </div>
+            ) : (
+              <div className="flex items-baseline justify-between">
+                <p className="text-display-md text-canvas">
+                  ₱{room?.base_price ?? "—"}
+                  <span className="text-body-sm font-normal text-white/60"> / night</span>
+                </p>
+                {room && (
+                  <p className="hidden text-caption text-white/60 sm:block">
+                    up to {room.capacity} guests
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
