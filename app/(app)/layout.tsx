@@ -15,11 +15,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   await requireUser();
   const tenant = await getCurrentTenant();
 
-  // An approved operator who changed their GCash is re-verifying: live for a 24h grace window,
+  // An approved operator who changed their GCash is re-verifying: live for a 3-day grace window,
   // then paused (the public gate hides them) until an admin re-confirms.
   const gcashChangedAt =
     tenant?.verification_status === "approved" ? tenant.gcash_changed_at : null;
-  const gcashPaused = gcashChangedAt ? isOlderThanHours(gcashChangedAt, 24) : false;
+  const gcashPaused = gcashChangedAt ? isOlderThanHours(gcashChangedAt, 72) : false;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -116,9 +116,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </>
               ) : (
                 <>
-                  You changed your GCash, so we&rsquo;re re-verifying it. Your page stays live for
-                  24 hours — make sure the GCash name matches your ID, or it pauses until we
-                  confirm.
+                  You changed your GCash, so we&rsquo;re re-verifying it. Your page stays live for 3
+                  days — make sure the GCash name matches your ID, or it pauses until we confirm.
                 </>
               )}
             </span>

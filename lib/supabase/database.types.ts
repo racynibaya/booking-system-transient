@@ -433,6 +433,12 @@ export type Database = {
           verification_status: Database["public"]["Enums"]["tenant_verification"];
         }[];
       };
+      admin_notification_recipients: {
+        Args: never;
+        Returns: {
+          email: string;
+        }[];
+      };
       confirm_booking: {
         Args: {
           p_amount?: number;

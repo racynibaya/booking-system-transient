@@ -79,7 +79,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
     });
 
   const gcashFlagged = op.verification_status === "approved" && !!op.gcash_changed_at;
-  const gcashOverdue = gcashFlagged && isOlderThanHours(op.gcash_changed_at!, 24);
+  const gcashOverdue = gcashFlagged && isOlderThanHours(op.gcash_changed_at!, 72);
 
   async function toggleDocs() {
     if (showDocs) {
@@ -118,7 +118,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             <p className="mt-1 flex items-start gap-1.5 text-caption text-error">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               GCash changed — re-verify the QR vs the ID
-              {gcashOverdue ? " · page paused (overdue)" : " · live for 24h"}
+              {gcashOverdue ? " · page paused (overdue)" : " · live for 3 days"}
             </p>
           )}
           {op.verification_status === "changes_requested" && op.verification_note && (
