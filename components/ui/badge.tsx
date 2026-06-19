@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
 
-type Tone = "neutral" | "accent" | "danger" | "muted";
+type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted";
 
-// Stays inside the one-color brand: Rausch for attention, the inline-error red for
-// dead/negative states, neutrals for everything else (no green/amber introduced).
+// Semantic status scale — one badge system for the whole operator dashboard. Green = good,
+// amber = needs your attention, red = dead/negative, neutral/muted for inert states. The
+// brand-red `accent` is kept for non-status emphasis only (never to flag a status).
 const TONES: Record<Tone, string> = {
-  neutral: "bg-surface-strong text-body",
-  accent: "bg-primary-disabled text-primary-active", // pale Rausch + active Rausch text
-  danger: "bg-error/10 text-error", // cancelled / expired / no-show
-  muted: "bg-surface-soft text-muted", // dim / terminal-neutral
+  neutral: "bg-surface-strong text-body", // settled / terminal-neutral (completed, held)
+  accent: "bg-primary-disabled text-primary-active", // brand emphasis — not a status
+  success: "bg-success-bg text-success", // confirmed / approved
+  warning: "bg-warning-bg text-warning", // awaiting action / pending review
+  danger: "bg-error/10 text-error", // cancelled / no-show / suspended
+  muted: "bg-surface-soft text-muted", // expired / dim
 };
 
 // Small pill for meta (room counts, "DOT accredited", status). On tokens only.
