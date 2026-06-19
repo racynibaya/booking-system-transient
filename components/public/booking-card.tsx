@@ -2,7 +2,7 @@
 
 import "react-day-picker/style.css";
 
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
@@ -106,6 +106,19 @@ export function BookingCard({
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [step]);
+
+  // While the deposit hold is live, intercept refresh / tab-close / back so the guest
+  // can't accidentally drop their held slot. Browsers show their own generic confirm;
+  // the explicit "you'll lose your spot" copy is in the card below.
+  useEffect(() => {
+    if (step !== "payment") return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [step]);
   const msLeft = holdExpiresAt ? new Date(holdExpiresAt).getTime() - now : 0;
   const countdown =
     msLeft > 0
@@ -175,9 +188,22 @@ export function BookingCard({
             deposit now, then upload your screenshot.
           </p>
         ) : (
-          <p className="mt-3 text-body-sm text-error">
-            Your hold has lapsed. Don&apos;t send payment yet — upload anyway and we&apos;ll try to
-            recover your slot, or contact the host.
+          <div className="mt-3 flex items-start gap-2 rounded-sm border border-error/20 bg-error/10 p-3 text-body-sm text-error">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>
+              Your timer ran out, so this slot may have just been booked by someone else. If
+              you&apos;ve already paid, upload your receipt — and if it&apos;s no longer available,
+              the host will refund your deposit in full.
+            </span>
+          </div>
+        )}
+
+        {countdown && (
+          <p className="mt-3 flex items-start gap-2 rounded-sm border border-primary/25 bg-primary-disabled/40 p-3 text-body-sm text-ink">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+            <span>
+              Keep this tab open — if you refresh or leave, you&apos;ll lose your held spot.
+            </span>
           </p>
         )}
 
@@ -261,20 +287,52 @@ export function BookingCard({
 
       {step === "select" ? (
         <div key="select" className="mt-4 flex animate-room-swap flex-col gap-3">
-          <label className="flex flex-col gap-1">
-            <span className={labelClass}>Room</span>
-            <select
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              className={fieldClass}
-            >
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id} className="text-ink">
-                  {r.name} · ₱{r.base_price}
-                </option>
-              ))}
-            </select>
-          </label>
+          {rooms.length > 1 ? (
+            // Multi-room: make the choice unmistakable so guests don't assume the first room
+            // is the only one. Emphasized label + count badge, stronger field, helper line.
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-caption-sm font-semibold tracking-wide text-muted uppercase">
+                  Choose your room
+                </span>
+                <span className="rounded-full bg-surface-strong px-2 py-0.5 text-caption-sm font-semibold text-ink">
+                  {rooms.length} rooms
+                </span>
+              </div>
+              <div className="relative">
+                <select
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  className={`${fieldClass} appearance-none border-border-strong bg-surface-soft pr-10 font-medium`}
+                >
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id} className="text-ink">
+                      {r.name} · ₱{r.base_price}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
+              </div>
+              <span className="text-caption-sm text-muted">
+                Tap to compare all {rooms.length} rooms
+              </span>
+            </div>
+          ) : (
+            <label className="flex flex-col gap-1">
+              <span className={labelClass}>Room</span>
+              <select
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                className={fieldClass}
+              >
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id} className="text-ink">
+                    {r.name} · ₱{r.base_price}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {/* Nightly rate headline; the full total drops to the breakdown once dates are set. */}
           <div className="mt-1 flex items-baseline justify-between gap-3">

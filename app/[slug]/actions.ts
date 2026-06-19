@@ -35,7 +35,7 @@ export type BookingResult =
 
 // The guest holds the slot for this long — long enough to open GCash, pay, screenshot, and
 // upload before the hold lapses (F1.4 paid-but-expired mitigation).
-const HOLD_MINUTES = 30;
+const HOLD_MINUTES = process.env.NODE_ENV === "development" ? 1 : 30;
 
 export async function createPublicBooking(input: PublicBookingInput): Promise<BookingResult> {
   const parsed = publicBookingInput.safeParse(input);

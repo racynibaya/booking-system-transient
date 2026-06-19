@@ -83,7 +83,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               area: property.area ?? "",
               address: property.address ?? "",
               description: property.description ?? "",
-              about: property.about ?? "",
               check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
               check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
               dot_accredited: property.dot_accredited,
