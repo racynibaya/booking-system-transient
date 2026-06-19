@@ -24,7 +24,7 @@ export type AdminOperator = {
 
 const STATUS = {
   pending: { label: "Pending review", cls: "bg-surface-strong text-ink" },
-  approved: { label: "Approved", cls: "bg-primary-disabled text-primary-active" },
+  approved: { label: "Approved", cls: "bg-success-bg text-success" },
   suspended: { label: "Suspended", cls: "bg-surface-strong text-error" },
   changes_requested: { label: "Changes requested", cls: "bg-surface-strong text-ink" },
 } as const;
