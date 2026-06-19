@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { signOut } from "@/app/auth/actions";
 import { BottomNav, TopNav } from "@/components/app/operator-nav";
@@ -14,6 +15,8 @@ import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   await requireUser();
   const tenant = await getCurrentTenant();
+  // Hard role separation: an admin lives in /admin and never enters the operator app.
+  if (tenant?.is_admin) redirect("/admin");
 
   // An approved operator who changed their GCash is re-verifying: live for a 3-day grace window,
   // then paused (the public gate hides them) until an admin re-confirms.
@@ -40,14 +43,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
-            {tenant?.is_admin && (
-              <Link
-                href="/admin"
-                className="text-body-sm font-medium text-primary transition-colors hover:text-primary-active"
-              >
-                Admin
-              </Link>
-            )}
             <span className="hidden max-w-[12ch] truncate text-body-sm text-muted sm:block">
               {tenant?.name ?? "Operator"}
             </span>

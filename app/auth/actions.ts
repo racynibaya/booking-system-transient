@@ -44,7 +44,20 @@ export async function passwordAuth(
     if (error) return { error: "Wrong email or password." };
   }
 
-  redirect("/dashboard");
+  // Route by role — admins land in /admin, operators in /dashboard (hard separation).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isAdmin = false;
+  if (user) {
+    const { data: t } = await supabase
+      .from("tenants")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .single();
+    isAdmin = !!t?.is_admin;
+  }
+  redirect(isAdmin ? "/admin" : "/dashboard");
 }
 
 // Send a password-reset email. The link lands on /auth/confirm (verifyOtp type=recovery), which
