@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -35,6 +36,35 @@ export async function passwordAuth(
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: "Wrong email or password." };
   }
+
+  redirect("/dashboard");
+}
+
+// Send a password-reset email. The link lands on /auth/confirm (verifyOtp type=recovery), which
+// establishes a recovery session and forwards to /reset-password. We always report success so the
+// form never reveals whether an account exists for that email.
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  const parsed = z.email("Enter a valid email address.").safeParse(email);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a valid email." };
+
+  const h = await headers();
+  const origin = h.get("origin") ?? `https://${h.get("host")}`;
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${origin}/auth/confirm?next=/reset-password`,
+  });
+
+  return { notice: "If an account exists for that email, we've sent a password reset link." };
+}
+
+// Set a new password for a user in a recovery session (after clicking the reset link).
+export async function updatePassword(password: string): Promise<AuthResult> {
+  const parsed = z.string().min(8, "Password must be at least 8 characters.").safeParse(password);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid password." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data });
+  if (error) return { error: error.message };
 
   redirect("/dashboard");
 }

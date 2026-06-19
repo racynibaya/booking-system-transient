@@ -29,19 +29,23 @@ export default async function SettingsPage() {
               gcash_name: gcash?.gcash_name ?? "",
               gcash_number: gcash?.gcash_number ?? "",
             }}
-          />
-          <div className="flex flex-col gap-2 border-t border-hairline pt-6">
-            <p className="text-title-md text-ink">QR code</p>
-            <p className="text-body-sm text-muted">
-              Upload a screenshot of your GCash QR screen <strong>showing your name</strong> —
-              guests scan it to pay, and we check the name to verify your account.
-            </p>
-            {gcash && (
-              <div className="mt-2">
-                <GcashQrUploader tenantId={gcash.id} currentPath={gcash.gcash_qr_path} />
-              </div>
-            )}
-          </div>
+          >
+            <div className="flex flex-col gap-2 border-t border-hairline pt-6">
+              <p className="text-title-md text-ink">QR code</p>
+              <p className="text-body-sm text-muted">
+                Upload a screenshot of your GCash QR screen <strong>showing your name</strong> —
+                guests scan it to pay, and we check the name to verify your account.
+              </p>
+              {gcash && (
+                <div className="mt-2">
+                  <GcashQrUploader tenantId={gcash.id} currentPath={gcash.gcash_qr_path} />
+                  <p className="mt-2 text-body-sm text-muted">
+                    Saved automatically when you upload.
+                  </p>
+                </div>
+              )}
+            </div>
+          </GcashForm>
         </Card>
       </section>
     </div>
