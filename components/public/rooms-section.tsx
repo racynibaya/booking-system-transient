@@ -1,9 +1,54 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Images, Users, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSelectedRoom } from "@/components/public/selected-room-context";
+
+// Optimized photo (next/image `fill`) that shows a shimmer skeleton until it decodes, then
+// fades the skeleton away. The caller positions it inside a `relative overflow-hidden` box
+// with a defined aspect ratio; the image and skeleton both fill that box. `complete` is
+// checked on mount so cached images (whose onLoad fires before React attaches) don't leave
+// the shimmer stuck on.
+function GalleryImage({
+  src,
+  alt,
+  sizes,
+  imgClassName,
+}: {
+  src: string;
+  alt: string;
+  sizes: string;
+  imgClassName: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const ref = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (ref.current?.complete) setLoaded(true);
+  }, [src]);
+
+  return (
+    <>
+      <Image
+        ref={ref}
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        onLoad={() => setLoaded(true)}
+        className={imgClassName}
+      />
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-soft)_25%,var(--color-surface-strong)_50%,var(--color-surface-soft)_75%)] bg-size-[200%_100%] transition-opacity duration-500 ${
+          loaded ? "opacity-0" : "opacity-100"
+        }`}
+      />
+    </>
+  );
+}
 
 export type RoomCard = {
   id: string;
@@ -51,12 +96,11 @@ function Tile({
       onClick={() => onOpen(index)}
       className={`group relative block overflow-hidden bg-surface-soft focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${span}`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <GalleryImage
         src={url}
         alt={`${name} photo ${index + 1}`}
-        loading="lazy"
-        className={`size-full object-cover transition-transform duration-500 ease-out ${zoom}`}
+        sizes="(min-width: 1024px) 400px, 50vw"
+        imgClassName={`object-cover transition-transform duration-500 ease-out ${zoom}`}
       />
     </button>
   );
@@ -89,14 +133,13 @@ function RoomGallery({
       <button
         type="button"
         onClick={() => onOpen(0)}
-        className="group block w-full overflow-hidden rounded-md border border-hairline bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="group relative block aspect-3/2 w-full overflow-hidden rounded-md border border-hairline bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <GalleryImage
           src={photos[0]}
           alt={`${name} photo 1`}
-          loading="lazy"
-          className="aspect-3/2 w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+          sizes="(min-width: 1024px) 680px, 100vw"
+          imgClassName="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
         />
       </button>
     );
@@ -117,14 +160,13 @@ function RoomGallery({
               key={url}
               type="button"
               onClick={() => onOpen(i)}
-              className="block w-full shrink-0 snap-center bg-surface-soft"
+              className="relative block aspect-3/2 w-full shrink-0 snap-center bg-surface-soft"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <GalleryImage
                 src={url}
                 alt={`${name} photo ${i + 1}`}
-                loading="lazy"
-                className="aspect-3/2 w-full object-cover"
+                sizes="100vw"
+                imgClassName="object-cover"
               />
             </button>
           ))}

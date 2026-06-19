@@ -160,6 +160,8 @@
   --animate-float-slow: float 8s ease-in-out infinite;
   /* Entrance for the public room showcase when the selected room swaps. */
   --animate-room-swap: room-swap 0.35s ease-out;
+  /* Loading shimmer for gallery photos before they decode (sweeps surface tones). */
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
 }
 
 /* ---- Keyframes ------------------------------------------------------------ */
@@ -181,6 +183,15 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
 
@@ -206,7 +217,8 @@ body {
   }
   .animate-float,
   .animate-float-slow,
-  .animate-room-swap {
+  .animate-room-swap,
+  .animate-shimmer {
     animation: none;
   }
 }
