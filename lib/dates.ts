@@ -53,3 +53,20 @@ export function formatTime(t: string): string {
 export function isOlderThanHours(iso: string, hours: number): boolean {
   return Date.now() - new Date(iso).getTime() > hours * 60 * 60 * 1000;
 }
+
+// Whole days from today to a YYYY-MM-DD date (negative = in the past). Local-midnight based.
+export function daysFromToday(s: DateStr): number {
+  const ms = fromDateStr(s).getTime() - fromDateStr(todayStr()).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+// Relative-day label for the bookings board pill ("Today", "Tomorrow", "in 3 days", "2 wk ago").
+export function relativeDay(s: DateStr): string {
+  const d = daysFromToday(s);
+  if (d === 0) return "Today";
+  if (d === 1) return "Tomorrow";
+  if (d === -1) return "Yesterday";
+  if (d > 0) return d < 14 ? `in ${d} days` : `in ${Math.round(d / 7)} wk`;
+  const a = -d;
+  return a < 14 ? `${a} days ago` : `${Math.round(a / 7)} wk ago`;
+}
