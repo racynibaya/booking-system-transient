@@ -29,6 +29,14 @@ export function todayStr(): DateStr {
   return toDateStr(new Date());
 }
 
+// Format a `YYYY-MM-DD` string as a friendly "Jun 20". Builds the Date locally
+// (via fromDateStr) so there's no UTC day-shift. Returns the input unchanged if
+// it doesn't parse.
+export function formatDateShort(s: DateStr): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return fromDateStr(s).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 // Format a 24h "HH:MM" (or "HH:MM:SS") time string as a friendly "2:00 PM". Pure string
 // math — no Date, no timezone. Returns the input unchanged if it doesn't look like a time.
 export function formatTime(t: string): string {

@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AMENITY_OPTIONS } from "@/lib/amenities";
 import { SAN_JUAN_AREAS } from "@/lib/areas";
 import { propertyInput, type PropertyInput } from "@/lib/validation";
 
@@ -27,6 +29,8 @@ export function PropertyForm({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<PropertyInput>({
     resolver: zodResolver(propertyInput),
@@ -34,10 +38,35 @@ export function PropertyForm({
       dot_accredited: false,
       check_in_time: "14:00",
       check_out_time: "14:00",
+      amenities: [],
+      facebook_url: "",
+      instagram_url: "",
+      tiktok_url: "",
       ...defaultValues,
     },
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [customAmenity, setCustomAmenity] = useState("");
+
+  // Amenities is a controlled array field (the rest of the form uses register).
+  const selectedAmenities = watch("amenities") ?? [];
+  const setAmenities = (next: string[]) =>
+    setValue("amenities", next, { shouldDirty: true, shouldValidate: true });
+  const toggleAmenity = (label: string) =>
+    setAmenities(
+      selectedAmenities.includes(label)
+        ? selectedAmenities.filter((a) => a !== label)
+        : [...selectedAmenities, label],
+    );
+  const addCustomAmenity = () => {
+    const value = customAmenity.trim();
+    if (value && !selectedAmenities.includes(value)) setAmenities([...selectedAmenities, value]);
+    setCustomAmenity("");
+  };
+  // Operator's "Other" entries — anything selected that isn't a curated option.
+  const customAmenities = selectedAmenities.filter(
+    (a) => !AMENITY_OPTIONS.includes(a as (typeof AMENITY_OPTIONS)[number]),
+  );
 
   return (
     <form
@@ -109,6 +138,106 @@ export function PropertyForm({
         <input type="checkbox" {...register("dot_accredited")} className="size-4" />
         <span className="text-body-sm text-ink">DOT accredited</span>
       </label>
+
+      <Field label="Amenities" error={errors.amenities?.message}>
+        <div className="flex flex-col gap-3">
+          <p className="text-body-sm text-muted">
+            Tap the ones your place offers. Can&apos;t find it? Add your own below.
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {AMENITY_OPTIONS.map((label) => {
+              const on = selectedAmenities.includes(label);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleAmenity(label)}
+                  className={`rounded-full px-3.5 py-1.5 text-body-sm transition-[background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.97] ${
+                    on
+                      ? "bg-primary-disabled font-medium text-primary-active"
+                      : "border border-hairline text-body hover:border-border-strong hover:bg-surface-soft"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {customAmenities.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {customAmenities.map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary-disabled py-1.5 pr-2 pl-3.5 text-body-sm font-medium text-primary-active"
+                >
+                  {label}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${label}`}
+                    onClick={() => toggleAmenity(label)}
+                    className="flex size-5 items-center justify-center rounded-full transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Input
+              value={customAmenity}
+              onChange={(e) => setCustomAmenity(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomAmenity();
+                }
+              }}
+              placeholder="Other amenity…"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={addCustomAmenity}
+              disabled={customAmenity.trim() === ""}
+              className="shrink-0"
+            >
+              Add
+            </Button>
+          </div>
+        </div>
+      </Field>
+
+      <div className="flex flex-col gap-3">
+        <p className="text-caption text-muted">
+          Socials — shown on your booking page so guests can follow your place.
+        </p>
+        <Field label="Facebook" error={errors.facebook_url?.message}>
+          <Input
+            type="url"
+            {...register("facebook_url")}
+            placeholder="https://facebook.com/yourpage"
+          />
+        </Field>
+        <Field label="Instagram" error={errors.instagram_url?.message}>
+          <Input
+            type="url"
+            {...register("instagram_url")}
+            placeholder="https://instagram.com/yourhandle"
+          />
+        </Field>
+        <Field label="TikTok" error={errors.tiktok_url?.message}>
+          <Input
+            type="url"
+            {...register("tiktok_url")}
+            placeholder="https://tiktok.com/@yourhandle"
+          />
+        </Field>
+      </div>
 
       {formError && <p className="text-body-sm text-error">{formError}</p>}
 

@@ -46,6 +46,10 @@ export async function createProperty(input: PropertyInput): Promise<ActionResult
     check_in_time,
     check_out_time,
     dot_accredited,
+    amenities,
+    facebook_url,
+    instagram_url,
+    tiktok_url,
   } = parsed.data;
   const base = slug && slug.length > 0 ? slug : slugify(name);
   if (!base) return { ok: false, error: "Add a name we can turn into a link." };
@@ -61,6 +65,10 @@ export async function createProperty(input: PropertyInput): Promise<ActionResult
     check_in_time,
     check_out_time,
     dot_accredited,
+    amenities,
+    facebook_url: facebook_url || null,
+    instagram_url: instagram_url || null,
+    tiktok_url: tiktok_url || null,
   };
 
   // Slug is globally unique (public URL, P9). An operator can't see other tenants'
@@ -96,8 +104,20 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
   const t = await authedTenant();
   if (!t.ok) return t;
 
-  const { name, area, address, description, about, check_in_time, check_out_time, dot_accredited } =
-    parsed.data;
+  const {
+    name,
+    area,
+    address,
+    description,
+    about,
+    check_in_time,
+    check_out_time,
+    dot_accredited,
+    amenities,
+    facebook_url,
+    instagram_url,
+    tiktok_url,
+  } = parsed.data;
   const supabase = await createClient();
   const { error } = await supabase
     .from("properties")
@@ -110,6 +130,10 @@ export async function updateProperty(id: string, input: PropertyInput): Promise<
       check_in_time,
       check_out_time,
       dot_accredited,
+      amenities,
+      facebook_url: facebook_url || null,
+      instagram_url: instagram_url || null,
+      tiktok_url: tiktok_url || null,
     })
     .eq("id", id); // RLS scopes to the operator's own row
   if (error) return { ok: false, error: error.message };

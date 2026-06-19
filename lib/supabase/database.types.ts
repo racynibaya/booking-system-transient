@@ -222,11 +222,14 @@ export type Database = {
           deposit_percent: number;
           description: string | null;
           dot_accredited: boolean;
+          facebook_url: string | null;
           id: string;
+          instagram_url: string | null;
           name: string;
           photos: Json;
           slug: string;
           tenant_id: string;
+          tiktok_url: string | null;
         };
         Insert: {
           about?: string | null;
@@ -240,11 +243,14 @@ export type Database = {
           deposit_percent?: number;
           description?: string | null;
           dot_accredited?: boolean;
+          facebook_url?: string | null;
           id?: string;
+          instagram_url?: string | null;
           name: string;
           photos?: Json;
           slug: string;
           tenant_id: string;
+          tiktok_url?: string | null;
         };
         Update: {
           about?: string | null;
@@ -258,11 +264,14 @@ export type Database = {
           deposit_percent?: number;
           description?: string | null;
           dot_accredited?: boolean;
+          facebook_url?: string | null;
           id?: string;
+          instagram_url?: string | null;
           name?: string;
           photos?: Json;
           slug?: string;
           tenant_id?: string;
+          tiktok_url?: string | null;
         };
         Relationships: [
           {

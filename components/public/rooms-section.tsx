@@ -13,6 +13,51 @@ export type RoomCard = {
   photoUrls: string[];
 };
 
+// Equal-tile photo grid. Every tile is the same aspect ratio so rows always align (a feature
+// tile of a different aspect spanning two rows is what made the old layout look lopsided).
+// Column count adapts to the photo count so each reads as balanced; all photos are shown
+// (there's no lightbox to hide extras behind).
+function RoomGallery({ photos, name }: { photos: string[]; name: string }) {
+  if (photos.length === 0) return null;
+
+  if (photos.length === 1) {
+    return (
+      <div className="overflow-hidden rounded-md border border-hairline bg-surface-soft">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photos[0]}
+          alt={`${name} photo`}
+          loading="lazy"
+          className="aspect-video w-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  // 2 or 4 → tidy 1×2 / 2×2; otherwise 2-up on phones, 3-up on desktop.
+  const cols =
+    photos.length === 2 || photos.length === 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3";
+
+  return (
+    <div className={`grid gap-2 sm:gap-3 ${cols}`}>
+      {photos.map((url) => (
+        <div
+          key={url}
+          className="group overflow-hidden rounded-md border border-hairline bg-surface-soft"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={`${name} photo`}
+            loading="lazy"
+            className="aspect-4/3 w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Public room showcase. Mirrors the booking card: renders only the room the guest has
 // selected there (photos, name, capacity, price). Rooms without photos still list details.
 export function RoomsSection({ rooms }: { rooms: RoomCard[] }) {
@@ -23,9 +68,10 @@ export function RoomsSection({ rooms }: { rooms: RoomCard[] }) {
 
   return (
     <section className="flex flex-col gap-6">
-      <h2 className="text-display-sm tracking-tight text-ink">The room</h2>
       <div className="flex flex-col gap-8">
         <article key={room.id} className="flex animate-room-swap flex-col gap-4">
+          <RoomGallery photos={room.photoUrls} name={room.name} />
+
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="text-title-md font-semibold text-ink">{room.name}</h3>
             <p className="text-title-md text-ink">
@@ -41,27 +87,6 @@ export function RoomsSection({ rooms }: { rooms: RoomCard[] }) {
 
           {room.description && (
             <p className="max-w-2xl text-body-md leading-relaxed text-muted">{room.description}</p>
-          )}
-
-          {room.photoUrls.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {room.photoUrls.map((url, i) => (
-                <div
-                  key={url}
-                  className={`group relative overflow-hidden rounded-md border border-hairline bg-surface-soft ${
-                    i === 0 ? "col-span-2 aspect-16/10 sm:col-span-2 sm:row-span-2" : "aspect-4/3"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`${room.name} photo`}
-                    loading="lazy"
-                    className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                  />
-                </div>
-              ))}
-            </div>
           )}
         </article>
       </div>

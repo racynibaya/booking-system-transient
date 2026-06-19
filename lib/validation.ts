@@ -8,6 +8,9 @@ import { z } from "zod";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 
+// Optional URL field: a valid URL or empty string (the form sends "" when blank).
+const optionalUrl = (max = 200) => z.url("Enter a valid URL").max(max).optional().or(z.literal(""));
+
 // HTML <input type="time"> emits "HH:MM" (24h). Matches the `time` columns on properties.
 const timeStr = z.string().regex(/^\d{2}:\d{2}$/, "Invalid time");
 
@@ -28,6 +31,14 @@ export const propertyInput = z.object({
   check_in_time: timeStr,
   check_out_time: timeStr,
   dot_accredited: z.boolean(),
+  // Curated chips + free-text "Other". Free strings persisted to the jsonb column; bounded
+  // to keep the public list sane. No .default() (see header note) — the form/action/page
+  // all supply [] explicitly.
+  amenities: z.array(z.string().trim().min(1).max(60)).max(40),
+  // Per-property social links (optional URLs). Public by nature — surfaced on the listing.
+  facebook_url: optionalUrl(),
+  instagram_url: optionalUrl(),
+  tiktok_url: optionalUrl(),
 });
 export type PropertyInput = z.infer<typeof propertyInput>;
 

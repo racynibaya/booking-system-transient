@@ -2,14 +2,14 @@
 
 import "react-day-picker/style.css";
 
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
 import { createPublicBooking, submitProof, type GcashDetails } from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
-import { fromDateStr, toDateStr, todayStr } from "@/lib/dates";
+import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
 import { compressImage } from "@/lib/image";
 import { computeTotal, nights } from "@/lib/pricing";
 
@@ -26,8 +26,11 @@ export type PublicRoom = {
 };
 
 const fieldClass =
-  "h-11 w-full rounded-sm border border-white/20 bg-white/10 px-3 text-body-md text-canvas placeholder:text-white/40 transition-colors focus:border-white/60 focus:outline-none";
-const labelClass = "text-caption text-white/70";
+  "h-11 w-full rounded-sm border border-hairline bg-canvas px-3 text-body-md text-ink placeholder:text-muted-soft transition-colors focus:border-border-strong focus:outline-none";
+const labelClass = "text-caption text-muted";
+// Shared primary CTA — the brand sunset gradient with a soft Rausch-tinted lift.
+const ctaClass =
+  "h-12 w-full rounded-full bg-linear-to-r from-sunset-1 via-sunset-2 to-sunset-3 text-button-md text-on-primary shadow-[0_12px_30px_-12px_rgba(255,56,92,0.55)] transition-[transform,opacity] hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50";
 
 export function BookingCard({
   rooms,
@@ -41,6 +44,9 @@ export function BookingCard({
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
   const [range, setRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
+  // The calendar is collapsed by default; tapping a date cell reveals it (Airbnb-style).
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [activeField, setActiveField] = useState<"in" | "out">("in");
   const [step, setStep] = useState<"select" | "details" | "payment" | "done">("select");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -144,51 +150,51 @@ export function BookingCard({
     else setError(res.error);
   }
 
-  const cardClass =
-    "w-full rounded-md border border-white/15 bg-ink/50 p-5 text-canvas backdrop-blur-md md:max-w-sm";
+  // White reserve card on the light listing — soft layered shadow, ink text, hairline border.
+  const cardClass = "w-full rounded-md border border-hairline bg-canvas p-5 text-ink shadow-card";
 
   if (rooms.length === 0) {
     return (
       <div className={cardClass}>
-        <p className="text-body-md text-white/80">This place isn&apos;t taking bookings yet.</p>
+        <p className="text-body-md text-muted">This place isn&apos;t taking bookings yet.</p>
       </div>
     );
   }
 
   if (step === "payment") {
     return (
-      <div className={cardClass}>
-        <p className="text-title-md font-semibold text-canvas">Pay your deposit</p>
-        <p className="mt-1 text-caption text-white/60">
-          {room?.name} · {checkIn} → {checkOut}
+      <div className={`${cardClass} animate-room-swap`}>
+        <p className="text-title-md font-semibold text-ink">Pay your deposit</p>
+        <p className="mt-1 text-caption text-muted">
+          {room?.name} · {formatDateShort(checkIn)} → {formatDateShort(checkOut)}
         </p>
 
         {countdown ? (
-          <p className="mt-3 text-body-sm text-white/80">
-            Slot held for <span className="font-semibold text-canvas">{countdown}</span> — send the
+          <p className="mt-3 text-body-sm text-body">
+            Slot held for <span className="font-semibold text-ink">{countdown}</span> — send the
             deposit now, then upload your screenshot.
           </p>
         ) : (
-          <p className="mt-3 text-body-sm text-white">
+          <p className="mt-3 text-body-sm text-error">
             Your hold has lapsed. Don&apos;t send payment yet — upload anyway and we&apos;ll try to
             recover your slot, or contact the host.
           </p>
         )}
 
-        <div className="mt-4 rounded-sm border border-white/15 bg-white/5 p-4">
-          <p className="text-display-sm text-canvas">
+        <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">
+          <p className="text-display-sm text-ink">
             ₱{deposit ?? "—"}
-            <span className="text-body-sm font-normal text-white/60"> deposit</span>
+            <span className="text-body-sm font-normal text-muted"> deposit</span>
           </p>
           {gcash?.number ? (
-            <div className="mt-3 flex flex-col gap-0.5 text-body-sm text-white/85">
+            <div className="mt-3 flex flex-col gap-0.5 text-body-sm text-body">
               <span>
-                GCash: <span className="font-semibold text-canvas">{gcash.number}</span>
+                GCash: <span className="font-semibold text-ink">{gcash.number}</span>
               </span>
-              {gcash.name && <span className="text-white/70">{gcash.name}</span>}
+              {gcash.name && <span className="text-muted">{gcash.name}</span>}
             </div>
           ) : (
-            <p className="mt-3 text-body-sm text-white/70">
+            <p className="mt-3 text-body-sm text-muted">
               The host hasn&apos;t added GCash details yet — please contact them to pay.
             </p>
           )}
@@ -197,7 +203,7 @@ export function BookingCard({
             <img
               src={gcash.qrUrl}
               alt="GCash QR code"
-              className="mt-3 size-40 rounded-sm bg-white object-contain p-1"
+              className="mt-3 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
             />
           )}
         </div>
@@ -208,17 +214,17 @@ export function BookingCard({
             type="file"
             accept="image/*"
             onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-            className="text-body-sm text-white/80 file:mr-3 file:rounded-sm file:border-0 file:bg-canvas file:px-3 file:py-2 file:text-button-sm file:text-ink"
+            className="text-body-sm text-muted file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-3 file:py-2 file:text-button-sm file:text-canvas"
           />
         </label>
 
-        {error && <p className="mt-3 text-body-sm text-white">{error}</p>}
+        {error && <p className="mt-3 text-body-sm text-error">{error}</p>}
 
         <button
           type="button"
           disabled={pending || !proofFile}
           onClick={sendProof}
-          className="mt-4 h-12 w-full rounded-sm bg-canvas text-button-md text-ink transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className={`mt-4 ${ctaClass}`}
         >
           {pending ? "Submitting…" : "I've paid — submit proof"}
         </button>
@@ -228,14 +234,15 @@ export function BookingCard({
 
   if (step === "done") {
     return (
-      <div className={cardClass}>
+      <div className={`${cardClass} animate-room-swap`}>
         <span className="flex size-10 items-center justify-center rounded-full bg-primary text-on-primary">
           <Check className="size-5" />
         </span>
-        <h2 className="mt-4 text-display-sm text-canvas">Proof received!</h2>
-        <p className="mt-2 text-body-sm text-white/80">
-          Thanks — we&apos;ve sent your payment proof to the host for {room?.name}, {checkIn} →{" "}
-          {checkOut}. They&apos;ll confirm your booking shortly.
+        <h2 className="mt-4 text-display-sm text-ink">Proof received!</h2>
+        <p className="mt-2 text-body-sm text-body">
+          Thanks — we&apos;ve sent your payment proof to the host for {room?.name},{" "}
+          {formatDateShort(checkIn)} → {formatDateShort(checkOut)}. They&apos;ll confirm your
+          booking shortly.
         </p>
       </div>
     );
@@ -244,16 +251,16 @@ export function BookingCard({
   return (
     <div className={cardClass}>
       <div className="flex flex-col gap-0.5">
-        <p className="text-title-md font-semibold text-canvas">{propertyName}</p>
+        <p className="text-title-md font-semibold text-ink">{propertyName}</p>
         {(area || step === "details") && (
-          <p className="text-caption text-white/60">
+          <p className="text-caption text-muted">
             {step === "details" ? "Almost there — just your details" : area}
           </p>
         )}
       </div>
 
       {step === "select" ? (
-        <div className="mt-4 flex flex-col gap-3">
+        <div key="select" className="mt-4 flex animate-room-swap flex-col gap-3">
           <label className="flex flex-col gap-1">
             <span className={labelClass}>Room</span>
             <select
@@ -269,19 +276,99 @@ export function BookingCard({
             </select>
           </label>
 
-          <div className="flex flex-col gap-1">
-            <span className={labelClass}>
-              {checkIn && checkOut
-                ? `${checkIn} → ${checkOut}`
-                : checkIn
-                  ? "Pick a checkout date"
-                  : "Select your dates"}
-            </span>
-            <div className="booking-calendar flex justify-center rounded-sm border border-white/20 bg-white/5 px-1 py-2">
+          {/* Nightly rate headline; the full total drops to the breakdown once dates are set. */}
+          <div className="mt-1 flex items-baseline justify-between gap-3">
+            <p className="text-display-md text-ink">
+              ₱{room?.base_price ?? "—"}
+              <span className="text-body-sm font-normal text-muted"> / night</span>
+            </p>
+            {room && (
+              <p className="text-caption text-muted">
+                up to {room.capacity} guest{room.capacity > 1 ? "s" : ""}
+              </p>
+            )}
+          </div>
+
+          {/* Dates + guests composite field. Tapping a date cell reveals the calendar. */}
+          <div className="overflow-hidden rounded-md border border-hairline">
+            <div className="grid grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveField("in");
+                  setCalendarOpen(true);
+                }}
+                className={`flex flex-col items-start gap-0.5 border-r border-hairline px-3 py-2.5 text-left transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${
+                  calendarOpen && activeField === "in" ? "bg-surface-strong" : ""
+                }`}
+              >
+                <span className="text-caption-sm font-semibold tracking-wide text-muted uppercase">
+                  Check-in
+                </span>
+                <span className={`text-body-md ${checkIn ? "text-ink" : "text-muted-soft"}`}>
+                  {checkIn ? formatDateShort(checkIn) : "Add date"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveField("out");
+                  setCalendarOpen(true);
+                }}
+                className={`flex flex-col items-start gap-0.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${
+                  calendarOpen && activeField === "out" ? "bg-surface-strong" : ""
+                }`}
+              >
+                <span className="text-caption-sm font-semibold tracking-wide text-muted uppercase">
+                  Checkout
+                </span>
+                <span className={`text-body-md ${checkOut ? "text-ink" : "text-muted-soft"}`}>
+                  {checkOut ? formatDateShort(checkOut) : "Add date"}
+                </span>
+              </button>
+            </div>
+
+            <div className="relative border-t border-hairline focus-within:bg-surface-soft">
+              <div className="pointer-events-none flex items-center justify-between px-3 py-2.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-caption-sm font-semibold tracking-wide text-muted uppercase">
+                    Guests
+                  </span>
+                  <span className="text-body-md text-ink">
+                    {guests} guest{guests > 1 ? "s" : ""}
+                  </span>
+                </div>
+                <ChevronDown className="size-4 text-muted" />
+              </div>
+              <select
+                aria-label="Guests"
+                value={guests}
+                onChange={(e) => setGuests(Number(e.target.value))}
+                className="absolute inset-0 size-full cursor-pointer opacity-0"
+              >
+                {Array.from({ length: room?.capacity ?? 1 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n} className="text-ink">
+                    {n} guest{n > 1 ? "s" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Calendar — collapsed until a date cell is tapped; auto-closes on a full range. */}
+          {calendarOpen && (
+            <div className="booking-calendar flex animate-room-swap justify-center rounded-md border border-hairline bg-surface-soft px-1 py-2">
               <DayPicker
                 mode="range"
                 selected={range}
-                onSelect={setRange}
+                onSelect={(r) => {
+                  setRange(r);
+                  // v9 sets from===to on the first click; only collapse once a real
+                  // multi-night range (checkout after check-in) is chosen.
+                  if (r?.from && r?.to && r.to.getTime() > r.from.getTime()) {
+                    setCalendarOpen(false);
+                  }
+                }}
                 disabled={disabledDays}
                 excludeDisabled
                 style={
@@ -293,65 +380,41 @@ export function BookingCard({
                 }
               />
             </div>
-          </div>
-
-          <label className="flex flex-col gap-1">
-            <span className={labelClass}>Guests {room ? `(up to ${room.capacity})` : ""}</span>
-            <input
-              type="number"
-              min={1}
-              max={room?.capacity}
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className={fieldClass}
-            />
-          </label>
-
-          {datesValid && !available && (
-            <p className="text-body-sm text-white/80">Not available for those dates.</p>
           )}
 
-          <div className="mt-1 border-t border-white/15 pt-3">
-            {datesValid ? (
-              // Once dates are picked the TOTAL is the headline (with an explicit label),
-              // and the nightly rate × nights drops to a small breakdown — so guests don't
-              // mistake the per-night price for what they'll actually pay.
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="text-caption tracking-wide text-white/55 uppercase">Total</span>
-                  <p className="text-display-md leading-none text-canvas">₱{total}</p>
-                </div>
-                <p className="shrink-0 pb-0.5 text-right text-caption text-white/65">
-                  ₱{room?.base_price} / night
-                  <br />× {stayNights} {stayNights === 1 ? "night" : "nights"}
-                </p>
+          {datesValid && !available && (
+            <p className="text-body-sm text-error">Not available for those dates.</p>
+          )}
+
+          {/* Pricing breakdown — only the lines our model actually has (no fabricated fees). */}
+          {datesValid && available && (
+            <div className="flex flex-col gap-2 rounded-md border border-hairline bg-surface-soft p-4">
+              <div className="flex items-center justify-between text-body-sm text-body">
+                <span>
+                  ₱{room?.base_price} × {stayNights} {stayNights === 1 ? "night" : "nights"}
+                </span>
+                <span>₱{total}</span>
               </div>
-            ) : (
-              <div className="flex items-baseline justify-between">
-                <p className="text-display-md text-canvas">
-                  ₱{room?.base_price ?? "—"}
-                  <span className="text-body-sm font-normal text-white/60"> / night</span>
-                </p>
-                {room && (
-                  <p className="hidden text-caption text-white/60 sm:block">
-                    up to {room.capacity} guests
-                  </p>
-                )}
+              <div className="flex items-center justify-between border-t border-hairline pt-2 text-title-md font-semibold text-ink">
+                <span>Total</span>
+                <span>₱{total}</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <button
             type="button"
             disabled={!canContinue}
             onClick={() => setStep("details")}
-            className="h-12 w-full rounded-sm bg-canvas text-button-md text-ink transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
+            className={`mt-1 ${ctaClass}`}
           >
             Reserve
           </button>
+
+          <p className="text-center text-caption text-muted">You won&apos;t be charged yet</p>
         </div>
       ) : (
-        <div className="mt-4 flex flex-col gap-3">
+        <div key="details" className="mt-4 flex animate-room-swap flex-col gap-3">
           <label className="flex flex-col gap-1">
             <span className={labelClass}>Your name</span>
             <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} />
@@ -374,13 +437,13 @@ export function BookingCard({
             />
           </label>
 
-          {error && <p className="text-body-sm text-white">{error}</p>}
+          {error && <p className="text-body-sm text-error">{error}</p>}
 
           <div className="mt-1 flex gap-2">
             <button
               type="button"
               onClick={() => setStep("select")}
-              className="h-12 rounded-sm border border-white/30 px-4 text-button-sm text-canvas transition-colors hover:bg-white/10"
+              className="h-12 rounded-full border border-hairline px-5 text-button-sm text-ink transition-colors hover:bg-surface-soft"
             >
               Back
             </button>
@@ -388,7 +451,7 @@ export function BookingCard({
               type="button"
               disabled={pending || name.trim() === ""}
               onClick={reserve}
-              className="h-12 flex-1 rounded-sm bg-canvas text-button-md text-ink transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex-1 ${ctaClass}`}
             >
               {pending ? "Reserving…" : "Confirm reservation"}
             </button>
