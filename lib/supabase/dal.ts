@@ -40,7 +40,9 @@ export const getCurrentTenant = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, subscription_status")
+    .select(
+      "id, name, subscription_status, verification_status, is_admin, verification_note, gcash_changed_at",
+    )
     .eq("user_id", user.id)
     .single();
 
