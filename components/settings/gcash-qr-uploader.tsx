@@ -42,8 +42,11 @@ export function GcashQrUploader({
       return;
     }
     setBusy(true);
+    const prev = path;
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const objectPath = `${tenantId}/gcash-qr.${ext}`;
+    // Unique path per upload so every replace yields a new URL (busts the 1h cache on the
+    // guest + admin surfaces) and always changes the DB path (re-verify flag fires).
+    const objectPath = `${tenantId}/gcash-qr-${Date.now()}.${ext}`;
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(objectPath, file, { upsert: true, cacheControl: "3600" });
@@ -60,6 +63,10 @@ export function GcashQrUploader({
     }
     setPath(objectPath);
     setVersion((v) => v + 1);
+    // Best-effort cleanup of the replaced file (storage RLS scopes this to our tenant folder).
+    if (prev && prev !== objectPath) {
+      await supabase.storage.from(BUCKET).remove([prev]);
+    }
     toast.success("GCash QR updated.");
   }
 
