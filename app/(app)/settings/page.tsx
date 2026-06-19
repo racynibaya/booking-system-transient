@@ -33,7 +33,8 @@ export default async function SettingsPage() {
           <div className="flex flex-col gap-2 border-t border-hairline pt-6">
             <p className="text-title-md text-ink">QR code</p>
             <p className="text-body-sm text-muted">
-              Upload your GCash QR so guests can scan to pay.
+              Upload a screenshot of your GCash QR screen <strong>showing your name</strong> —
+              guests scan it to pay, and we check the name to verify your account.
             </p>
             {gcash && (
               <div className="mt-2">

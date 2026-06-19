@@ -340,41 +340,99 @@ export type Database = {
       tenants: {
         Row: {
           created_at: string;
+          gcash_changed_at: string | null;
           gcash_name: string | null;
           gcash_number: string | null;
           gcash_qr_path: string | null;
           id: string;
+          is_admin: boolean;
           name: string | null;
           subscription_status: string;
           user_id: string;
+          verification_note: string | null;
+          verification_status: Database["public"]["Enums"]["tenant_verification"];
         };
         Insert: {
           created_at?: string;
+          gcash_changed_at?: string | null;
           gcash_name?: string | null;
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          is_admin?: boolean;
           name?: string | null;
           subscription_status?: string;
           user_id: string;
+          verification_note?: string | null;
+          verification_status?: Database["public"]["Enums"]["tenant_verification"];
         };
         Update: {
           created_at?: string;
+          gcash_changed_at?: string | null;
           gcash_name?: string | null;
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          is_admin?: boolean;
           name?: string | null;
           subscription_status?: string;
           user_id?: string;
+          verification_note?: string | null;
+          verification_status?: Database["public"]["Enums"]["tenant_verification"];
         };
         Relationships: [];
+      };
+      verification_documents: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          storage_path: string;
+          tenant_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          storage_path: string;
+          tenant_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          storage_path?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "verification_documents_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      admin_list_operators: {
+        Args: never;
+        Returns: {
+          created_at: string;
+          email: string;
+          gcash_changed_at: string;
+          gcash_name: string;
+          gcash_number: string;
+          name: string;
+          tenant_id: string;
+          verification_note: string;
+          verification_status: Database["public"]["Enums"]["tenant_verification"];
+        }[];
+      };
       confirm_booking: {
         Args: {
           p_amount?: number;
@@ -444,6 +502,16 @@ export type Database = {
       };
       current_tenant_id: { Args: never; Returns: string };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
+      is_current_user_admin: { Args: never; Returns: boolean };
+      resubmit_verification: { Args: never; Returns: undefined };
+      set_tenant_verification: {
+        Args: {
+          p_note?: string;
+          p_status: Database["public"]["Enums"]["tenant_verification"];
+          p_tenant_id: string;
+        };
+        Returns: undefined;
+      };
       submit_proof: {
         Args: { p_booking_id: string; p_proof_url: string };
         Returns: {
@@ -483,6 +551,7 @@ export type Database = {
         | "completed"
         | "no_show";
       payment_kind: "deposit" | "balance";
+      tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -622,6 +691,7 @@ export const Constants = {
         "no_show",
       ],
       payment_kind: ["deposit", "balance"],
+      tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },
   },
 } as const;
