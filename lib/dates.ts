@@ -47,3 +47,9 @@ export function formatTime(t: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m[2]} ${period}`;
 }
+
+// Render-time freshness check (e.g. the GCash re-verify 24h grace). Kept here so the impure
+// `Date.now()` lives in a util, not in a component's render path.
+export function isOlderThanHours(iso: string, hours: number): boolean {
+  return Date.now() - new Date(iso).getTime() > hours * 60 * 60 * 1000;
+}
