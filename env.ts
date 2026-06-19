@@ -18,6 +18,9 @@ export const env = createEnv({
     // the email layer logs payloads instead of sending (dev/CI safe default).
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).optional(),
+    // --- Admin alerts --- where operator-change notifications go (e.g. a GCash change).
+    // Comma-separated for multiple. If unset, alerts fall back to is_admin operators.
+    ADMIN_ALERT_EMAIL: z.string().min(1).optional(),
     // --- PayMongo ---
     // PAYMONGO_SECRET_KEY: z.string().min(1),
     // PAYMONGO_WEBHOOK_SECRET: z.string().min(1),
@@ -32,6 +35,7 @@ export const env = createEnv({
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
     // PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
     // PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
