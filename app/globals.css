@@ -19,6 +19,11 @@
   --color-primary: #ff385c; /* Rausch — the single brand color */
   --color-primary-active: #e00b41; /* press / pointer-down */
   --color-primary-disabled: #ffd1da; /* pale disabled CTA tint */
+  /* Brand sunset gradient (from the Tuloy brand sheet) — coral → pink, used on the hero
+     band and the Reserve CTA so the warm identity carries through. */
+  --color-sunset-1: #ff7a45; /* warm coral top-light */
+  --color-sunset-2: #ff4d6d; /* mid */
+  --color-sunset-3: #ff2e73; /* deep pink */
   --color-luxe: #460479; /* sub-brand (Luxe) — scoped use only */
   --color-plus: #92174d; /* sub-brand (Plus) — scoped use only */
 
@@ -206,28 +211,41 @@ body {
   }
 }
 
-/* ---- Public booking calendar (react-day-picker on dark glass) -------------
-   Scoped to .booking-calendar so the operator room-calendar (light card) stays
-   untouched. Days inherit the card's white text; accents retint to brand Rausch
-   and cells shrink so the month grid fits inside a narrow phone card. */
+/* ---- Public booking calendar (react-day-picker on the white reserve card) -
+   Scoped to .booking-calendar so the operator room-calendar stays untouched. Days
+   inherit the card's ink text; accents retint to brand Rausch and cells shrink so the
+   month grid fits inside a narrow phone/sidebar card. */
 .booking-calendar .rdp-root {
   margin: 0;
-  --rdp-day-width: 40px;
-  --rdp-day-height: 40px;
-  --rdp-day_button-width: 38px;
-  --rdp-day_button-height: 38px;
-  --rdp-disabled-opacity: 0.3;
-  /* range middle: translucent primary tint with legible white text */
-  --rdp-range_middle-background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-  --rdp-range_middle-color: var(--color-canvas);
+  --rdp-day-width: 36px;
+  --rdp-day-height: 36px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-height: 34px;
+  /* Tighten the caption/nav row and weekday header so the month grid reads as a
+     compact block inside the booking card instead of a full-height calendar. */
+  --rdp-nav-height: 2.25rem;
+  --rdp-weekday-padding: 0.25rem 0;
+  --rdp-disabled-opacity: 0.35;
+  /* range middle: pale Rausch tint with legible ink text */
+  --rdp-range_middle-background-color: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  --rdp-range_middle-color: var(--color-ink);
+}
+
+/* The default caption uses font-size: large + bold; scale it to the card's type. */
+.booking-calendar .rdp-month_caption {
+  font-size: var(--text-title-md);
+  font-weight: 600;
+}
+.booking-calendar .rdp-weekday {
+  color: var(--color-muted);
 }
 
 /* Hover / focus-visible / active on selectable (non-selected) days. */
 .booking-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:not(:disabled):hover {
-  background-color: rgb(255 255 255 / 0.12);
+  background-color: var(--color-surface-soft);
 }
 .booking-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:not(:disabled):active {
-  background-color: rgb(255 255 255 / 0.2);
+  background-color: var(--color-surface-strong);
 }
 .booking-calendar .rdp-day_button:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -237,7 +255,7 @@ body {
 /* Month-nav chevron buttons. */
 .booking-calendar .rdp-button_previous:hover,
 .booking-calendar .rdp-button_next:hover {
-  background-color: rgb(255 255 255 / 0.12);
+  background-color: var(--color-surface-soft);
   border-radius: var(--radius-full);
 }
 .booking-calendar .rdp-button_previous:focus-visible,

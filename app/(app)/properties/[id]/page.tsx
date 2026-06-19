@@ -87,6 +87,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
               check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
               dot_accredited: property.dot_accredited,
+              amenities: Array.isArray(property.amenities) ? (property.amenities as string[]) : [],
+              facebook_url: property.facebook_url ?? "",
+              instagram_url: property.instagram_url ?? "",
+              tiktok_url: property.tiktok_url ?? "",
             }}
           />
         </Card>
