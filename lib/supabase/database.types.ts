@@ -419,6 +419,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_dashboard_overview: { Args: never; Returns: Json };
       admin_list_operators: {
         Args: never;
         Returns: {
@@ -437,6 +438,27 @@ export type Database = {
         Args: never;
         Returns: {
           email: string;
+        }[];
+      };
+      admin_platform_stats: { Args: never; Returns: Json };
+      admin_recent_activity: {
+        Args: never;
+        Returns: {
+          at: string;
+          kind: string;
+          subtitle: string;
+          title: string;
+        }[];
+      };
+      admin_recent_bookings: {
+        Args: never;
+        Returns: {
+          booking_id: string;
+          created_at: string;
+          guest_name: string;
+          operator_name: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          total_amount: number;
         }[];
       };
       confirm_booking: {
