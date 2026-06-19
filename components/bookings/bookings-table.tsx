@@ -31,16 +31,17 @@ function peso(amount: number | null) {
   return amount == null ? "—" : `₱${amount.toLocaleString("en-PH")}`;
 }
 
-// Status → label + on-brand badge tone. Rausch (accent) flags the one state that needs
-// the operator's action; the error-red (danger) flags dead bookings; neutrals for the rest.
+// Status → label + semantic badge tone. Amber (warning) flags the state that needs the
+// operator's action; green (success) the live confirmed bookings; red (danger) the dead
+// ones; neutral/muted for inert states.
 const STATUS_META: Record<
   Status,
-  { label: string; tone: "neutral" | "accent" | "danger" | "muted" }
+  { label: string; tone: "neutral" | "success" | "warning" | "danger" | "muted" }
 > = {
   pending: { label: "Pending", tone: "muted" },
-  held: { label: "Held", tone: "muted" },
-  awaiting_confirmation: { label: "Awaiting", tone: "accent" },
-  confirmed: { label: "Confirmed", tone: "neutral" },
+  held: { label: "Held", tone: "neutral" },
+  awaiting_confirmation: { label: "Awaiting", tone: "warning" },
+  confirmed: { label: "Confirmed", tone: "success" },
   cancelled: { label: "Cancelled", tone: "danger" },
   expired: { label: "Expired", tone: "muted" },
   completed: { label: "Completed", tone: "neutral" },

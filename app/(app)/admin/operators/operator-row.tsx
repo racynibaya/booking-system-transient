@@ -4,6 +4,7 @@ import { Eye, Info, Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { isOlderThanHours } from "@/lib/dates";
@@ -22,11 +23,14 @@ export type AdminOperator = {
   created_at: string;
 };
 
+// Verification status → label + semantic tone, on the same scale as booking badges.
+// Amber = in the admin's queue, green = approved, red = suspended, neutral = ball's in
+// the operator's court.
 const STATUS = {
-  pending: { label: "Pending review", cls: "bg-surface-strong text-ink" },
-  approved: { label: "Approved", cls: "bg-success-bg text-success" },
-  suspended: { label: "Suspended", cls: "bg-surface-strong text-error" },
-  changes_requested: { label: "Changes requested", cls: "bg-surface-strong text-ink" },
+  pending: { label: "Pending review", tone: "warning" },
+  approved: { label: "Approved", tone: "success" },
+  suspended: { label: "Suspended", tone: "danger" },
+  changes_requested: { label: "Changes requested", tone: "neutral" },
 } as const;
 
 const DOC_LABEL: Record<string, string> = {
@@ -107,7 +111,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-title-md text-ink">{op.name ?? "(unnamed)"}</p>
-            <span className={`rounded-full px-2 py-0.5 text-caption-sm ${s.cls}`}>{s.label}</span>
+            <Badge tone={s.tone}>{s.label}</Badge>
           </div>
           <p className="text-body-sm text-muted">{op.email}</p>
           <p className="mt-1 text-caption text-muted">
