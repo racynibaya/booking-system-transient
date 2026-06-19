@@ -4,14 +4,31 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { passwordAuth } from "@/app/auth/actions";
+import { passwordAuth, requestPasswordReset } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+
+type Mode = "signin" | "signup" | "forgot";
+
+const COPY: Record<Mode, { title: string; sub: string; cta: string }> = {
+  signin: { title: "Operator sign in", sub: "Sign in to manage your bookings.", cta: "Sign in" },
+  signup: {
+    title: "Create your account",
+    sub: "Set up your operator account — takes a minute.",
+    cta: "Create account",
+  },
+  forgot: {
+    title: "Reset your password",
+    sub: "Enter your email and we'll send you a reset link.",
+    cta: "Send reset link",
+  },
+};
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
@@ -19,23 +36,26 @@ export default function LoginPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const isSignin = mode === "signin";
+  const isForgot = mode === "forgot";
 
-  async function onPasswordSubmit(e: FormEvent) {
+  function switchTo(next: Mode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+  }
+
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setNotice(null);
     setPending(true);
-    // On success this redirects server-side; only error/notice come back.
-    const res = await passwordAuth(mode, { email, password });
+    // signin/signup redirect server-side on success; only error/notice come back.
+    const res = isForgot
+      ? await requestPasswordReset(email)
+      : await passwordAuth(mode, { email, password });
     setPending(false);
     if ("error" in res) setError(res.error);
     else setNotice(res.notice);
-  }
-
-  function toggleMode() {
-    setMode(isSignin ? "signup" : "signin");
-    setError(null);
-    setNotice(null);
   }
 
   return (
@@ -59,16 +79,10 @@ export default function LoginPage() {
         </Link>
 
         <Card elevated className="mt-5 p-6">
-          <h1 className="text-display-lg text-ink">
-            {isSignin ? "Operator sign in" : "Create your account"}
-          </h1>
-          <p className="mt-2 text-body-md text-muted">
-            {isSignin
-              ? "Sign in to manage your bookings."
-              : "Set up your operator account — takes a minute."}
-          </p>
+          <h1 className="text-display-lg text-ink">{COPY[mode].title}</h1>
+          <p className="mt-2 text-body-md text-muted">{COPY[mode].sub}</p>
 
-          <form onSubmit={onPasswordSubmit} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
             <Field label="Email">
               <Input
                 type="email"
@@ -79,17 +93,29 @@ export default function LoginPage() {
                 placeholder="you@example.com"
               />
             </Field>
-            <Field label="Password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete={isSignin ? "current-password" : "new-password"}
-                placeholder="At least 8 characters"
-              />
-            </Field>
+
+            {!isForgot && (
+              <Field label="Password">
+                <PasswordInput
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete={isSignin ? "current-password" : "new-password"}
+                  placeholder="At least 8 characters"
+                />
+              </Field>
+            )}
+
+            {isSignin && (
+              <button
+                type="button"
+                onClick={() => switchTo("forgot")}
+                className="-mt-2 self-end text-body-sm text-muted underline transition-colors hover:text-ink"
+              >
+                Forgot password?
+              </button>
+            )}
 
             {error && <p className="text-body-sm text-error">{error}</p>}
             {notice && (
@@ -99,19 +125,31 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" disabled={pending} className="w-full">
-              {pending ? "…" : isSignin ? "Sign in" : "Create account"}
+              {pending ? "…" : COPY[mode].cta}
             </Button>
           </form>
 
           <p className="mt-4 text-center text-body-sm text-muted">
-            {isSignin ? "New to Tuloy? " : "Already have an account? "}
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="text-ink underline transition-colors hover:text-muted"
-            >
-              {isSignin ? "Create an account" : "Sign in"}
-            </button>
+            {isForgot ? (
+              <button
+                type="button"
+                onClick={() => switchTo("signin")}
+                className="text-ink underline transition-colors hover:text-muted"
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <>
+                {isSignin ? "New to Tuloy? " : "Already have an account? "}
+                <button
+                  type="button"
+                  onClick={() => switchTo(isSignin ? "signup" : "signin")}
+                  className="text-ink underline transition-colors hover:text-muted"
+                >
+                  {isSignin ? "Create an account" : "Sign in"}
+                </button>
+              </>
+            )}
           </p>
         </Card>
 
