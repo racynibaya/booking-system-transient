@@ -107,7 +107,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
 
   return (
     <Card className="flex flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-title-md text-ink">{op.name ?? "(unnamed)"}</p>
@@ -132,7 +132,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:shrink-0">
           <Button size="sm" variant="ghost" onClick={toggleDocs}>
             <Eye className="size-4" /> {showDocs ? "Hide" : "View"} documents
           </Button>

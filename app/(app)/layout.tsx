@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3">
             {tenant?.is_admin && (
               <Link
-                href="/admin/operators"
+                href="/admin"
                 className="text-body-sm font-medium text-primary transition-colors hover:text-primary-active"
               >
                 Admin
