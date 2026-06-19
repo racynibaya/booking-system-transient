@@ -19,7 +19,7 @@ const credentials = z.object({
 // email confirmation ON, signUp returns no session → we ask them to confirm.
 export async function passwordAuth(
   mode: "signin" | "signup",
-  input: { email: string; password: string },
+  input: { email: string; password: string; name?: string },
 ): Promise<AuthResult> {
   const parsed = credentials.safeParse(input);
   if (!parsed.success) {
@@ -29,7 +29,14 @@ export async function passwordAuth(
   const supabase = await createClient();
 
   if (mode === "signup") {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const name = input.name?.trim();
+    if (!name) return { error: "Enter your name or business name." };
+    // Stored in raw_user_meta_data → the handle_new_user trigger writes it to tenants.name.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
     if (error) return { error: error.message };
     if (!data.session) return { notice: "Check your email to confirm your account." };
   } else {
