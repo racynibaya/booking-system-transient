@@ -45,10 +45,10 @@ export function GcashForm({
 
         <div className="flex flex-col gap-2">
           <span className="text-caption text-muted">GCash number</span>
-          <div className="flex items-stretch justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
             <Input
               {...register("gcash_number")}
-              className="flex-1"
+              className="sm:flex-1"
               placeholder="0917 123 4567"
               inputMode="numeric"
             />
