@@ -29,6 +29,7 @@ const COPY: Record<Mode, { title: string; sub: string; cta: string }> = {
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
@@ -52,7 +53,7 @@ export default function LoginPage() {
     // signin/signup redirect server-side on success; only error/notice come back.
     const res = isForgot
       ? await requestPasswordReset(email)
-      : await passwordAuth(mode, { email, password });
+      : await passwordAuth(mode, { email, password, name });
     setPending(false);
     if ("error" in res) setError(res.error);
     else setNotice(res.notice);
@@ -83,6 +84,18 @@ export default function LoginPage() {
           <p className="mt-2 text-body-md text-muted">{COPY[mode].sub}</p>
 
           <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+            {mode === "signup" && (
+              <Field label="Your name">
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                  placeholder="Juan Dela Cruz or your business name"
+                />
+              </Field>
+            )}
             <Field label="Email">
               <Input
                 type="email"
