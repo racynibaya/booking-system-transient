@@ -127,13 +127,6 @@ export function PropertyForm({
         <Textarea {...register("description")} placeholder="A short description guests will see." />
       </Field>
 
-      <Field label="About this place" error={errors.about?.message}>
-        <Textarea
-          {...register("about")}
-          placeholder="Tell guests what makes your place special — the vibe, the location, what's nearby, why they'll love it."
-        />
-      </Field>
-
       <label className="flex items-center gap-2">
         <input type="checkbox" {...register("dot_accredited")} className="size-4" />
         <span className="text-body-sm text-ink">DOT accredited</span>

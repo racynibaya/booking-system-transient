@@ -27,7 +27,6 @@ export const propertyInput = z.object({
   area: optionalText(60),
   address: optionalText(200),
   description: optionalText(2000),
-  about: optionalText(2000),
   check_in_time: timeStr,
   check_out_time: timeStr,
   dot_accredited: z.boolean(),
