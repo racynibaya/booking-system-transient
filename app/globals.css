@@ -50,6 +50,8 @@
   --color-error-hover: #b32505; /* error link hover */
   --color-success: #0e7a4a; /* verified / approved state */
   --color-success-bg: #e6f4ec; /* pale success tint (badge fill) */
+  --color-warning: #8a5a00; /* needs-attention state (amber, distinct from brand red) */
+  --color-warning-bg: #fbeed0; /* pale amber tint (badge fill) */
   --color-legal-link: #428bff; /* legal-copy links only */
   --color-scrim: #000000; /* modal backdrop base (render at 50%) */
 
