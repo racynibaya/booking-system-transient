@@ -32,9 +32,12 @@ type Listing = {
   room_types: PublicRoom[];
 };
 
-async function getListing(
-  slug: string,
-): Promise<{ listing: Listing; coverUrl: string | null; rooms: RoomCard[] } | null> {
+async function getListing(slug: string): Promise<{
+  listing: Listing;
+  coverUrl: string | null;
+  ogImageUrl: string | null;
+  rooms: RoomCard[];
+} | null> {
   const supabase = createAnonClient();
   const { data } = await supabase.rpc("get_public_listing", { p_slug: slug });
   const listing = data as unknown as Listing | null;
@@ -46,6 +49,17 @@ async function getListing(
   const path = listing.property.cover_image_path;
   const coverUrl = path ? publicUrl(path) : null;
 
+  // Share-preview image: a fixed 1200×630 crop via Supabase's image transform endpoint.
+  // Messenger only renders a link's image inline when the dimensions are declared (see
+  // generateMetadata) and dislikes oversized source images, so we hand it an exact-size crop
+  // rather than the full-resolution cover used by the hero.
+  const ogImageUrl = path
+    ? supabase.storage
+        .from("property-images")
+        .getPublicUrl(path, { transform: { width: 1200, height: 630, resize: "cover" } }).data
+        .publicUrl
+    : null;
+
   // Resolve each room's stored photo paths to public URLs for the showcase section.
   const rooms: RoomCard[] = listing.room_types.map((r) => ({
     id: r.id,
@@ -56,7 +70,7 @@ async function getListing(
     photoUrls: (r.photos ?? []).map(publicUrl),
   }));
 
-  return { listing, coverUrl, rooms };
+  return { listing, coverUrl, ogImageUrl, rooms };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -70,8 +84,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     property.description ??
     `Book ${property.name}${property.area ? ` in ${property.area}` : ""} directly — real-time availability, no booking fees.`;
   // Share preview (Messenger / FB / iMessage / etc.) shows the operator's own cover photo
-  // and property name — not the Tuloy favicon. og:image must be an absolute URL (coverUrl is).
-  const images = result.coverUrl ? [{ url: result.coverUrl, alt: property.name }] : undefined;
+  // and property name — not the Tuloy favicon. The width/height are declared so Messenger
+  // renders the image inline; they match the 1200×630 crop ogImageUrl points at.
+  const images = result.ogImageUrl
+    ? [{ url: result.ogImageUrl, width: 1200, height: 630, alt: property.name }]
+    : undefined;
 
   return {
     title,
@@ -87,7 +104,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       card: images ? "summary_large_image" : "summary",
       title,
       description,
-      images: result.coverUrl ? [result.coverUrl] : undefined,
+      images,
     },
   };
 }
