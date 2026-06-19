@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AmenitiesSection } from "@/components/public/amenities-section";
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
 import { LocationMap } from "@/components/public/location-map";
+import { MobileBookingBar } from "@/components/public/mobile-booking-bar";
 import { RoomsSection, type RoomCard } from "@/components/public/rooms-section";
 import { SelectedRoomProvider } from "@/components/public/selected-room-context";
 import { SocialLinks } from "@/components/public/social-links";
@@ -19,7 +20,6 @@ type Listing = {
     area: string | null;
     address: string | null;
     description: string | null;
-    about: string | null;
     amenities: string[];
     dot_accredited: boolean;
     facebook_url: string | null;
@@ -99,8 +99,6 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${coverUrl})` }}
               />
-              {/* warm sunset cast so the photo reads as the same family as the brand */}
-              <div className="absolute inset-0 bg-sunset-3 opacity-25 mix-blend-multiply" />
             </>
           )}
           {/* bottom legibility scrim for the white title */}
@@ -159,9 +157,9 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
         </section>
 
         {/* ---- Body: scrollable details (left) + sticky booking card (right) ----------- */}
-        <div className="mx-auto grid max-w-2xl grid-cols-1 gap-10 px-4 py-12 sm:px-6 lg:max-w-6xl lg:grid-cols-[1fr_360px] lg:gap-12 lg:py-16">
-          {/* First in DOM so the card leads on mobile; pinned right + sticky on desktop. */}
-          <aside className="lg:col-start-2 lg:row-start-1">
+        <div className="mx-auto grid max-w-2xl grid-cols-1 gap-10 px-4 py-12 pb-28 sm:px-6 lg:max-w-6xl lg:grid-cols-[1fr_360px] lg:gap-12 lg:py-16 lg:pb-16">
+          {/* Desktop only — pinned right + sticky. On mobile the card moves into the bottom sheet. */}
+          <aside className="hidden lg:col-start-2 lg:row-start-1 lg:block">
             <div className="lg:sticky lg:top-6">
               <BookingCard
                 rooms={listing.room_types}
@@ -185,19 +183,10 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
 
             <AmenitiesSection amenities={property.amenities} />
 
-            {property.about && (
-              <section className="flex flex-col gap-4">
-                <h2 className="text-display-sm tracking-tight text-ink">About this place</h2>
-                <p className="max-w-2xl text-body-md leading-relaxed whitespace-pre-line text-muted">
-                  {property.about}
-                </p>
-              </section>
-            )}
-
             {hasGoodToKnow && (
               <section className="flex flex-col gap-4">
                 <h2 className="text-display-sm tracking-tight text-ink">Good to know</h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
                   {property.check_in_time && (
                     <div className="flex items-center gap-3 rounded-md border border-hairline p-4">
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-soft text-primary">
@@ -249,6 +238,12 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
+
+        <MobileBookingBar
+          rooms={listing.room_types}
+          propertyName={property.name}
+          area={property.area}
+        />
       </main>
     </SelectedRoomProvider>
   );
