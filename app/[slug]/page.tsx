@@ -62,7 +62,34 @@ async function getListing(
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const result = await getListing(slug);
-  return { title: result ? `${result.listing.property.name} · Book direct` : "Tuloy" };
+  if (!result) return { title: "Tuloy" };
+
+  const { property } = result.listing;
+  const title = `${property.name} · Book direct`;
+  const description =
+    property.description ??
+    `Book ${property.name}${property.area ? ` in ${property.area}` : ""} directly — real-time availability, no booking fees.`;
+  // Share preview (Messenger / FB / iMessage / etc.) shows the operator's own cover photo
+  // and property name — not the Tuloy favicon. og:image must be an absolute URL (coverUrl is).
+  const images = result.coverUrl ? [{ url: result.coverUrl, alt: property.name }] : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: property.name,
+      images,
+    },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: result.coverUrl ? [result.coverUrl] : undefined,
+    },
+  };
 }
 
 export default async function PublicBookingPage({ params }: { params: Promise<{ slug: string }> }) {
