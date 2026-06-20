@@ -50,19 +50,17 @@ export const getCurrentTenant = cache(async () => {
   return data;
 });
 
-// The current operator's GCash payout settings (RLS-scoped). null if un-provisioned.
-export const getGcashSettings = cache(async () => {
-  const user = await getUser();
-  if (!user) return null;
-
+// The current operator's payout methods (RLS-scoped — no explicit tenant filter needed).
+// Empty array if none yet.
+export const getPaymentMethods = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("tenants")
-    .select("id, gcash_name, gcash_number, gcash_qr_path")
-    .eq("user_id", user.id)
-    .single();
+    .from("tenant_payment_methods")
+    .select("id, type, account_name, account_number, bank_name, qr_path, sort_order")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
-  if (error) return null;
+  if (error) return [];
   return data;
 });
 

@@ -41,13 +41,32 @@ export const propertyInput = z.object({
 });
 export type PropertyInput = z.infer<typeof propertyInput>;
 
-// Operator GCash payout identity (tenant-level). Persisted on the tenants row; the QR image
-// path is handled separately like the property cover image.
-export const gcashInput = z.object({
-  gcash_name: optionalText(80),
-  gcash_number: optionalText(20),
-});
-export type GcashInput = z.infer<typeof gcashInput>;
+// Operator payout methods (operator-as-merchant: display + proof, no gateway). One row per method
+// in tenant_payment_methods; the QR image path is handled separately like the property cover image.
+export const PAYMENT_METHOD_TYPES = ["gcash", "maya", "bank", "grabpay"] as const;
+export type PaymentMethodType = (typeof PAYMENT_METHOD_TYPES)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
+  gcash: "GCash",
+  maya: "Maya",
+  bank: "Bank transfer",
+  grabpay: "GrabPay",
+};
+
+export const paymentMethodInput = z
+  .object({
+    id: z.string().uuid().optional(), // set when editing an existing method
+    type: z.enum(PAYMENT_METHOD_TYPES),
+    account_name: z.string().trim().min(1, "Account name is required").max(80),
+    account_number: z.string().trim().min(1, "Account number is required").max(30),
+    bank_name: optionalText(60),
+    qr_path: optionalText(300),
+  })
+  .refine((v) => v.type !== "bank" || !!v.bank_name, {
+    message: "Bank name is required",
+    path: ["bank_name"],
+  });
+export type PaymentMethodInput = z.infer<typeof paymentMethodInput>;
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 

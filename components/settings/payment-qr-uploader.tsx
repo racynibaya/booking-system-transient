@@ -4,7 +4,7 @@ import { ImageUp, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { setGcashQr } from "@/app/(app)/settings/actions";
+import { setPaymentMethodQr } from "@/app/(app)/settings/actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
@@ -12,13 +12,15 @@ import { createClient } from "@/lib/supabase/client";
 const BUCKET = "property-images";
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
-// GCash QR image manager. Mirrors cover-image-uploader: browser-side upload (storage RLS
-// scopes the write to the operator's tenant folder), one QR per tenant (upsert overwrites).
-export function GcashQrUploader({
+// Per-method QR image manager. Browser-side upload (storage RLS scopes the write to the operator's
+// tenant folder); the resulting path is persisted on the method row.
+export function PaymentQrUploader({
   tenantId,
+  methodId,
   currentPath,
 }: {
   tenantId: string;
+  methodId: string;
   currentPath: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,9 +46,9 @@ export function GcashQrUploader({
     setBusy(true);
     const prev = path;
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    // Unique path per upload so every replace yields a new URL (busts the 1h cache on the
-    // guest + admin surfaces) and always changes the DB path (re-verify flag fires).
-    const objectPath = `${tenantId}/gcash-qr-${Date.now()}.${ext}`;
+    // Unique path per upload so every replace yields a new URL (busts the 1h cache) and always
+    // changes the DB path (re-verify flag fires).
+    const objectPath = `${tenantId}/paymethod-${methodId}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(objectPath, file, { upsert: true, cacheControl: "3600" });
@@ -55,7 +57,7 @@ export function GcashQrUploader({
       toast.error(error.message);
       return;
     }
-    const res = await setGcashQr(objectPath);
+    const res = await setPaymentMethodQr(methodId, objectPath);
     setBusy(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -63,18 +65,17 @@ export function GcashQrUploader({
     }
     setPath(objectPath);
     setVersion((v) => v + 1);
-    // Best-effort cleanup of the replaced file (storage RLS scopes this to our tenant folder).
     if (prev && prev !== objectPath) {
       await supabase.storage.from(BUCKET).remove([prev]);
     }
-    toast.success("GCash QR updated.");
+    toast.success("QR updated.");
   }
 
   async function onRemove() {
     if (!path) return;
     setBusy(true);
     await supabase.storage.from(BUCKET).remove([path]);
-    const res = await setGcashQr("");
+    const res = await setPaymentMethodQr(methodId, "");
     setBusy(false);
     setConfirmOpen(false);
     if (!res.ok) {
@@ -82,19 +83,19 @@ export function GcashQrUploader({
       return;
     }
     setPath(null);
-    toast.success("GCash QR removed.");
+    toast.success("QR removed.");
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative size-40 overflow-hidden rounded-md border border-hairline bg-surface-soft">
+    <div className="flex flex-col gap-2">
+      <div className="relative size-28 overflow-hidden rounded-md border border-hairline bg-surface-soft">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="GCash QR" className="size-full object-contain p-1" />
+          <img src={previewUrl} alt="Payment QR" className="size-full object-contain p-1" />
         ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-2 text-muted">
-            <ImageUp className="size-6" />
-            <span className="text-body-sm">No QR yet</span>
+          <div className="flex size-full flex-col items-center justify-center gap-1 text-muted">
+            <ImageUp className="size-5" />
+            <span className="text-caption">No QR</span>
           </div>
         )}
       </div>
@@ -137,8 +138,8 @@ export function GcashQrUploader({
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Remove GCash QR?"
-        description="Guests won't be able to scan to pay until you upload a new one."
+        title="Remove QR?"
+        description="Guests won't be able to scan this method until you upload a new one."
         confirmLabel="Remove"
         pending={busy}
         onCancel={() => setConfirmOpen(false)}

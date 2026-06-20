@@ -6,7 +6,7 @@ import { Check, ChevronDown, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
-import { createPublicBooking, submitProof, type GcashDetails } from "@/app/[slug]/actions";
+import { createPublicBooking, submitProof, type PublicPaymentMethod } from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
@@ -56,7 +56,7 @@ export function BookingCard({
 
   // Set once the hold succeeds (F1.4 deposit step).
   const [bookingId, setBookingId] = useState<string | null>(null);
-  const [gcash, setGcash] = useState<GcashDetails | null>(null);
+  const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
   const [deposit, setDeposit] = useState<number | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -141,7 +141,7 @@ export function BookingCard({
     setPending(false);
     if (res.ok) {
       setBookingId(res.bookingId);
-      setGcash(res.gcash);
+      setMethods(res.paymentMethods);
       setDeposit(res.deposit);
       setHoldExpiresAt(res.holdExpiresAt);
       setStep("payment");
@@ -212,30 +212,38 @@ export function BookingCard({
             ₱{deposit ?? "—"}
             <span className="text-body-sm font-normal text-muted"> deposit</span>
           </p>
-          {gcash?.number ? (
-            <div className="mt-3 flex flex-col gap-0.5 text-body-sm text-body">
-              <span>
-                GCash: <span className="font-semibold text-ink">{gcash.number}</span>
-              </span>
-              {gcash.name && <span className="text-muted">{gcash.name}</span>}
+          {methods.length > 0 ? (
+            <div className="mt-3 flex flex-col gap-4">
+              {methods.map((m, i) => (
+                <div key={i} className="flex flex-col gap-0.5 text-body-sm text-body">
+                  <span className="text-caption font-medium text-muted">{m.label}</span>
+                  {m.accountNumber && (
+                    <span>
+                      {m.bankName ? `${m.bankName}: ` : ""}
+                      <span className="font-semibold text-ink">{m.accountNumber}</span>
+                    </span>
+                  )}
+                  {m.accountName && <span className="text-muted">{m.accountName}</span>}
+                  {m.qrUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
+                    <img
+                      src={m.qrUrl}
+                      alt={`${m.label} QR code`}
+                      className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             <p className="mt-3 text-body-sm text-muted">
-              The host hasn&apos;t added GCash details yet — please contact them to pay.
+              The host hasn&apos;t added payment details yet — please contact them to pay.
             </p>
-          )}
-          {gcash?.qrUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
-            <img
-              src={gcash.qrUrl}
-              alt="GCash QR code"
-              className="mt-3 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
-            />
           )}
         </div>
 
         <label className="mt-4 flex flex-col gap-1">
-          <span className={labelClass}>Upload your GCash receipt</span>
+          <span className={labelClass}>Upload your payment receipt</span>
           <input
             type="file"
             accept="image/*"
