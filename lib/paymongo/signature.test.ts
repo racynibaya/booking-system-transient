@@ -58,4 +58,32 @@ describe("verifyWebhookSignature", () => {
     expect(verifyWebhookSignature(body, null, SECRET)).toBe(false);
     expect(verifyWebhookSignature(body, "garbage", SECRET)).toBe(false);
   });
+
+  describe("timestamp tolerance (M6 replay window)", () => {
+    // sign() stamps t=1700000000; treat "now" as that instant for the fresh case.
+    const signedAtMs = 1_700_000_000 * 1000;
+
+    it("accepts a correctly signed body whose timestamp is within the window", () => {
+      expect(
+        verifyWebhookSignature(body, sign(body, "te"), SECRET, {
+          toleranceSeconds: 300,
+          nowMs: signedAtMs + 60 * 1000, // 1 min later
+        }),
+      ).toBe(true);
+    });
+
+    it("rejects a correctly signed body whose timestamp is outside the window", () => {
+      expect(
+        verifyWebhookSignature(body, sign(body, "te"), SECRET, {
+          toleranceSeconds: 300,
+          nowMs: signedAtMs + 10 * 60 * 1000, // 10 min later
+        }),
+      ).toBe(false);
+    });
+
+    it("still verifies by HMAC alone when no tolerance is supplied (default off)", () => {
+      // The fixed 2023 timestamp is ancient, yet with no window it must still pass on a valid HMAC.
+      expect(verifyWebhookSignature(body, sign(body, "te"), SECRET)).toBe(true);
+    });
+  });
 });

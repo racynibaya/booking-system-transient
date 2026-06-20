@@ -1,21 +1,17 @@
 import { env } from "@/env";
-import { toConfirmationBooking, type NotificationBookingRow } from "@/lib/email/notifications";
-import { sendEmail } from "@/lib/email/resend";
-import { guestConfirmedEmail } from "@/lib/email/templates";
-import { isCheckoutPaid, parseCheckoutPaid, type CheckoutPaidEvent } from "@/lib/paymongo/event";
-import { verifyWebhookSignature } from "@/lib/paymongo/signature";
-import { createServiceClient } from "@/lib/supabase/server";
+import {
+  verifyWebhookSignature,
+  WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS,
+} from "@/lib/paymongo/signature";
+import { handleVerifiedPaymongoEvent } from "@/lib/paymongo/webhook-handler";
 
-// PayMongo webhook (Phase 2a spike). The instant-confirmation seam: a paid Checkout Session lands
-// here → we authenticate it, map it back to its booking, and confirm via confirm_booking_gateway
-// (the SAME confirm contract as the operator's manual path — architecture P7). Idempotent end to
-// end (P10): the RPC no-ops a replayed event, so a duplicate webhook is a 200 with no side effect.
+// PayMongo webhook (Phase 2a spike) — the flat, env-keyed endpoint. A paid Checkout Session lands
+// here, we authenticate it with the single env webhook secret, and hand the verified body to the
+// shared handler (lib/paymongo/webhook-handler.ts) → confirm_booking_gateway (architecture P7).
 //
-// SPIKE SCOPE: one endpoint, env webhook secret, env sandbox key. Phase 2b moves to
-// /api/webhooks/paymongo/[token] so the per-tenant connection's own secret verifies the event.
-//
-// We ALWAYS return 200 for an authenticated, well-formed event (handled, ignored, or idempotent
-// no-op) so PayMongo stops retrying; only auth/shape failures return 4xx/5xx.
+// SPIKE SCOPE: one endpoint, env webhook secret. Phase 2b's /api/webhooks/paymongo/[token] verifies
+// with the per-tenant connection's own whsk_; this flat route stays (dormant) until that is proven,
+// then it can be retired. The post-verification logic is identical — both call the shared handler.
 
 export async function POST(request: Request) {
   if (!env.PAYMONGO_WEBHOOK_SECRET) {
@@ -27,106 +23,13 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const signature = request.headers.get("paymongo-signature");
 
-  if (!verifyWebhookSignature(rawBody, signature, env.PAYMONGO_WEBHOOK_SECRET)) {
+  if (
+    !verifyWebhookSignature(rawBody, signature, env.PAYMONGO_WEBHOOK_SECRET, {
+      toleranceSeconds: WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS,
+    })
+  ) {
     return new Response("invalid signature", { status: 401 });
   }
 
-  let event: CheckoutPaidEvent;
-  try {
-    event = JSON.parse(rawBody) as CheckoutPaidEvent;
-  } catch {
-    return new Response("malformed body", { status: 400 });
-  }
-
-  // Only a paid checkout confirms a booking; acknowledge everything else so PayMongo stops retrying.
-  if (!isCheckoutPaid(event)) {
-    return new Response("ignored", { status: 200 });
-  }
-
-  // Field paths validated against a real event (lib/paymongo/event.ts): amount + ref come from the
-  // embedded payment_intent, NOT the (empty) top-level payments[]. paidPesos is verified against the
-  // stamped deposit inside the RPC (bulletproof inv. 3); undefined → RPC trusts the stamped deposit.
-  const { bookingId, providerRef, paidPesos } = parseCheckoutPaid(event);
-
-  if (!bookingId) {
-    // Authenticated but unusable — log-shaped 200 so we don't trigger endless retries on a bad
-    // event; a reconcile sweep (Phase 2b step 10) catches anything genuinely missed.
-    return new Response("no booking_id in metadata", { status: 200 });
-  }
-
-  const admin = createServiceClient();
-  const { data: booking, error } = await admin.rpc("confirm_booking_gateway", {
-    p_booking_id: bookingId,
-    p_provider: "paymongo",
-    p_provider_ref: providerRef ?? undefined,
-    // Verified against the stamped deposit inside the RPC; omitted → RPC trusts the stamped deposit.
-    p_amount: paidPesos,
-    p_raw_payload: event as never,
-  });
-
-  if (error) {
-    // Classify the failure. PERMANENT business errors (the slot was taken in the gap, the paid
-    // amount doesn't match, a bad/cancelled booking) will NEVER succeed on retry — acknowledge with
-    // 200 so PayMongo stops hammering us. Everything else (DB/network blip) is transient → 500 so
-    // PayMongo retries.
-    //
-    // SPIKE: SLOT_TAKEN / AMOUNT_MISMATCH mean the guest paid but we can't honor it — Phase 2b wires
-    // the operator "refund needed" + guest "you'll be refunded" alerts HERE (inv. 2). For now the
-    // reconcile sweep + this acknowledged log are the safety net; a human reads the logs.
-    const permanent = ["SLOT_TAKEN", "AMOUNT_MISMATCH", "NOT_CONFIRMABLE", "UNKNOWN_BOOKING"].some(
-      (code) => error.message.includes(code),
-    );
-    return new Response(`confirm failed: ${error.message}`, { status: permanent ? 200 : 500 });
-  }
-
-  // Idempotent no-op (replayed event → already confirmed): NULL composite renders as all-null
-  // object, so guard on a real field. Nothing to email on a replay.
-  if (booking?.id) {
-    await sendGuestConfirmation(booking as NotificationBookingRow);
-    return new Response("ok", { status: 200 });
-  }
-
-  // The RPC no-op'd. That's a HARMLESS replay only if THIS payment is already on file. If this
-  // provider_ref was never recorded, a distinct second payment landed on an already-confirmed
-  // booking — the guest was charged twice. Make it loud (a silent 200 hid this before) so it's
-  // caught in logs and refunded out-of-band; the per-tenant operator refund alert is Phase 2b.
-  await flagSecondPaymentIfDistinct(admin, bookingId, providerRef);
-
-  return new Response("ok", { status: 200 });
-}
-
-// Detection: tell a harmless webhook replay apart from a genuine second charge. A replay carries a
-// provider_ref we ALREADY recorded when the booking first confirmed; a distinct second payment does
-// not. If we can't find this ref on the booking's payments, the guest paid twice — log it loudly.
-// Never affects the 200 (the booking is confirmed either way); this is a visibility safety net.
-async function flagSecondPaymentIfDistinct(
-  admin: ReturnType<typeof createServiceClient>,
-  bookingId: string,
-  providerRef: string | null,
-): Promise<void> {
-  if (!providerRef) {
-    // No stable ref to dedup on — can't prove it's a replay. Surface it rather than assume safe.
-    console.error(`[paymongo] SECOND_PAYMENT? no provider_ref to verify; booking=${bookingId}`);
-    return;
-  }
-  const { data: existing } = await admin
-    .from("payments")
-    .select("id")
-    .eq("booking_id", bookingId)
-    .eq("provider_ref", providerRef)
-    .maybeSingle();
-  if (!existing) {
-    console.error(
-      `[paymongo] SECOND_PAYMENT booking=${bookingId} provider_ref=${providerRef} — paid against an already-confirmed booking; refund needed`,
-    );
-  }
-}
-
-// Best-effort guest confirmation — never affects the 200 (the booking is already confirmed).
-// SPIKE: guest only; the operator notification is wired with the full path in Phase 2b (it needs
-// the operator's email via the tenant→auth.users lookup).
-async function sendGuestConfirmation(booking: NotificationBookingRow): Promise<void> {
-  if (!booking.guest_email) return;
-  const { subject, html } = guestConfirmedEmail(toConfirmationBooking(booking));
-  await sendEmail({ to: booking.guest_email, subject, html });
+  return handleVerifiedPaymongoEvent(rawBody);
 }

@@ -41,16 +41,36 @@ function safeEqualHex(a: string, b: string): boolean {
   }
 }
 
+// Default replay window: reject events whose signed timestamp is more than this far from now.
+// PayMongo retries a webhook for up to ~3 days, so the window must be generous enough not to drop a
+// legitimate retry; 5 minutes only blocks a captured-and-much-later replay (defense in depth — the
+// HMAC + idempotent confirm are the primary guards).
+export const WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 300;
+
 // Returns true iff the raw body authenticates against the webhook secret. `rawBody` MUST be the
 // exact bytes received (read request.text() before any JSON parse — re-serializing changes them).
+//
+// `opts.toleranceSeconds` opts into a freshness check on the signed `t` (unix SECONDS): outside the
+// window → reject. Off by default so the pure-HMAC unit tests and any non-time-sensitive caller are
+// unaffected; the webhook routes pass WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS. `nowMs` is injectable for
+// deterministic tests.
 export function verifyWebhookSignature(
   rawBody: string,
   signatureHeader: string | null,
   webhookSecret: string,
+  opts?: { toleranceSeconds?: number; nowMs?: number },
 ): boolean {
   if (!signatureHeader) return false;
   const parsed = parsePaymongoSignature(signatureHeader);
   if (!parsed) return false;
+
+  if (opts?.toleranceSeconds && opts.toleranceSeconds > 0) {
+    const tsSec = Number(parsed.timestamp);
+    const nowSec = (opts.nowMs ?? Date.now()) / 1000;
+    if (!Number.isFinite(tsSec) || Math.abs(nowSec - tsSec) > opts.toleranceSeconds) {
+      return false;
+    }
+  }
 
   const expected = createHmac("sha256", webhookSecret)
     .update(`${parsed.timestamp}.${rawBody}`)

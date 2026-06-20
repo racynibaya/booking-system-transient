@@ -685,6 +685,18 @@ export type Database = {
           whsk: string;
         }[];
       };
+      gateway_get_connection_by_token: {
+        Args: { p_token: string };
+        Returns: {
+          provider: string;
+          sk: string;
+          status: string;
+          tenant_id: string;
+          webhook_id: string;
+          webhook_token: string;
+          whsk: string;
+        }[];
+      };
       gateway_store_connection: {
         Args: {
           p_sk: string;
