@@ -77,10 +77,12 @@ export function MobileBookingBar({
   rooms,
   propertyName,
   area,
+  acceptsOnlinePayment,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
+  acceptsOnlinePayment: boolean;
 }) {
   const { selectedRoomId } = useSelectedRoom();
   const [open, setOpen] = useState(false);
@@ -105,7 +107,12 @@ export function MobileBookingBar({
 
       {open && (
         <Drawer onClose={() => setOpen(false)}>
-          <BookingCard rooms={rooms} propertyName={propertyName} area={area} />
+          <BookingCard
+            rooms={rooms}
+            propertyName={propertyName}
+            area={area}
+            acceptsOnlinePayment={acceptsOnlinePayment}
+          />
         </Drawer>
       )}
     </div>

@@ -79,6 +79,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
           guest_phone: string | null;
@@ -97,6 +98,7 @@ export type Database = {
           check_out: string;
           created_at?: string;
           deposit_amount?: number | null;
+          gateway_checkout_url?: string | null;
           guest_email?: string | null;
           guest_name: string;
           guest_phone?: string | null;
@@ -115,6 +117,7 @@ export type Database = {
           check_out?: string;
           created_at?: string;
           deposit_amount?: number | null;
+          gateway_checkout_url?: string | null;
           guest_email?: string | null;
           guest_name?: string;
           guest_phone?: string | null;
@@ -677,6 +680,18 @@ export type Database = {
           provider: string;
           sk: string;
           status: string;
+          webhook_id: string;
+          webhook_token: string;
+          whsk: string;
+        }[];
+      };
+      gateway_get_connection_by_token: {
+        Args: { p_token: string };
+        Returns: {
+          provider: string;
+          sk: string;
+          status: string;
+          tenant_id: string;
           webhook_id: string;
           webhook_token: string;
           whsk: string;
