@@ -62,3 +62,13 @@ export async function getGatewayConnection(tenantId: string): Promise<GatewayCon
     status: row.status,
   };
 }
+
+// Delete a tenant's gateway connection AND its Vault secrets (M2 disconnect). Returns the old
+// webhook_id (or null) so the caller can best-effort remove the webhook on PayMongo. Resolves the
+// M1 "Vault orphan on disconnect" gap — the RPC drops the encrypted secrets, not just the row.
+export async function deleteGatewayConnection(tenantId: string): Promise<string | null> {
+  const admin = createServiceClient();
+  const { data, error } = await admin.rpc("gateway_delete_connection", { p_tenant_id: tenantId });
+  if (error) throw new Error(`deleteGatewayConnection failed: ${error.message}`);
+  return (data as string | null) ?? null;
+}

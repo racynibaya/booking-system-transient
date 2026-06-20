@@ -27,6 +27,12 @@ export const env = createEnv({
     // Phase 2b the operator's keys move to a per-tenant encrypted store, NOT env.
     PAYMONGO_SECRET_KEY: z.string().min(1).optional(),
     PAYMONGO_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // --- Public base URL (Phase 2b) --- the stable origin we register PayMongo webhooks against
+    // (https://SITE_URL/api/webhooks/paymongo/{token}). Unlike the per-request checkout return URL,
+    // a registered webhook URL is persisted at PayMongo, so it must NOT be derived from the request
+    // origin (which could be a preview deploy or localhost). Optional so the app boots without the
+    // gateway; the connect action errors gracefully when unset.
+    SITE_URL: z.url().optional(),
   },
   client: {
     // --- Supabase (public) --- new-format publishable key (sb_publishable_...)
@@ -41,6 +47,7 @@ export const env = createEnv({
     ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
     PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
     PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
+    SITE_URL: process.env.SITE_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   },
