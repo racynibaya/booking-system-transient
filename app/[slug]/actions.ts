@@ -1,7 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 
+import { env } from "@/env";
+import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 
@@ -116,6 +119,79 @@ async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymen
       ? admin.storage.from("property-images").getPublicUrl(m.qr_path).data.publicUrl
       : null,
   }));
+}
+
+// --- Gateway checkout (Phase 2a spike — PayMongo, Business tier) --------------------------
+//
+// The instant-confirmation alternative to GCash+proof: create a hosted PayMongo Checkout
+// Session for the booking's deposit and return its URL for the guest to pay on. Confirmation
+// happens out-of-band via the webhook (app/api/webhooks/paymongo) → confirm_booking_gateway —
+// the redirect back is best-effort UX, never the source of truth (architecture P10).
+//
+// SPIKE SCOPE: uses the single env sandbox key. Phase 2b looks up the operator's own connection
+// (tenants.plan='business' gate + per-tenant encrypted key) instead of env, and only this branch
+// changes. The booking hold, the metadata contract, and the webhook stay identical.
+export type GatewayCheckoutResult =
+  | { ok: true; checkoutUrl: string }
+  | { ok: false; error: string };
+
+export async function createGatewayCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
+  if (!z.uuid().safeParse(bookingId).success) {
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+  if (!env.PAYMONGO_SECRET_KEY) {
+    return { ok: false, error: "Online payment isn't available for this host yet." };
+  }
+
+  // Service-role: anon can't read bookings. The booking id is the guest's capability; we only
+  // start a checkout for a live hold awaiting payment.
+  const admin = createServiceClient();
+  const { data: booking } = await admin
+    .from("bookings")
+    .select(
+      "tenant_id, status, deposit_amount, guest_name, guest_email, property:properties(slug, name)",
+    )
+    .eq("id", bookingId)
+    .single();
+
+  if (!booking) return { ok: false, error: "We couldn't find that booking." };
+  if (booking.status !== "held") {
+    return { ok: false, error: "This booking is no longer awaiting payment." };
+  }
+  if (!booking.deposit_amount || booking.deposit_amount <= 0) {
+    return { ok: false, error: "This booking has no deposit to collect." };
+  }
+
+  const property = booking.property as { slug: string; name: string } | null;
+  const slug = property?.slug ?? "";
+
+  // Build absolute return URLs from the inbound request origin (no site-URL env needed for the
+  // spike). The webhook is the truth; ?b is only so the return page can show a friendly status.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = `${proto}://${host}`;
+
+  try {
+    const { checkoutUrl } = await createCheckoutSession({
+      secretKey: env.PAYMONGO_SECRET_KEY,
+      lineItems: [
+        {
+          name: `Deposit — ${property?.name ?? "booking"}`,
+          amount: toCentavos(Number(booking.deposit_amount)),
+          quantity: 1,
+        },
+      ],
+      description: `Booking deposit (${bookingId})`,
+      successUrl: `${origin}/${slug}/pay/return?b=${bookingId}`,
+      cancelUrl: `${origin}/${slug}`,
+      // The webhook maps the payment back to this booking/tenant via these.
+      metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
+    });
+    return { ok: true, checkoutUrl };
+  } catch {
+    return { ok: false, error: "Couldn't start the payment. Please try again." };
+  }
 }
 
 // --- Proof upload (F1.4) -----------------------------------------------------------------

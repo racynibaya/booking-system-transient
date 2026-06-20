@@ -538,6 +538,39 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      confirm_booking_gateway: {
+        Args: {
+          p_amount?: number;
+          p_booking_id: string;
+          p_provider: string;
+          p_provider_ref?: string;
+          p_raw_payload?: Json;
+        };
+        Returns: {
+          check_in: string;
+          check_out: string;
+          created_at: string;
+          deposit_amount: number | null;
+          guest_email: string | null;
+          guest_name: string;
+          guest_phone: string | null;
+          hold_expires_at: string | null;
+          id: string;
+          num_guests: number;
+          proof_url: string | null;
+          property_id: string;
+          room_type_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          tenant_id: string;
+          total_amount: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_booking_hold: {
         Args: {
           p_check_in: string;
