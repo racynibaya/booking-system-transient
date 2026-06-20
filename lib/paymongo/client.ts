@@ -81,3 +81,73 @@ export async function createCheckoutSession(
   };
   return { id: json.data.id, checkoutUrl: json.data.attributes.checkout_url };
 }
+
+// --- Webhook management (Phase 2b / M2) --------------------------------------------------
+//
+// The operator connect flow registers a webhook ON THE OPERATOR'S OWN PayMongo account so paid
+// checkouts route back to us. As everywhere in this module, the caller passes the operator's
+// secretKey; we never read env. The webhook's signing secret (whsk_) is returned by PayMongo ONLY
+// at creation time — that's the whole reason we auto-register instead of asking operators to copy it.
+
+const WEBHOOK_EVENTS = ["checkout_session.payment.paid"] as const;
+
+export type PaymongoWebhook = { id: string; url: string; status: string };
+
+// GET /v1/webhooks — lists the account's webhooks. Doubles as the key-validation call: an invalid
+// secret key returns 401, which we surface to the operator as "key not accepted".
+export async function listWebhooks(secretKey: string): Promise<PaymongoWebhook[]> {
+  const res = await fetch(`${API_BASE}/webhooks`, {
+    headers: { Authorization: basicAuth(secretKey) },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`PayMongo webhooks list ${res.status}: ${body}`);
+  }
+  const json = (await res.json()) as {
+    data: { id: string; attributes: { url: string; status: string } }[];
+  };
+  return (json.data ?? []).map((w) => ({
+    id: w.id,
+    url: w.attributes.url,
+    status: w.attributes.status,
+  }));
+}
+
+export type RegisterWebhookResult = { id: string; secretKey: string };
+
+// POST /v1/webhooks — registers our token-routed endpoint and returns the webhook id + its signing
+// secret (whsk_). The returned secretKey IS the whsk_ used to verify inbound events (M3).
+export async function registerWebhook(
+  secretKey: string,
+  url: string,
+): Promise<RegisterWebhookResult> {
+  const res = await fetch(`${API_BASE}/webhooks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: basicAuth(secretKey),
+    },
+    body: JSON.stringify({ data: { attributes: { url, events: WEBHOOK_EVENTS } } }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`PayMongo webhook create ${res.status}: ${body}`);
+  }
+  const json = (await res.json()) as {
+    data: { id: string; attributes: { secret_key: string } };
+  };
+  return { id: json.data.id, secretKey: json.data.attributes.secret_key };
+}
+
+// DELETE /v1/webhooks/{id} — remove a webhook (reconnect cleanup + disconnect). Best-effort: the
+// caller decides whether a failure here blocks the operation.
+export async function deleteWebhook(secretKey: string, webhookId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/webhooks/${webhookId}`, {
+    method: "DELETE",
+    headers: { Authorization: basicAuth(secretKey) },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`PayMongo webhook delete ${res.status}: ${body}`);
+  }
+}

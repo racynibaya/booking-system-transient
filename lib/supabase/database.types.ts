@@ -658,6 +658,19 @@ export type Database = {
         };
       };
       current_tenant_id: { Args: never; Returns: string };
+      gateway_connection_status: {
+        Args: never;
+        Returns: {
+          connected: boolean;
+          provider: string;
+          status: string;
+          updated_at: string;
+        }[];
+      };
+      gateway_delete_connection: {
+        Args: { p_tenant_id: string };
+        Returns: string;
+      };
       gateway_get_connection: {
         Args: { p_tenant_id: string };
         Returns: {
