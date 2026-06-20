@@ -43,8 +43,14 @@ const ACTIVE: Status[] = ["held", "awaiting_confirmation", "confirmed"];
 
 // The "arriving in…" pill: green while a guest is staying, amber when arriving within 2 days.
 function datePill(b: Booking, today: string): { label: string; cls: string } {
-  if (b.check_in <= today && b.check_out >= today)
-    return { label: "Staying now", cls: "bg-success-bg text-success" };
+  if (b.check_in <= today && b.check_out >= today) {
+    // Only a paid booking is genuinely "staying now". An unpaid hold (or awaiting-proof) whose
+    // dates merely overlap today must NOT look like a live, paid stay — show a neutral pill so the
+    // green is reserved for confirmed/completed guests. The status badge still reads "Held".
+    if (b.status === "confirmed" || b.status === "completed")
+      return { label: "Staying now", cls: "bg-success-bg text-success" };
+    return { label: "Dates active", cls: "bg-surface-strong text-body" };
+  }
   const d = daysFromToday(b.check_in);
   const label = relativeDay(b.check_in);
   if (d >= 0 && d <= 2) return { label, cls: "bg-warning-bg text-warning" };
