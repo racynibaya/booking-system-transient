@@ -6,7 +6,12 @@ import { Check, ChevronDown, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
-import { createPublicBooking, submitProof, type PublicPaymentMethod } from "@/app/[slug]/actions";
+import {
+  createGatewayCheckout,
+  createPublicBooking,
+  submitProof,
+  type PublicPaymentMethod,
+} from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
@@ -36,10 +41,12 @@ export function BookingCard({
   rooms,
   propertyName,
   area,
+  acceptsOnlinePayment,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
+  acceptsOnlinePayment: boolean;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
   const [range, setRange] = useState<DateRange | undefined>();
@@ -60,6 +67,7 @@ export function BookingCard({
   const [deposit, setDeposit] = useState<number | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [payingOnline, setPayingOnline] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   const room = useMemo(() => rooms.find((r) => r.id === roomId), [rooms, roomId]);
@@ -148,6 +156,22 @@ export function BookingCard({
     } else setError(res.error);
   }
 
+  // Online deposit: hand off to the host's hosted PayMongo page. The webhook confirms the booking;
+  // the guest comes back to /{slug}/pay/return. We don't flip step here — the redirect leaves the
+  // page, and the beforeunload guard is fine to ignore since the hold is being paid, not abandoned.
+  async function payOnline() {
+    if (!bookingId) return;
+    setError(null);
+    setPayingOnline(true);
+    const res = await createGatewayCheckout(bookingId);
+    if (res.ok) {
+      window.location.href = res.checkoutUrl;
+    } else {
+      setPayingOnline(false);
+      setError(res.error);
+    }
+  }
+
   async function sendProof() {
     if (!bookingId || !proofFile) return;
     setError(null);
@@ -205,6 +229,23 @@ export function BookingCard({
               Keep this tab open — if you refresh or leave, you&apos;ll lose your held spot.
             </span>
           </p>
+        )}
+
+        {acceptsOnlinePayment && (
+          <div className="mt-4 flex flex-col gap-2">
+            <button type="button" disabled={payingOnline} onClick={payOnline} className={ctaClass}>
+              {payingOnline ? "Opening secure checkout…" : `Pay ₱${deposit ?? "—"} online`}
+            </button>
+            <p className="text-center text-caption text-muted">
+              Instant confirmation — pay on a secure PayMongo page and your booking is confirmed the
+              moment it goes through.
+            </p>
+            <div className="mt-2 flex items-center gap-3 text-caption-sm text-muted-soft">
+              <span className="h-px flex-1 bg-hairline" />
+              or send it manually
+              <span className="h-px flex-1 bg-hairline" />
+            </div>
+          </div>
         )}
 
         <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">

@@ -29,6 +29,7 @@ type Listing = {
     check_out_time: string | null;
     cover_image_path: string | null;
   };
+  accepts_online_payment: boolean;
   room_types: PublicRoom[];
 };
 
@@ -209,6 +210,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
                 rooms={listing.room_types}
                 propertyName={property.name}
                 area={property.area}
+                acceptsOnlinePayment={listing.accepts_online_payment}
               />
               {/* Fills the sidebar gap below the booking card on desktop. */}
               <div className="mt-4 hidden lg:block">
@@ -287,6 +289,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
           rooms={listing.room_types}
           propertyName={property.name}
           area={property.area}
+          acceptsOnlinePayment={listing.accepts_online_payment}
         />
       </main>
     </SelectedRoomProvider>
