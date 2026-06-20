@@ -337,6 +337,53 @@ export type Database = {
           },
         ];
       };
+      tenant_gateway_connections: {
+        Row: {
+          created_at: string;
+          id: string;
+          provider: string;
+          sk_secret_id: string;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+          webhook_id: string | null;
+          webhook_token: string;
+          whsk_secret_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          provider?: string;
+          sk_secret_id: string;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+          webhook_id?: string | null;
+          webhook_token: string;
+          whsk_secret_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          provider?: string;
+          sk_secret_id?: string;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          webhook_id?: string | null;
+          webhook_token?: string;
+          whsk_secret_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_gateway_connections_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenant_payment_methods: {
         Row: {
           account_name: string | null;
@@ -394,6 +441,7 @@ export type Database = {
           id: string;
           is_admin: boolean;
           name: string | null;
+          plan: Database["public"]["Enums"]["tenant_plan"];
           subscription_status: string;
           user_id: string;
           verification_note: string | null;
@@ -408,6 +456,7 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
+          plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
           user_id: string;
           verification_note?: string | null;
@@ -422,6 +471,7 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
+          plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
           user_id?: string;
           verification_note?: string | null;
@@ -608,6 +658,44 @@ export type Database = {
         };
       };
       current_tenant_id: { Args: never; Returns: string };
+      gateway_get_connection: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          provider: string;
+          sk: string;
+          status: string;
+          webhook_id: string;
+          webhook_token: string;
+          whsk: string;
+        }[];
+      };
+      gateway_store_connection: {
+        Args: {
+          p_sk: string;
+          p_tenant_id: string;
+          p_webhook_id?: string;
+          p_webhook_token: string;
+          p_whsk: string;
+        };
+        Returns: {
+          created_at: string;
+          id: string;
+          provider: string;
+          sk_secret_id: string;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+          webhook_id: string | null;
+          webhook_token: string;
+          whsk_secret_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "tenant_gateway_connections";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
       resubmit_verification: { Args: never; Returns: undefined };
@@ -659,6 +747,7 @@ export type Database = {
         | "no_show";
       payment_kind: "deposit" | "balance";
       payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
+      tenant_plan: "free" | "business";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
     CompositeTypes: {
@@ -800,6 +889,7 @@ export const Constants = {
       ],
       payment_kind: ["deposit", "balance"],
       payment_method_type: ["gcash", "maya", "bank", "grabpay"],
+      tenant_plan: ["free", "business"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },
   },
