@@ -1,12 +1,13 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarRange } from "lucide-react";
-import { type ComponentProps } from "react";
+import { CalendarRange, Receipt, X } from "lucide-react";
+import { useEffect, useState, type ComponentProps } from "react";
 
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { ConfirmBookingButton } from "@/components/bookings/confirm-booking-button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { STATUS_LABELS } from "@/lib/bookings";
@@ -69,6 +70,15 @@ export function BookingsTable({
   hasAnyBookings: boolean;
 }) {
   const today = todayStr();
+  // The proof receipt to show enlarged, in-app (so the operator never leaves the board to check it).
+  const [proof, setProof] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!proof) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setProof(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [proof]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -124,6 +134,24 @@ export function BookingsTable({
                   </span>
                   {ACTIVE.includes(b.status) && (
                     <div className="flex gap-2">
+                      {b.status === "awaiting_confirmation" && b.proofUrl && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          aria-label="View payment proof"
+                          title="View payment proof"
+                          onClick={() => setProof(b.proofUrl)}
+                          className="relative"
+                        >
+                          <Receipt className="size-4" />
+                          {/* A gentle pulsing "beep" dot draws the eye to the unreviewed proof. */}
+                          <span className="pointer-events-none absolute -top-1.5 -right-1.5 flex size-3">
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-warm opacity-75" />
+                            <span className="relative inline-flex size-3 rounded-full border-2 border-canvas bg-accent-warm" />
+                          </span>
+                        </Button>
+                      )}
                       {b.status === "awaiting_confirmation" && (
                         <ConfirmBookingButton bookingId={b.id} guestName={b.guest_name} />
                       )}
@@ -134,6 +162,32 @@ export function BookingsTable({
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {proof && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment proof"
+          onClick={() => setProof(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => setProof(null)}
+            aria-label="Close"
+            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-canvas/90 text-ink transition-colors hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <X className="size-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed proof URL */}
+          <img
+            src={proof}
+            alt="Payment proof"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[85vh] max-w-[90vw] rounded-md border border-hairline object-contain shadow-card"
+          />
         </div>
       )}
     </div>
