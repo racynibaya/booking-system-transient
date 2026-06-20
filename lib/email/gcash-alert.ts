@@ -11,11 +11,11 @@ function escapeHtml(s: string): string {
   );
 }
 
-// Email admins when a live (approved) operator changes their GCash payout, so they can re-verify
+// Email admins when a live (approved) operator changes a payout method, so they can re-verify
 // within the 3-day grace window before the public gate auto-pauses the listing. Best-effort; never
 // throws (mirrors sendEmail). Recipients come from a service-role RPC so operator sessions can't
 // enumerate admin emails.
-export async function notifyAdminsGcashChanged(opts: {
+export async function notifyAdminsPayoutChanged(opts: {
   operatorName: string | null;
   operatorEmail: string | null;
 }): Promise<void> {
@@ -36,14 +36,14 @@ export async function notifyAdminsGcashChanged(opts: {
     if (recipients.length === 0) return;
 
     const who = opts.operatorName ?? opts.operatorEmail ?? "An operator";
-    const subject = `GCash changed: ${who} — review within 3 days`;
+    const subject = `Payout changed: ${who} — review within 3 days`;
     const html = `
       <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#222;line-height:1.6">
         <p><strong>${escapeHtml(who)}</strong>${
           opts.operatorEmail ? ` (${escapeHtml(opts.operatorEmail)})` : ""
-        } just changed their GCash payout details on Tuloy.</p>
+        } just changed a payout method on Tuloy.</p>
         <p>Their booking page stays live for <strong>3 days</strong>, then pauses until you confirm
-        the new GCash name matches their ID.</p>
+        the payout account name matches their ID.</p>
         <p><a href="https://tuloy.racynibaya.com/admin/operators" style="color:#ff385c">Review in Admin → Operators</a></p>
       </div>`;
     await Promise.all(recipients.map((to) => sendEmail({ to, subject, html })));

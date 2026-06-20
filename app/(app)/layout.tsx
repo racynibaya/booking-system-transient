@@ -106,13 +106,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span>
               {gcashPaused ? (
                 <>
-                  Your booking page is paused — your GCash change needs verification. It resumes
-                  once we confirm the GCash name matches your ID.
+                  Your booking page is paused — your payout change needs verification. It resumes
+                  once we confirm the account name matches your ID.
                 </>
               ) : (
                 <>
-                  You changed your GCash, so we&rsquo;re re-verifying it. Your page stays live for 3
-                  days — make sure the GCash name matches your ID, or it pauses until we confirm.
+                  You changed a payout method, so we&rsquo;re re-verifying it. Your page stays live
+                  for 3 days — make sure the account name matches your ID, or it pauses until we
+                  confirm.
                 </>
               )}
             </span>

@@ -337,6 +337,53 @@ export type Database = {
           },
         ];
       };
+      tenant_payment_methods: {
+        Row: {
+          account_name: string | null;
+          account_number: string | null;
+          bank_name: string | null;
+          created_at: string;
+          id: string;
+          qr_path: string | null;
+          sort_order: number;
+          tenant_id: string;
+          type: Database["public"]["Enums"]["payment_method_type"];
+          updated_at: string;
+        };
+        Insert: {
+          account_name?: string | null;
+          account_number?: string | null;
+          bank_name?: string | null;
+          created_at?: string;
+          id?: string;
+          qr_path?: string | null;
+          sort_order?: number;
+          tenant_id: string;
+          type: Database["public"]["Enums"]["payment_method_type"];
+          updated_at?: string;
+        };
+        Update: {
+          account_name?: string | null;
+          account_number?: string | null;
+          bank_name?: string | null;
+          created_at?: string;
+          id?: string;
+          qr_path?: string | null;
+          sort_order?: number;
+          tenant_id?: string;
+          type?: Database["public"]["Enums"]["payment_method_type"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_payment_methods_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           created_at: string;
@@ -426,9 +473,8 @@ export type Database = {
           created_at: string;
           email: string;
           gcash_changed_at: string;
-          gcash_name: string;
-          gcash_number: string;
           name: string;
+          payment_methods: Json;
           tenant_id: string;
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
@@ -579,6 +625,7 @@ export type Database = {
         | "completed"
         | "no_show";
       payment_kind: "deposit" | "balance";
+      payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
     CompositeTypes: {
@@ -719,6 +766,7 @@ export const Constants = {
         "no_show",
       ],
       payment_kind: ["deposit", "balance"],
+      payment_method_type: ["gcash", "maya", "bank", "grabpay"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },
   },
