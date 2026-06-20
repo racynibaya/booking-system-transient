@@ -9,7 +9,7 @@ import { useSelectedRoom } from "@/components/public/selected-room-context";
 
 // Compact brand CTA for the sticky bar (the booking card's full-width gradient CTA, sized down).
 const reserveBtn =
-  "shrink-0 rounded-full bg-linear-to-r from-sunset-1 via-sunset-2 to-sunset-3 px-6 py-3 text-button-md text-on-primary shadow-[0_12px_30px_-12px_rgba(255,56,92,0.55)] transition-[transform,opacity] hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99]";
+  "shrink-0 rounded-full bg-linear-to-r from-sunset-1 via-sunset-2 to-sunset-3 px-6 py-3 text-button-md text-on-primary shadow-[0_12px_30px_-12px_rgba(31,111,120,0.5)] transition-[transform,opacity] hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99]";
 
 // Slide-up bottom sheet. Mirrors the portaled overlay in amenities-section.tsx / confirm-dialog.tsx
 // (scrim, Escape / backdrop close, body-scroll lock, rAF-driven entrance) but animates on the

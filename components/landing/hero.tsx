@@ -101,7 +101,9 @@ export function Hero() {
           Built for San Juan, La Union
         </span>
 
-        <h1 className="text-hero text-balance text-ink">Take bookings even while you sleep</h1>
+        <h1 className="font-display text-hero text-balance text-ink">
+          Take bookings even while you sleep
+        </h1>
 
         <p className="mt-6 max-w-xl text-body-md text-body">
           Tuloy turns your Facebook page into a live, bookable calendar — guests reserve and pay a

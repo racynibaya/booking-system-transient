@@ -1,14 +1,18 @@
 "use client";
 
+import { BedDouble, ChevronDown } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { createRoomType, deleteRoomType, updateRoomType } from "@/app/(app)/properties/actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { createClient } from "@/lib/supabase/client";
 
 import { RoomPhotosUploader } from "./room-photos-uploader";
 import { RoomTypeForm } from "./room-type-form";
+
+const BUCKET = "property-images";
 
 type Room = {
   id: string;
@@ -29,10 +33,14 @@ export function RoomTypesSection({
   tenantId: string;
   roomTypes: Room[];
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const supabase = createClient();
+  const urlFor = (path: string) => supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 
   return (
     <section className="flex flex-col gap-4">
@@ -50,59 +58,98 @@ export function RoomTypesSection({
       )}
 
       <div className="flex flex-col gap-3">
-        {roomTypes.map((rt) =>
-          editingId === rt.id ? (
-            <RoomTypeForm
-              key={rt.id}
-              defaultValues={{
-                name: rt.name,
-                capacity: rt.capacity,
-                quantity: rt.quantity,
-                base_price: rt.base_price,
-                description: rt.description ?? "",
-              }}
-              submitLabel="Save"
-              onCancel={() => setEditingId(null)}
-              onSubmit={async (values) => {
-                const res = await updateRoomType(rt.id, propertyId, values);
-                if (res.ok) {
-                  setEditingId(null);
-                  toast.success("Room type updated");
-                }
-                return res;
-              }}
-            />
-          ) : (
-            <div key={rt.id} className="flex flex-col gap-4 rounded-md border border-hairline p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-title-md text-ink">{rt.name}</p>
-                  <p className="text-body-sm text-muted">
+        {roomTypes.map((rt) => {
+          if (editingId === rt.id) {
+            return (
+              <RoomTypeForm
+                key={rt.id}
+                defaultValues={{
+                  name: rt.name,
+                  capacity: rt.capacity,
+                  quantity: rt.quantity,
+                  base_price: rt.base_price,
+                  description: rt.description ?? "",
+                }}
+                submitLabel="Save"
+                onCancel={() => setEditingId(null)}
+                onSubmit={async (values) => {
+                  const res = await updateRoomType(rt.id, propertyId, values);
+                  if (res.ok) {
+                    setEditingId(null);
+                    setExpandedId(null);
+                    toast.success("Room type updated");
+                  }
+                  return res;
+                }}
+              />
+            );
+          }
+
+          const open = expandedId === rt.id;
+          const photos = rt.photos ?? [];
+          const cover = photos[0];
+
+          return (
+            <div key={rt.id} className="rounded-md border border-hairline">
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setExpandedId(open ? null : rt.id)}
+                className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-surface-soft"
+              >
+                {cover ? (
+                  <span className="size-10 shrink-0 overflow-hidden rounded-md border border-hairline bg-surface-soft">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={urlFor(cover)} alt="" className="size-full object-cover" />
+                  </span>
+                ) : (
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-strong text-muted">
+                    <BedDouble className="size-5" />
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-title-md text-ink">{rt.name}</p>
+                  <p className="mt-0.5 truncate text-body-sm text-muted">
                     {rt.capacity} guests · {rt.quantity} unit{rt.quantity > 1 ? "s" : ""} · ₱
                     {rt.base_price}
                   </p>
+                  <p className="mt-1 truncate text-caption-sm text-muted-soft">
+                    {photos.length === 0
+                      ? "No photos yet"
+                      : `${photos.length} photo${photos.length > 1 ? "s" : ""}`}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingId(rt.id)}>
-                    Edit
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setDeletingId(rt.id)}>
-                    Delete
-                  </Button>
-                </div>
-              </div>
-              <div className="border-t border-hairline pt-3">
-                <p className="mb-2 text-caption text-muted">Photos</p>
-                <RoomPhotosUploader
-                  roomTypeId={rt.id}
-                  propertyId={propertyId}
-                  tenantId={tenantId}
-                  currentPhotos={rt.photos ?? []}
+                <ChevronDown
+                  className={`size-5 shrink-0 text-muted-soft transition-transform ${
+                    open ? "rotate-180" : ""
+                  }`}
                 />
-              </div>
+              </button>
+
+              {open && (
+                <div className="flex flex-col gap-4 border-t border-hairline p-4">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(rt.id)}>
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setDeletingId(rt.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                  <div className="border-t border-hairline pt-3">
+                    <p className="mb-2 text-caption text-muted">Photos</p>
+                    <RoomPhotosUploader
+                      roomTypeId={rt.id}
+                      propertyId={propertyId}
+                      tenantId={tenantId}
+                      currentPhotos={photos}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          ),
-        )}
+          );
+        })}
       </div>
 
       {adding && (

@@ -2,13 +2,14 @@
 
 import { format } from "date-fns";
 import { CalendarRange } from "lucide-react";
-import { useMemo, useState, type ComponentProps } from "react";
+import { type ComponentProps } from "react";
 
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { ConfirmBookingButton } from "@/components/bookings/confirm-booking-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { STATUS_LABELS } from "@/lib/bookings";
 import { daysFromToday, fromDateStr, relativeDay, todayStr } from "@/lib/dates";
 import type { getBookings } from "@/lib/supabase/dal";
 import type { Database } from "@/lib/supabase/database.types";
@@ -24,35 +25,21 @@ function peso(amount: number | null) {
   return amount == null ? "—" : `₱${amount.toLocaleString("en-PH")}`;
 }
 
-// Status → label + semantic badge tone (amber = needs action, green = confirmed, red = dead).
-const STATUS_META: Record<Status, { label: string; tone: ComponentProps<typeof Badge>["tone"] }> = {
-  pending: { label: "Pending", tone: "muted" },
-  held: { label: "Held", tone: "neutral" },
-  awaiting_confirmation: { label: "Awaiting", tone: "warning" },
-  confirmed: { label: "Confirmed", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "danger" },
-  expired: { label: "Expired", tone: "muted" },
-  completed: { label: "Completed", tone: "neutral" },
-  no_show: { label: "No-show", tone: "danger" },
+// Status → semantic badge tone (amber = needs action, green = confirmed, red = dead).
+// Labels are shared with the filter bar via STATUS_LABELS (lib/bookings).
+const STATUS_TONE: Record<Status, ComponentProps<typeof Badge>["tone"]> = {
+  pending: "muted",
+  held: "neutral",
+  awaiting_confirmation: "warning",
+  confirmed: "success",
+  cancelled: "danger",
+  expired: "muted",
+  completed: "neutral",
+  no_show: "danger",
 };
 
 // Statuses an operator can still act on (Confirm/Cancel). Terminal ones show no actions.
 const ACTIVE: Status[] = ["held", "awaiting_confirmation", "confirmed"];
-const isLive = (s: Status) => s === "held" || s === "awaiting_confirmation" || s === "confirmed";
-
-type Chip = "upcoming" | "soon" | "action" | "past";
-const CHIPS: { key: Chip; label: string }[] = [
-  { key: "upcoming", label: "All upcoming" },
-  { key: "soon", label: "Arriving soon" },
-  { key: "action", label: "Needs action" },
-  { key: "past", label: "Past" },
-];
-const EMPTY_MSG: Record<Chip, string> = {
-  upcoming: "No upcoming bookings.",
-  soon: "Nothing arriving in the next 7 days.",
-  action: "Nothing needs your action right now. 🎉",
-  past: "No past bookings yet.",
-};
 
 // The "arriving in…" pill: green while a guest is staying, amber when arriving within 2 days.
 function datePill(b: Booking, today: string): { label: string; cls: string } {
@@ -64,97 +51,34 @@ function datePill(b: Booking, today: string): { label: string; cls: string } {
   return { label, cls: "bg-surface-strong text-body" };
 }
 
-// F2.1 bookings board — the operator's daily driver. Soonest check-in first, quick-chip filters
-// (so "who's arriving next" is the default view, not a wall of rows), responsive cards instead of
-// a wide table. Inline Confirm/Cancel; inventory effects handled server-side by the status write.
-export function BookingsTable({ bookings }: { bookings: Booking[] }) {
-  const [chip, setChip] = useState<Chip>("upcoming");
+// F2.1 bookings board — the operator's daily driver. Presentational: it renders the rows
+// the page has already filtered + sorted server-side (see BookingsFilters / lib/bookings).
+// Responsive cards instead of a wide table; inline Confirm/Cancel, with inventory effects
+// handled server-side by the status write.
+export function BookingsTable({
+  bookings,
+  hasAnyBookings,
+}: {
+  bookings: Booking[];
+  hasAnyBookings: boolean;
+}) {
   const today = todayStr();
-
-  const tagged = useMemo(
-    () => bookings.map((b) => ({ b, upcoming: isLive(b.status) && b.check_out >= today })),
-    [bookings, today],
-  );
-
-  const counts = useMemo<Record<Chip, number>>(
-    () => ({
-      upcoming: tagged.filter((t) => t.upcoming).length,
-      soon: tagged.filter((t) => t.upcoming && daysFromToday(t.b.check_in) <= 7).length,
-      action: tagged.filter((t) => t.b.status === "awaiting_confirmation" || t.b.status === "held")
-        .length,
-      past: tagged.filter((t) => !t.upcoming).length,
-    }),
-    [tagged],
-  );
-
-  const rows = useMemo(() => {
-    const list = tagged.filter((t) => {
-      if (chip === "upcoming") return t.upcoming;
-      if (chip === "soon") return t.upcoming && daysFromToday(t.b.check_in) <= 7;
-      if (chip === "action") return t.b.status === "awaiting_confirmation" || t.b.status === "held";
-      return !t.upcoming; // past
-    });
-    list.sort((a, b) => {
-      if (chip === "past") return b.b.check_in.localeCompare(a.b.check_in); // most recent first
-      if (chip === "action") {
-        const rank = (s: Status) => (s === "awaiting_confirmation" ? 0 : 1);
-        return rank(a.b.status) - rank(b.b.status) || a.b.check_in.localeCompare(b.b.check_in);
-      }
-      return a.b.check_in.localeCompare(b.b.check_in); // soonest first
-    });
-    return list.map((t) => t.b);
-  }, [tagged, chip]);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Quick filters — "Needs action" goes amber when there's something to do */}
-      <div className="flex flex-wrap gap-2">
-        {CHIPS.map((c) => {
-          const active = chip === c.key;
-          const n = counts[c.key];
-          const flag = c.key === "action" && n > 0;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setChip(c.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-body-sm transition-colors focus-visible:outline-none ${
-                active
-                  ? "bg-ink text-canvas"
-                  : flag
-                    ? "bg-warning-bg text-warning hover:opacity-90"
-                    : "border border-hairline bg-canvas text-muted hover:text-ink"
-              }`}
-            >
-              {c.label}
-              {n > 0 && (
-                <span
-                  className={`rounded-full px-1.5 text-caption-sm ${
-                    active ? "bg-canvas/20" : flag ? "bg-warning/20" : "bg-surface-strong text-body"
-                  }`}
-                >
-                  {n}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {rows.length === 0 ? (
+      {bookings.length === 0 ? (
         <EmptyState
           icon={CalendarRange}
-          title={bookings.length === 0 ? "No bookings yet" : "Nothing here"}
+          title={hasAnyBookings ? "No matching bookings" : "No bookings yet"}
           description={
-            bookings.length === 0
-              ? "When a guest books — or you log a walk-in — it'll show up here."
-              : EMPTY_MSG[chip]
+            hasAnyBookings
+              ? "No bookings match these filters. Try clearing some."
+              : "When a guest books — or you log a walk-in — it'll show up here."
           }
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {rows.map((b) => {
-            const meta = STATUS_META[b.status];
+          {bookings.map((b) => {
             const contact = b.guest_phone ?? b.guest_email;
             const pill = datePill(b, today);
             return (
@@ -166,7 +90,7 @@ export function BookingsTable({ bookings }: { bookings: Booking[] }) {
                       <p className="mt-0.5 truncate text-caption-sm text-muted">{contact}</p>
                     )}
                   </div>
-                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                  <Badge tone={STATUS_TONE[b.status]}>{STATUS_LABELS[b.status]}</Badge>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
