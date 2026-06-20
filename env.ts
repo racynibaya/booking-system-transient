@@ -21,9 +21,12 @@ export const env = createEnv({
     // --- Admin alerts --- where operator-change notifications go (e.g. a GCash change).
     // Comma-separated for multiple. If unset, alerts fall back to is_admin operators.
     ADMIN_ALERT_EMAIL: z.string().min(1).optional(),
-    // --- PayMongo ---
-    // PAYMONGO_SECRET_KEY: z.string().min(1),
-    // PAYMONGO_WEBHOOK_SECRET: z.string().min(1),
+    // --- PayMongo (Phase 2a spike) --- operator-as-merchant gateway. Optional so the app
+    // boots without them (dev/CI/non-gateway prod). The checkout action + webhook handler
+    // fail gracefully when unset. SPIKE NOTE: these are a SINGLE sandbox account's keys; in
+    // Phase 2b the operator's keys move to a per-tenant encrypted store, NOT env.
+    PAYMONGO_SECRET_KEY: z.string().min(1).optional(),
+    PAYMONGO_WEBHOOK_SECRET: z.string().min(1).optional(),
   },
   client: {
     // --- Supabase (public) --- new-format publishable key (sb_publishable_...)
@@ -36,8 +39,8 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
     ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
-    // PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
-    // PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
+    PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
+    PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   },

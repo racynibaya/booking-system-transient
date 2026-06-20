@@ -1,0 +1,99 @@
+{
+  "data": {
+    "id": "evt_n5d8iDxJKF7Nz8Pd6qjNZQ6V",
+    "type": "event",
+    "attributes": {
+      "data": {
+        "id": "cs_140b08a1ea641ddcc5d29b58",
+        "type": "checkout_session",
+        "attributes": {
+          "status": "active",
+          "billing": {
+            "name": null,
+            "email": null,
+            "phone": null,
+            "address": {
+              "city": null,
+              "line1": null,
+              "line2": null,
+              "state": null,
+              "country": null,
+              "postal_code": null
+            }
+          },
+          "paid_at": null,
+          "livemode": false,
+          "merchant": "TEST MERCHANT",
+          "metadata": {
+            "tenant_id": "6fe52349-0be9-4261-9e8c-483ce2a0ae23",
+            "booking_id": "5406d81c-8c02-4064-8a45-69e7c891587f"
+          },
+          "payments": [],
+          "cancel_url": "http://localhost:3000/spike/cancel",
+          "client_key": "ck_test_REDACTED",
+          "created_at": 1781974738,
+          "line_items": [
+            {
+              "name": "Deposit — Spike Test Inn",
+              "amount": 225000,
+              "images": [],
+              "currency": "PHP",
+              "quantity": 1,
+              "description": null
+            }
+          ],
+          "updated_at": 1781974738,
+          "customer_id": null,
+          "description": "Booking deposit (5406d81c-8c02-4064-8a45-69e7c891587f)",
+          "success_url": "http://localhost:3000/spike/return",
+          "checkout_url": "https://checkout.paymongo.com/140b08a1ea641ddcc5d29b58",
+          "customer_email": null,
+          "payment_intent": {
+            "id": "pi_gnSsXmrExLZcd2SBknJw7CWn",
+            "type": "payment_intent",
+            "attributes": {
+              "amount": 225000,
+              "status": "processing",
+              "currency": "PHP",
+              "livemode": false,
+              "metadata": {
+                "tenant_id": "6fe52349-0be9-4261-9e8c-483ce2a0ae23",
+                "booking_id": "5406d81c-8c02-4064-8a45-69e7c891587f"
+              },
+              "payments": [],
+              "client_key": "pi_test_REDACTED",
+              "created_at": 1781974738,
+              "updated_at": 1781974834,
+              "description": "Booking deposit (5406d81c-8c02-4064-8a45-69e7c891587f)",
+              "next_action": null,
+              "capture_type": "automatic",
+              "original_amount": 225000,
+              "last_payment_error": null,
+              "setup_future_usage": null,
+              "statement_descriptor": "RACYN MUNDINA IBAYA",
+              "payment_method_allowed": ["gcash", "card"],
+              "payment_method_options": {
+                "card": {
+                  "request_three_d_secure": "any"
+                }
+              }
+            }
+          },
+          "show_line_items": true,
+          "reference_number": null,
+          "show_description": true,
+          "send_email_receipt": false,
+          "payment_method_used": null,
+          "payment_method_types": ["gcash", "card"],
+          "billing_information_fields_editable": "enabled"
+        }
+      },
+      "type": "checkout_session.payment.paid",
+      "livemode": false,
+      "created_at": null,
+      "updated_at": null,
+      "previous_data": {},
+      "pending_webhooks": 1
+    }
+  }
+}
