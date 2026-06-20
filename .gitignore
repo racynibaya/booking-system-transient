@@ -38,6 +38,7 @@ skills-lock.json
 /context/
 yarn-error.log*
 .pnpm-debug.log*
+AGENTS.md
 
 # env files (can opt-in for committing if needed)
 .env*
