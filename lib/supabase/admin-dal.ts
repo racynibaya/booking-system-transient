@@ -50,6 +50,13 @@ export const getPlatformStats = cache(async (): Promise<AdminPlatformStats | nul
   return data as unknown as AdminPlatformStats;
 });
 
+export type AdminPaymentMethod = {
+  type: "gcash" | "maya" | "bank" | "grabpay";
+  account_name: string | null;
+  account_number: string | null;
+  bank_name: string | null;
+};
+
 export type AdminOperatorRow = {
   tenant_id: string;
   name: string | null;
@@ -57,8 +64,7 @@ export type AdminOperatorRow = {
   verification_status: "pending" | "approved" | "suspended" | "changes_requested";
   verification_note: string | null;
   gcash_changed_at: string | null;
-  gcash_name: string | null;
-  gcash_number: string | null;
+  payment_methods: AdminPaymentMethod[];
   created_at: string;
 };
 

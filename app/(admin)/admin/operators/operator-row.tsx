@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { isOlderThanHours } from "@/lib/dates";
+import { PAYMENT_METHOD_LABELS } from "@/lib/validation";
 
 import { getOperatorDocs, requestChanges, setVerification, type OperatorDoc } from "../actions";
 
@@ -18,8 +19,12 @@ export type AdminOperator = {
   verification_status: "pending" | "approved" | "suspended" | "changes_requested";
   verification_note: string | null;
   gcash_changed_at: string | null;
-  gcash_name: string | null;
-  gcash_number: string | null;
+  payment_methods: {
+    type: "gcash" | "maya" | "bank" | "grabpay";
+    account_name: string | null;
+    account_number: string | null;
+    bank_name: string | null;
+  }[];
   created_at: string;
 };
 
@@ -114,10 +119,19 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             <Badge tone={s.tone}>{s.label}</Badge>
           </div>
           <p className="text-body-sm text-muted">{op.email}</p>
-          <p className="mt-1 text-caption text-muted">
-            GCash: {op.gcash_name ?? "—"}
-            {op.gcash_number ? ` · ${op.gcash_number}` : ""}
-          </p>
+          {op.payment_methods.length === 0 ? (
+            <p className="mt-1 text-caption text-muted">No payout method</p>
+          ) : (
+            <div className="mt-1 flex flex-col gap-0.5">
+              {op.payment_methods.map((m, i) => (
+                <p key={i} className="text-caption text-muted">
+                  {PAYMENT_METHOD_LABELS[m.type]}: {m.account_name ?? "—"}
+                  {m.account_number ? ` · ${m.account_number}` : ""}
+                  {m.bank_name ? ` (${m.bank_name})` : ""}
+                </p>
+              ))}
+            </div>
+          )}
           {gcashFlagged && (
             <p className="mt-1 flex items-start gap-1.5 text-caption text-error">
               <Info className="mt-0.5 size-3.5 shrink-0" />

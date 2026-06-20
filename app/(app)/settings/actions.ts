@@ -2,76 +2,76 @@
 
 import { revalidatePath } from "next/cache";
 
-import { notifyAdminsGcashChanged } from "@/lib/email/gcash-alert";
-import { requireUser } from "@/lib/supabase/dal";
+import { notifyAdminsPayoutChanged } from "@/lib/email/gcash-alert";
+import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 import { createClient } from "@/lib/supabase/server";
-import { gcashInput, type GcashInput } from "@/lib/validation";
+import { paymentMethodInput, type PaymentMethodInput } from "@/lib/validation";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-// Persist the operator's GCash payout name/number on their tenant row. RLS
-// (tenants_update_own) scopes the update to the caller's own row.
-export async function updateGcash(input: GcashInput): Promise<ActionResult> {
-  const parsed = gcashInput.safeParse(input);
-  if (!parsed.success)
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-
-  const user = await requireUser();
-  const supabase = await createClient();
-  const { gcash_name, gcash_number } = parsed.data;
-
-  const { data: before } = await supabase
-    .from("tenants")
-    .select("gcash_name, gcash_number, verification_status, name")
-    .eq("user_id", user.id)
-    .single();
-
-  const { error } = await supabase
-    .from("tenants")
-    .update({ gcash_name: gcash_name || null, gcash_number: gcash_number || null })
-    .eq("user_id", user.id);
-  if (error) return { ok: false, error: error.message };
-
-  // A live operator changing their payout starts the 3-day re-verify window — alert admins.
-  if (
-    before?.verification_status === "approved" &&
-    (before.gcash_name !== (gcash_name || null) || before.gcash_number !== (gcash_number || null))
-  ) {
-    await notifyAdminsGcashChanged({
-      operatorName: before.name,
+// A live (approved) operator changing any payout method starts the 3-day re-verify window (the DB
+// trigger stamps tenants.gcash_changed_at); email admins so they can re-check the account vs the ID.
+async function alertIfApproved() {
+  const [user, tenant] = await Promise.all([requireUser(), getCurrentTenant()]);
+  if (tenant?.verification_status === "approved") {
+    await notifyAdminsPayoutChanged({
+      operatorName: tenant.name,
       operatorEmail: user.email ?? null,
     });
   }
+}
 
+// Create or update one payout method (operator-as-merchant: display + proof). RLS scopes inserts
+// (with-check tenant_id) and updates (own rows) to the caller's tenant.
+export async function upsertPaymentMethod(input: PaymentMethodInput): Promise<ActionResult> {
+  const parsed = paymentMethodInput.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "No operator account found." };
+  const supabase = await createClient();
+  const { id, type, account_name, account_number, bank_name } = parsed.data;
+
+  const row = {
+    type,
+    account_name: account_name || null,
+    account_number: account_number || null,
+    bank_name: type === "bank" ? bank_name || null : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = id
+    ? await supabase.from("tenant_payment_methods").update(row).eq("id", id)
+    : await supabase.from("tenant_payment_methods").insert({ ...row, tenant_id: tenant.id });
+  if (error) return { ok: false, error: error.message };
+
+  await alertIfApproved();
   revalidatePath("/settings");
   return { ok: true };
 }
 
-// The QR upload itself happens browser-side (storage RLS scopes the path to the
-// operator's tenant); this only persists the resulting path on the tenant row.
-export async function setGcashQr(path: string): Promise<ActionResult> {
-  const user = await requireUser();
+// Persist a method's QR image path (the upload itself is browser-side; storage RLS scopes the path
+// to the operator's tenant folder).
+export async function setPaymentMethodQr(id: string, path: string): Promise<ActionResult> {
   const supabase = await createClient();
-
-  const { data: before } = await supabase
-    .from("tenants")
-    .select("gcash_qr_path, verification_status, name")
-    .eq("user_id", user.id)
-    .single();
-
   const { error } = await supabase
-    .from("tenants")
-    .update({ gcash_qr_path: path || null })
-    .eq("user_id", user.id);
+    .from("tenant_payment_methods")
+    .update({ qr_path: path || null, updated_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  if (before?.verification_status === "approved" && before.gcash_qr_path !== (path || null)) {
-    await notifyAdminsGcashChanged({
-      operatorName: before.name,
-      operatorEmail: user.email ?? null,
-    });
-  }
+  await alertIfApproved();
+  revalidatePath("/settings");
+  return { ok: true };
+}
 
+export async function deletePaymentMethod(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("tenant_payment_methods").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  await alertIfApproved();
   revalidatePath("/settings");
   return { ok: true };
 }

@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
+import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 
 // Public booking input (P5: validated at the trust boundary). The guest is anonymous.
 const publicBookingInput = z.object({
@@ -16,9 +17,12 @@ const publicBookingInput = z.object({
 });
 export type PublicBookingInput = z.infer<typeof publicBookingInput>;
 
-export type GcashDetails = {
-  name: string | null;
-  number: string | null;
+export type PublicPaymentMethod = {
+  type: PaymentMethodType;
+  label: string;
+  accountName: string | null;
+  accountNumber: string | null;
+  bankName: string | null;
   qrUrl: string | null;
 };
 
@@ -29,7 +33,7 @@ export type BookingResult =
       holdExpiresAt: string | null;
       total: number | null;
       deposit: number | null;
-      gcash: GcashDetails;
+      paymentMethods: PublicPaymentMethod[];
     }
   | { ok: false; error: string };
 
@@ -79,9 +83,9 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
   } | null;
   if (!booking) return { ok: false, error: "Something went wrong. Please try again." };
 
-  // GCash is delivered WITH the hold (never via the public listing — anti-scrape). anon has
-  // no grant on tenants, so read it through the service-role client.
-  const gcash = await getGcashDetails(booking.tenant_id);
+  // Payout methods are delivered WITH the hold (never via the public listing — anti-scrape). anon
+  // has no grant on the table, so read through the service-role client.
+  const paymentMethods = await getPaymentMethodsForGuest(booking.tenant_id);
 
   return {
     ok: true,
@@ -89,23 +93,29 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     holdExpiresAt: booking.hold_expires_at,
     total: booking.total_amount,
     deposit: booking.deposit_amount,
-    gcash,
+    paymentMethods,
   };
 }
 
-async function getGcashDetails(tenantId: string): Promise<GcashDetails> {
+async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymentMethod[]> {
   const admin = createServiceClient();
   const { data } = await admin
-    .from("tenants")
-    .select("gcash_name, gcash_number, gcash_qr_path")
-    .eq("id", tenantId)
-    .single();
+    .from("tenant_payment_methods")
+    .select("type, account_name, account_number, bank_name, qr_path, sort_order, created_at")
+    .eq("tenant_id", tenantId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
-  const qrUrl = data?.gcash_qr_path
-    ? admin.storage.from("property-images").getPublicUrl(data.gcash_qr_path).data.publicUrl
-    : null;
-
-  return { name: data?.gcash_name ?? null, number: data?.gcash_number ?? null, qrUrl };
+  return (data ?? []).map((m) => ({
+    type: m.type,
+    label: PAYMENT_METHOD_LABELS[m.type],
+    accountName: m.account_name,
+    accountNumber: m.account_number,
+    bankName: m.bank_name,
+    qrUrl: m.qr_path
+      ? admin.storage.from("property-images").getPublicUrl(m.qr_path).data.publicUrl
+      : null,
+  }));
 }
 
 // --- Proof upload (F1.4) -----------------------------------------------------------------
