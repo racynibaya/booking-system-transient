@@ -3,7 +3,7 @@
 import "react-day-picker/style.css";
 
 import { Check, ChevronDown, TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
 import {
@@ -68,6 +68,9 @@ export function BookingCard({
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [payingOnline, setPayingOnline] = useState(false);
+  // Read synchronously by the beforeunload guard so it can tell an INTENTIONAL pay-online redirect
+  // apart from an accidental tab close (state would be stale inside that listener's closure).
+  const payingOnlineRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
 
   const room = useMemo(() => rooms.find((r) => r.id === roomId), [rooms, roomId]);
@@ -121,6 +124,9 @@ export function BookingCard({
   useEffect(() => {
     if (step !== "payment") return;
     const warn = (e: BeforeUnloadEvent) => {
+      // Paying online navigates away on purpose — don't fight it. The hold lives in the DB, not the
+      // tab, so it isn't lost; the guard is only for an accidental refresh/close mid-deposit.
+      if (payingOnlineRef.current) return;
       e.preventDefault();
       e.returnValue = "";
     };
@@ -163,11 +169,13 @@ export function BookingCard({
     if (!bookingId) return;
     setError(null);
     setPayingOnline(true);
+    payingOnlineRef.current = true; // suppress the leave-tab guard for this intentional redirect
     const res = await createGatewayCheckout(bookingId);
     if (res.ok) {
       window.location.href = res.checkoutUrl;
     } else {
       setPayingOnline(false);
+      payingOnlineRef.current = false;
       setError(res.error);
     }
   }
