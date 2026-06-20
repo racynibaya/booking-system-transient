@@ -19,6 +19,10 @@ export type GatewayConnection = {
   status: string;
 };
 
+// A connection looked up by its routing token (M3 webhook) — carries the tenant_id so the route can
+// scope the confirm. Otherwise identical to GatewayConnection.
+export type GatewayConnectionByToken = GatewayConnection & { tenantId: string };
+
 export type StoreGatewayConnectionInput = {
   tenantId: string;
   sk: string;
@@ -61,4 +65,38 @@ export async function getGatewayConnection(tenantId: string): Promise<GatewayCon
     webhookId: row.webhook_id,
     status: row.status,
   };
+}
+
+// Read a connection by its opaque webhook_token (M3 token-routed webhook), or null if no tenant owns
+// that token. Decrypts whsk_/sk_ via the by-token RPC; the route uses whsk_ to verify the inbound
+// event. Same secret-handling discipline as getGatewayConnection — never persist or log the keys.
+export async function getGatewayConnectionByToken(
+  token: string,
+): Promise<GatewayConnectionByToken | null> {
+  const admin = createServiceClient();
+  const { data, error } = await admin.rpc("gateway_get_connection_by_token", { p_token: token });
+  if (error) throw new Error(`getGatewayConnectionByToken failed: ${error.message}`);
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+
+  return {
+    tenantId: row.tenant_id,
+    provider: row.provider,
+    sk: row.sk,
+    whsk: row.whsk,
+    webhookToken: row.webhook_token,
+    webhookId: row.webhook_id,
+    status: row.status,
+  };
+}
+
+// Delete a tenant's gateway connection AND its Vault secrets (M2 disconnect). Returns the old
+// webhook_id (or null) so the caller can best-effort remove the webhook on PayMongo. Resolves the
+// M1 "Vault orphan on disconnect" gap — the RPC drops the encrypted secrets, not just the row.
+export async function deleteGatewayConnection(tenantId: string): Promise<string | null> {
+  const admin = createServiceClient();
+  const { data, error } = await admin.rpc("gateway_delete_connection", { p_tenant_id: tenantId });
+  if (error) throw new Error(`deleteGatewayConnection failed: ${error.message}`);
+  return (data as string | null) ?? null;
 }

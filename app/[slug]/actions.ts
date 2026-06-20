@@ -3,8 +3,8 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { env } from "@/env";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
+import { getGatewayConnection } from "@/lib/supabase/gateway-dal";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 
@@ -128,9 +128,10 @@ async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymen
 // happens out-of-band via the webhook (app/api/webhooks/paymongo) → confirm_booking_gateway —
 // the redirect back is best-effort UX, never the source of truth (architecture P10).
 //
-// SPIKE SCOPE: uses the single env sandbox key. Phase 2b looks up the operator's own connection
-// (tenants.plan='business' gate + per-tenant encrypted key) instead of env, and only this branch
-// changes. The booking hold, the metadata contract, and the webhook stay identical.
+// Operator-as-merchant (B8): the deposit is charged on the HOST's own PayMongo account via their
+// per-tenant connection (M1 Vault store), looked up here by tenant. We NEVER fall back to a platform
+// env key — that would route a guest's money to the wrong merchant. The booking hold, the metadata
+// contract, and the webhook are identical to the 2a path; only the key source is per-tenant.
 export type GatewayCheckoutResult =
   | { ok: true; checkoutUrl: string }
   | { ok: false; error: string };
@@ -139,9 +140,6 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };
   }
-  if (!env.PAYMONGO_SECRET_KEY) {
-    return { ok: false, error: "Online payment isn't available for this host yet." };
-  }
 
   // Service-role: anon can't read bookings. The booking id is the guest's capability; we only
   // start a checkout for a live hold awaiting payment.
@@ -149,7 +147,7 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
   const { data: booking } = await admin
     .from("bookings")
     .select(
-      "tenant_id, status, deposit_amount, guest_name, guest_email, property:properties(slug, name)",
+      "tenant_id, status, deposit_amount, gateway_checkout_url, guest_name, guest_email, property:properties(slug, name)",
     )
     .eq("id", bookingId)
     .single();
@@ -160,6 +158,21 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
   }
   if (!booking.deposit_amount || booking.deposit_amount <= 0) {
     return { ok: false, error: "This booking has no deposit to collect." };
+  }
+
+  // Double-charge guard: if we already opened a session for this held booking, hand back the SAME
+  // single-use URL. A PayMongo checkout session can only be paid once, so reusing it makes a
+  // double-click / refresh / two-tab double-charge impossible.
+  if (booking.gateway_checkout_url) {
+    return { ok: true, checkoutUrl: booking.gateway_checkout_url };
+  }
+
+  // The host's own PayMongo connection (operator-as-merchant). No active connection → online payment
+  // isn't available for this host; never fall back to a platform key (B8). A connection only exists
+  // once the operator connects in Settings, which is itself gated on plan='business' (M2).
+  const connection = await getGatewayConnection(booking.tenant_id);
+  if (!connection || connection.status !== "active") {
+    return { ok: false, error: "Online payment isn't available for this host yet." };
   }
 
   const property = booking.property as { slug: string; name: string } | null;
@@ -174,7 +187,7 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
 
   try {
     const { checkoutUrl } = await createCheckoutSession({
-      secretKey: env.PAYMONGO_SECRET_KEY,
+      secretKey: connection.sk,
       lineItems: [
         {
           name: `Deposit — ${property?.name ?? "booking"}`,
@@ -188,7 +201,28 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
       // The webhook maps the payment back to this booking/tenant via these.
       metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
     });
-    return { ok: true, checkoutUrl };
+
+    // Persist the session so any repeat call reuses it (above). Claim atomically — only the call
+    // that finds the column still null "wins". If two calls created sessions concurrently, the
+    // loser's session is left unused and BOTH callers redirect to the single stored URL, so the
+    // guest still sees one payment page.
+    const { data: claimed } = await admin
+      .from("bookings")
+      .update({ gateway_checkout_url: checkoutUrl })
+      .eq("id", bookingId)
+      .is("gateway_checkout_url", null)
+      .select("gateway_checkout_url")
+      .maybeSingle();
+    if (claimed?.gateway_checkout_url) {
+      return { ok: true, checkoutUrl: claimed.gateway_checkout_url };
+    }
+    // Lost the race — another concurrent call already stored a session; reuse theirs.
+    const { data: existing } = await admin
+      .from("bookings")
+      .select("gateway_checkout_url")
+      .eq("id", bookingId)
+      .single();
+    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? checkoutUrl };
   } catch {
     return { ok: false, error: "Couldn't start the payment. Please try again." };
   }

@@ -41,7 +41,7 @@ export const getCurrentTenant = cache(async () => {
   const { data, error } = await supabase
     .from("tenants")
     .select(
-      "id, name, subscription_status, verification_status, is_admin, verification_note, gcash_changed_at",
+      "id, name, plan, subscription_status, verification_status, is_admin, verification_note, gcash_changed_at",
     )
     .eq("user_id", user.id)
     .single();
@@ -62,6 +62,30 @@ export const getPaymentMethods = cache(async () => {
 
   if (error) return [];
   return data;
+});
+
+// The current operator's gateway (PayMongo) connection status — NON-SECRET only. Calls the
+// self-scoped gateway_connection_status() RPC with the operator's own session, so it returns just
+// their own "connected?" metadata and never an sk_/whsk_. (The decrypting reader lives in
+// gateway-dal.ts and is service-role only.)
+export type GatewayConnectionStatus = {
+  connected: boolean;
+  provider: string | null;
+  status: string | null;
+  updatedAt: string | null;
+};
+
+export const getGatewayConnectionStatus = cache(async (): Promise<GatewayConnectionStatus> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("gateway_connection_status");
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) return { connected: false, provider: null, status: null, updatedAt: null };
+  return {
+    connected: row.connected,
+    provider: row.provider,
+    status: row.status,
+    updatedAt: row.updated_at,
+  };
 });
 
 // The current operator's properties (RLS-scoped — no explicit tenant filter

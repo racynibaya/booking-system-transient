@@ -164,3 +164,62 @@ describe("gateway connection store (M1)", () => {
     expect(writeErr).not.toBeNull();
   });
 });
+
+describe("gateway connection status + disconnect (M2)", () => {
+  let op: Operator;
+
+  beforeAll(async () => {
+    op = await makeOperator(`gw-m2-${Date.now()}@example.com`);
+  });
+
+  it("status RPC is self-scoped and never leaks secrets", async () => {
+    // Before any connection: the operator's own session sees not-connected.
+    const before = await op.client.rpc("gateway_connection_status");
+    expect(before.error).toBeNull();
+    expect((before.data as { connected: boolean }[])[0].connected).toBe(false);
+
+    await store(op.tenantId, "sk_test_STATUS", "whsk_test_STATUS", `tok_status_${op.tenantId}`);
+
+    const after = await op.client.rpc("gateway_connection_status");
+    expect(after.error).toBeNull();
+    const row = (after.data as Record<string, unknown>[])[0];
+    expect(row.connected).toBe(true);
+    expect(row.provider).toBe("paymongo");
+    // Non-secret only: the sk/whsk must NOT be present on the status payload.
+    expect(Object.keys(row)).toEqual(
+      expect.arrayContaining(["connected", "provider", "status", "updated_at"]),
+    );
+    expect(JSON.stringify(row)).not.toContain("sk_test_STATUS");
+    expect(JSON.stringify(row)).not.toContain("whsk_test_STATUS");
+
+    // Self-scoped: a different operator's session sees their OWN (not-connected) status.
+    const other = await makeOperator(`gw-m2-other-${Date.now()}@example.com`);
+    const otherStatus = await other.client.rpc("gateway_connection_status");
+    expect((otherStatus.data as { connected: boolean }[])[0].connected).toBe(false);
+  });
+
+  it("denies an operator session the disconnect RPC", async () => {
+    const { error } = await op.client.rpc("gateway_delete_connection", {
+      p_tenant_id: op.tenantId,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("service-role disconnect removes the row and returns the old webhook id", async () => {
+    await store(op.tenantId, "sk_test_DC", "whsk_test_DC", `tok_dc_${op.tenantId}`, "wh_dc_1");
+
+    const { data: webhookId, error } = await admin.rpc("gateway_delete_connection", {
+      p_tenant_id: op.tenantId,
+    });
+    expect(error).toBeNull();
+    expect(webhookId).toBe("wh_dc_1");
+
+    // Row is gone (the decrypting reader returns no row; Vault secrets are dropped server-side).
+    const { data: rows } = await admin.rpc("gateway_get_connection", { p_tenant_id: op.tenantId });
+    expect((rows as unknown[]).length).toBe(0);
+
+    // And the operator's own status flips back to not-connected.
+    const status = await op.client.rpc("gateway_connection_status");
+    expect((status.data as { connected: boolean }[])[0].connected).toBe(false);
+  });
+});
