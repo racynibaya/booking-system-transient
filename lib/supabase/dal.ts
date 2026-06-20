@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { effectiveStatus } from "@/lib/bookings";
+import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
 import { todayStr } from "@/lib/dates";
 
 import { createClient } from "./server";
@@ -119,19 +119,36 @@ export const getPendingConfirmations = cache(async () => {
   );
 });
 
-// Every booking for the current operator (RLS-scoped — no explicit tenant filter
-// needed), newest check-in first. Powers the F2.1 bookings dashboard: the client
-// table does its own status + date-scope filtering, so this stays a lean single
-// read (no per-row signed-proof round-trip like getPendingConfirmations).
-export const getBookings = cache(async () => {
+// Bookings for the current operator (RLS-scoped — no explicit tenant filter needed),
+// powering the F2.1 dashboard. The scale-sensitive filters (property, room, check-in
+// range, guest search) are pushed to Postgres here. Status is NOT filtered here: the
+// display status is derived by effectiveStatus (a lapsed 'held' shows as 'expired' but
+// is still 'held' in the row), so the status multi-select and the smart views are applied
+// downstream in the page over the reconciled rows.
+export const getBookings = cache(async (filters: BookingFilters = {}) => {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("bookings")
     .select(
       "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, deposit_amount, total_amount, properties(name), room_types(name)",
-    )
-    .order("check_in", { ascending: false });
+    );
 
+  if (filters.property) query = query.eq("property_id", filters.property);
+  if (filters.room) query = query.eq("room_type_id", filters.room);
+  if (filters.from) query = query.gte("check_in", filters.from);
+  if (filters.to) query = query.lte("check_in", filters.to);
+  if (filters.q) {
+    // Sanitize for PostgREST .or() grammar: drop the reserved , ( ) * and the % wildcard,
+    // then wrap in %…% for a substring ilike across the guest contact fields.
+    const safe = filters.q.replace(/[,()*%]/g, " ").trim();
+    if (safe) {
+      query = query.or(
+        `guest_name.ilike.%${safe}%,guest_phone.ilike.%${safe}%,guest_email.ilike.%${safe}%`,
+      );
+    }
+  }
+
+  const { data, error } = await query.order("check_in", { ascending: false });
   if (error || !data) return [];
   // Reconcile lapsed holds to 'expired' for display (see effectiveStatus) and drop the
   // internal hold_expires_at from the shape the dashboard consumes.
@@ -139,6 +156,20 @@ export const getBookings = cache(async () => {
     ...b,
     status: effectiveStatus(b.status, hold_expires_at),
   }));
+});
+
+// Lean read for the bookings filter bar's Property → Room-type dropdowns (RLS-scoped):
+// just ids + names. getProperties() only carries a room_types(count), so it can't drive
+// the dependent room menu.
+export const getBookingFilterOptions = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, name, room_types(id, name)")
+    .order("name", { ascending: true });
+
+  if (error || !data) return [];
+  return data;
 });
 
 // Calendar data for one room_type (RLS-scoped): live held/confirmed bookings and

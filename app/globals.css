@@ -1,58 +1,74 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   Design tokens — sourced from context/ui-token.md (Airbnb-style system)
-   Tailwind v4 @theme. No dark mode (the system is white-canvas only).
-   Brand tokens layer on top of Tailwind's defaults (defaults not cleared).
+   Design tokens — Tuloy "Sea Glass" system (La Union surf town). Layered:
+     • LEAD — Sea Glass: the brand/identity color (muted sea-green). CTAs, brand.
+     • GROUND — Slate & Tide: the neutral foundation (canvas, surfaces, text,
+       hairlines) — restrained cool slate, faintly green-nudged. The quiet stage.
+     • ACCENT — Surf & Sea: rare only (highlights, active states, one warm spark).
+   Deliberately NOT Airbnb: no Rausch coral, no pure-white canvas. Low chroma so
+   it stays easy on the eyes. Tailwind v4 @theme, no dark mode. Token NAMES kept
+   stable so existing usages keep resolving; only VALUES changed. (Legacy aliases
+   sunset/luxe/plus are re-pigmented into the system, not removed — renaming them
+   is a separate follow-up across components.)
    ============================================================================= */
 
 @theme {
   /* ---- Fonts -------------------------------------------------------------
-     Cereal VF is licensed/unavailable here; Inter is the documented OSS
-     substitute. Load Inter (or Cereal) in the app for full fidelity. */
+     Display: Fraunces (warm editorial serif) · Body/UI: Geist.
+     These reference --font-fraunces / --font-geist, loaded via next/font in
+     app/layout.tsx. Until that lands they degrade to the serif/system stacks. */
   --font-sans:
-    var(--font-inter), "Airbnb Cereal VF", Circular, Inter, -apple-system, system-ui, Roboto,
-    "Helvetica Neue", sans-serif;
+    var(--font-geist), -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
 
-  /* ---- Colors · brand & accent ------------------------------------------ */
-  --color-primary: #ff385c; /* Rausch — the single brand color */
-  --color-primary-active: #e00b41; /* press / pointer-down */
-  --color-primary-disabled: #ffd1da; /* pale disabled CTA tint */
-  /* Brand sunset gradient (from the Tuloy brand sheet) — coral → pink, used on the hero
-     band and the Reserve CTA so the warm identity carries through. */
-  --color-sunset-1: #ff7a45; /* warm coral top-light */
-  --color-sunset-2: #ff4d6d; /* mid */
-  --color-sunset-3: #ff2e73; /* deep pink */
-  --color-luxe: #460479; /* sub-brand (Luxe) — scoped use only */
-  --color-plus: #92174d; /* sub-brand (Plus) — scoped use only */
+  /* ---- Colors · brand (LEAD — Sea Glass) -------------------------------- */
+  --color-primary: #2c7a6b; /* muted sea-green — the single brand color (CTAs, brand) */
+  --color-primary-active: #246356; /* press / pointer-down (darker) */
+  --color-primary-disabled: #c7dcd6; /* pale sea tint — disabled CTA */
+  --color-on-primary: #ffffff; /* white text on sea-green (passes contrast) */
 
-  /* ---- Colors · surface -------------------------------------------------- */
-  --color-canvas: #ffffff; /* default page floor */
-  --color-surface-soft: #f7f7f7; /* lightest fill */
-  --color-surface-strong: #f2f2f2; /* heavier fill / icon-button bg */
+  /* ---- Colors · accent (rare — Surf & Sea) ------------------------------
+     Used sparingly: bright interactive highlights / active, and one warm spark. */
+  --color-accent: #0e8c8c; /* surf teal — rare bright accent / active */
+  --color-accent-warm: #e0a33e; /* soft sun — the rarest warm spark only */
+
+  /* ---- Colors · grounding teal + legacy aliases ------------------------- */
+  --color-sea: #1f6f78; /* deep teal — grounding anchor (Slate & Tide) */
+  /* Legacy "sunset" gradient — re-pigmented to a SEA gradient so prominent bands
+     stay on the Sea Glass lead (warmth is now rare-accent only, not full-band). */
+  --color-sunset-1: #3e9384; /* light sea */
+  --color-sunset-2: #2c7a6b; /* sea-green (= primary) */
+  --color-sunset-3: #1f6f78; /* deep teal */
+  --color-luxe: #1f6f78; /* legacy alias → deep teal (scoped use only) */
+  --color-plus: #c76b3f; /* legacy alias → warm clay (scoped use only) */
+
+  /* ---- Colors · surface (GROUND — Slate & Tide, green-nudged) ----------- */
+  --color-canvas: #f5f7f5; /* cool off-white, faint green — page floor (NOT pure white) */
+  --color-surface-soft: #ecefec; /* lightest slate-green fill */
+  --color-surface-strong: #e2e7e3; /* heavier fill / icon-button bg */
 
   /* ---- Colors · hairlines & borders ------------------------------------- */
-  --color-hairline: #dddddd; /* default 1px border tone */
-  --color-hairline-soft: #ebebeb; /* lighter editorial divider */
-  --color-border-strong: #c1c1c1; /* heavier stroke / input outline */
+  --color-hairline: #dce1dd; /* default 1px border tone */
+  --color-hairline-soft: #e7ebe7; /* lighter editorial divider */
+  --color-border-strong: #bfc7c2; /* heavier stroke / input outline */
 
-  /* ---- Colors · text ----------------------------------------------------- */
-  --color-ink: #222222; /* dominant text — never pure black */
-  --color-body: #3f3f3f; /* secondary running text */
-  --color-muted: #6a6a6a; /* sub-titles, inactive labels */
-  --color-muted-soft: #929292; /* disabled link text */
-  --color-star-rating: #222222; /* stars render in ink, not gold */
-  --color-on-primary: #ffffff; /* text on Rausch CTAs */
+  /* ---- Colors · text (GROUND — slate-teal ink) -------------------------- */
+  --color-ink: #1d2a2c; /* deep slate-teal — dominant text (never pure black) */
+  --color-body: #38454a; /* secondary running text */
+  --color-muted: #5e6c6e; /* teal-steel — sub-titles, inactive labels */
+  --color-muted-soft: #8b9794; /* disabled link text */
+  --color-star-rating: #1d2a2c; /* stars render in ink, not gold */
 
   /* ---- Colors · semantic ------------------------------------------------- */
-  --color-error: #c13515; /* inline form error text */
-  --color-error-hover: #b32505; /* error link hover */
-  --color-success: #0e7a4a; /* verified / approved state */
-  --color-success-bg: #e6f4ec; /* pale success tint (badge fill) */
-  --color-warning: #8a5a00; /* needs-attention state (amber, distinct from brand red) */
-  --color-warning-bg: #fbeed0; /* pale amber tint (badge fill) */
-  --color-legal-link: #428bff; /* legal-copy links only */
+  --color-error: #c42e2e; /* inline form error text (true red, distinct from the teals) */
+  --color-error-hover: #a82424; /* error link hover */
+  --color-success: #0e7a4a; /* verified / approved state (greener than brand teal) */
+  --color-success-bg: #e2efe6; /* pale success tint (badge fill) */
+  --color-warning: #8a5a00; /* needs-attention state (dark gold, distinct from accents) */
+  --color-warning-bg: #f4e8cc; /* pale gold tint (badge fill) */
+  --color-legal-link: #1f6f78; /* legal-copy links only — brand teal */
   --color-scrim: #000000; /* modal backdrop base (render at 50%) */
 
   /* ---- Colors · compatibility aliases (Next/shadcn) --------------------- */

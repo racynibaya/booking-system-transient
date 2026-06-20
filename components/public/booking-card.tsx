@@ -28,9 +28,9 @@ export type PublicRoom = {
 const fieldClass =
   "h-11 w-full rounded-sm border border-hairline bg-canvas px-3 text-body-md text-ink placeholder:text-muted-soft transition-colors focus:border-border-strong focus:outline-none";
 const labelClass = "text-caption text-muted";
-// Shared primary CTA — the brand sunset gradient with a soft Rausch-tinted lift.
+// Shared primary CTA — the brand sea gradient with a soft sea-tinted lift.
 const ctaClass =
-  "h-12 w-full rounded-full bg-linear-to-r from-sunset-1 via-sunset-2 to-sunset-3 text-button-md text-on-primary shadow-[0_12px_30px_-12px_rgba(255,56,92,0.55)] transition-[transform,opacity] hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50";
+  "h-12 w-full rounded-full bg-linear-to-r from-sunset-1 via-sunset-2 to-sunset-3 text-button-md text-on-primary shadow-[0_12px_30px_-12px_rgba(31,111,120,0.5)] transition-[transform,opacity] hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50";
 
 export function BookingCard({
   rooms,

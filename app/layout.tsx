@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import { EnvBadge } from "@/components/dev/env-badge";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const inter = Inter({
+// Body / UI sans — replaces Inter (the old Airbnb-Cereal substitute).
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist",
+});
+
+// Display serif — the editorial "local-guide" voice for headings.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${geist.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
         <EnvBadge />
