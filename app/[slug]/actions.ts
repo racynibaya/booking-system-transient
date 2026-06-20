@@ -149,7 +149,7 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
   const { data: booking } = await admin
     .from("bookings")
     .select(
-      "tenant_id, status, deposit_amount, guest_name, guest_email, property:properties(slug, name)",
+      "tenant_id, status, deposit_amount, gateway_checkout_url, guest_name, guest_email, property:properties(slug, name)",
     )
     .eq("id", bookingId)
     .single();
@@ -160,6 +160,13 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
   }
   if (!booking.deposit_amount || booking.deposit_amount <= 0) {
     return { ok: false, error: "This booking has no deposit to collect." };
+  }
+
+  // Double-charge guard: if we already opened a session for this held booking, hand back the SAME
+  // single-use URL. A PayMongo checkout session can only be paid once, so reusing it makes a
+  // double-click / refresh / two-tab double-charge impossible.
+  if (booking.gateway_checkout_url) {
+    return { ok: true, checkoutUrl: booking.gateway_checkout_url };
   }
 
   const property = booking.property as { slug: string; name: string } | null;
@@ -188,7 +195,28 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
       // The webhook maps the payment back to this booking/tenant via these.
       metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
     });
-    return { ok: true, checkoutUrl };
+
+    // Persist the session so any repeat call reuses it (above). Claim atomically — only the call
+    // that finds the column still null "wins". If two calls created sessions concurrently, the
+    // loser's session is left unused and BOTH callers redirect to the single stored URL, so the
+    // guest still sees one payment page.
+    const { data: claimed } = await admin
+      .from("bookings")
+      .update({ gateway_checkout_url: checkoutUrl })
+      .eq("id", bookingId)
+      .is("gateway_checkout_url", null)
+      .select("gateway_checkout_url")
+      .maybeSingle();
+    if (claimed?.gateway_checkout_url) {
+      return { ok: true, checkoutUrl: claimed.gateway_checkout_url };
+    }
+    // Lost the race — another concurrent call already stored a session; reuse theirs.
+    const { data: existing } = await admin
+      .from("bookings")
+      .select("gateway_checkout_url")
+      .eq("id", bookingId)
+      .single();
+    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? checkoutUrl };
   } catch {
     return { ok: false, error: "Couldn't start the payment. Please try again." };
   }

@@ -83,9 +83,43 @@ export async function POST(request: Request) {
   // object, so guard on a real field. Nothing to email on a replay.
   if (booking?.id) {
     await sendGuestConfirmation(booking as NotificationBookingRow);
+    return new Response("ok", { status: 200 });
   }
 
+  // The RPC no-op'd. That's a HARMLESS replay only if THIS payment is already on file. If this
+  // provider_ref was never recorded, a distinct second payment landed on an already-confirmed
+  // booking — the guest was charged twice. Make it loud (a silent 200 hid this before) so it's
+  // caught in logs and refunded out-of-band; the per-tenant operator refund alert is Phase 2b.
+  await flagSecondPaymentIfDistinct(admin, bookingId, providerRef);
+
   return new Response("ok", { status: 200 });
+}
+
+// Detection: tell a harmless webhook replay apart from a genuine second charge. A replay carries a
+// provider_ref we ALREADY recorded when the booking first confirmed; a distinct second payment does
+// not. If we can't find this ref on the booking's payments, the guest paid twice — log it loudly.
+// Never affects the 200 (the booking is confirmed either way); this is a visibility safety net.
+async function flagSecondPaymentIfDistinct(
+  admin: ReturnType<typeof createServiceClient>,
+  bookingId: string,
+  providerRef: string | null,
+): Promise<void> {
+  if (!providerRef) {
+    // No stable ref to dedup on — can't prove it's a replay. Surface it rather than assume safe.
+    console.error(`[paymongo] SECOND_PAYMENT? no provider_ref to verify; booking=${bookingId}`);
+    return;
+  }
+  const { data: existing } = await admin
+    .from("payments")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .eq("provider_ref", providerRef)
+    .maybeSingle();
+  if (!existing) {
+    console.error(
+      `[paymongo] SECOND_PAYMENT booking=${bookingId} provider_ref=${providerRef} — paid against an already-confirmed booking; refund needed`,
+    );
+  }
 }
 
 // Best-effort guest confirmation — never affects the 200 (the booking is already confirmed).
