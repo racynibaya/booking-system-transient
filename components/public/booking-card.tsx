@@ -64,6 +64,9 @@ export function BookingCard({
   // Set once the hold succeeds (F1.4 deposit step).
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [methods, setMethods] = useState<PublicPaymentMethod[]>([]);
+  // Which saved method the guest is paying with — they only ever use one, so we show one at a time
+  // instead of stacking every QR (scales to any number of methods).
+  const [payMethodIdx, setPayMethodIdx] = useState(0);
   const [deposit, setDeposit] = useState<number | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -262,28 +265,56 @@ export function BookingCard({
             <span className="text-body-sm font-normal text-muted"> deposit</span>
           </p>
           {methods.length > 0 ? (
-            <div className="mt-3 flex flex-col gap-4">
-              {methods.map((m, i) => (
-                <div key={i} className="flex flex-col gap-0.5 text-body-sm text-body">
-                  <span className="text-caption font-medium text-muted">{m.label}</span>
-                  {m.accountNumber && (
-                    <span>
-                      {m.bankName ? `${m.bankName}: ` : ""}
-                      <span className="font-semibold text-ink">{m.accountNumber}</span>
-                    </span>
+            (() => {
+              const m = methods[payMethodIdx] ?? methods[0];
+              return (
+                <div className="mt-3 flex flex-col gap-3">
+                  {/* One method at a time. With several, a single selector picks which to pay with —
+                      no scrolling past a wall of QR codes. With one, the picker is hidden. */}
+                  {methods.length > 1 && (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-caption font-medium text-muted">Pay with</span>
+                      <div className="relative">
+                        <select
+                          value={payMethodIdx}
+                          onChange={(e) => setPayMethodIdx(Number(e.target.value))}
+                          className={`${fieldClass} appearance-none pr-10 font-medium`}
+                        >
+                          {methods.map((opt, i) => (
+                            <option key={i} value={i} className="text-ink">
+                              {opt.label}
+                              {opt.accountNumber ? ` · ${opt.accountNumber}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
+                      </div>
+                    </label>
                   )}
-                  {m.accountName && <span className="text-muted">{m.accountName}</span>}
-                  {m.qrUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
-                    <img
-                      src={m.qrUrl}
-                      alt={`${m.label} QR code`}
-                      className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
-                    />
-                  )}
+
+                  <div className="flex flex-col gap-0.5 text-body-sm text-body">
+                    {methods.length === 1 && (
+                      <span className="text-caption font-medium text-muted">{m.label}</span>
+                    )}
+                    {m.accountNumber && (
+                      <span>
+                        {m.bankName ? `${m.bankName}: ` : ""}
+                        <span className="font-semibold text-ink">{m.accountNumber}</span>
+                      </span>
+                    )}
+                    {m.accountName && <span className="text-muted">{m.accountName}</span>}
+                    {m.qrUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
+                      <img
+                        src={m.qrUrl}
+                        alt={`${m.label} QR code`}
+                        className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
+                      />
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()
           ) : (
             <p className="mt-3 text-body-sm text-muted">
               The host hasn&apos;t added payment details yet — please contact them to pay.
