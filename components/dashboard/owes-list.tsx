@@ -48,23 +48,30 @@ export function OwesList({ owes }: { owes: OwedBalance[] }) {
       <h2 className="text-title-md text-ink">Still owes you</h2>
       <ul className="mt-3 flex flex-col divide-y divide-hairline-soft">
         {shown.map((o) => (
-          <li key={o.bookingId} className="flex items-center gap-3 py-3 first:pt-0">
-            <div className="min-w-0 flex-1">
+          <li
+            key={o.bookingId}
+            className="flex flex-col gap-2 py-3 first:pt-0 sm:flex-row sm:items-center sm:gap-3"
+          >
+            <div className="min-w-0 sm:flex-1">
               <p className="truncate text-title-sm text-ink">{o.guestName}</p>
               <p className="truncate text-caption-sm text-muted">
                 {o.propertyName} · {formatDateShort(o.checkIn)}
               </p>
             </div>
-            <span className="shrink-0 text-title-sm text-ink">{peso(o.balance)}</span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={pending}
-              onClick={() => onMark(o)}
-            >
-              <Check className="size-4" /> Mark collected
-            </Button>
+            {/* On mobile, amount + action share their own justified row; sm+ flattens back to one row. */}
+            <div className="flex items-center justify-between gap-3 sm:contents">
+              <span className="text-title-sm text-ink sm:shrink-0">{peso(o.balance)}</span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={pending}
+                onClick={() => onMark(o)}
+                className="sm:shrink-0"
+              >
+                <Check className="size-4" /> Mark collected
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
