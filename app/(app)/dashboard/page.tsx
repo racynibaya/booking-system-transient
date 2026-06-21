@@ -89,7 +89,7 @@ export default async function DashboardPage() {
       {!setupComplete && <OnboardingProgress steps={steps} bookingPage={bookingPage} />}
 
       {/* Money (left) + how-full / waiting-on-you (right). */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-4">
           <MoneyHero
             collectedThisWeek={revenue.collectedThisWeek}
