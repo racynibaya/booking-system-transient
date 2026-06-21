@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { STATUS_LABELS } from "@/lib/bookings";
+import { isNewRequest, STATUS_LABELS, type BookingView } from "@/lib/bookings";
 import { daysFromToday, fromDateStr, relativeDay, todayStr } from "@/lib/dates";
 import type { getBookings } from "@/lib/supabase/dal";
 import type { Database } from "@/lib/supabase/database.types";
@@ -65,9 +65,11 @@ function datePill(b: Booking, today: string): { label: string; cls: string } {
 export function BookingsTable({
   bookings,
   hasAnyBookings,
+  view,
 }: {
   bookings: Booking[];
   hasAnyBookings: boolean;
+  view: BookingView;
 }) {
   const today = todayStr();
   // The proof receipt to show enlarged, in-app (so the operator never leaves the board to check it).
@@ -106,7 +108,16 @@ export function BookingsTable({
                       <p className="mt-0.5 truncate text-caption-sm text-muted">{contact}</p>
                     )}
                   </div>
-                  <Badge tone={STATUS_TONE[b.status]}>{STATUS_LABELS[b.status]}</Badge>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {/* KNOWN ISSUE (cosmetic, deferred): isNewRequest reads Date.now() at render,
+                        so a booking sitting exactly on the response-window boundary can flip
+                        between SSR and hydration → a one-off React hydration warning on this
+                        badge. Rare + harmless; make deterministic (pass a server `now`) if it surfaces. */}
+                    {view === "action" && isNewRequest(b.created_at) && (
+                      <Badge tone="accent">New</Badge>
+                    )}
+                    <Badge tone={STATUS_TONE[b.status]}>{STATUS_LABELS[b.status]}</Badge>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
