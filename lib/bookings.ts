@@ -1,4 +1,4 @@
-import { addDays } from "@/lib/dates";
+import { addDays, fromDateStr, isOlderThanHours } from "@/lib/dates";
 import type { Database } from "@/lib/supabase/database.types";
 
 type BookingStatus = Database["public"]["Enums"]["booking_status"];
@@ -69,6 +69,11 @@ export const VIEW_LABELS: Record<BookingView, string> = {
   past: "Past",
 };
 
+// Target time to reply to a guest in Needs action. Drives the response clock
+// (created_at + this) that the urgency sort races, and the "New" badge window.
+// Config so it can change later.
+export const RESPONSE_TARGET_HOURS = 24;
+
 // SQL-pushable filters (see getBookings). Already validated by parseBookingFilters.
 export type BookingFilters = {
   property?: string;
@@ -116,10 +121,35 @@ export function parseBookingFilters(
   };
 }
 
-type ViewRow = { status: BookingStatus; check_in: string; check_out: string };
+type ViewRow = {
+  status: BookingStatus;
+  check_in: string;
+  check_out: string;
+  created_at: string;
+  hold_expires_at: string | null;
+};
 
 const isUpcoming = (b: ViewRow, today: string) => isLive(b.status) && b.check_out >= today;
 const needsAction = (b: ViewRow) => b.status === "awaiting_confirmation" || b.status === "held";
+
+// Needs-action urgency: the soonest of two clocks, as epoch ms (smaller = more urgent).
+// Response clock = created_at + the reply target. Arrival clock = check_in, except a live
+// hold races its hold_expires_at — the moment we actually lose the room. (Absolute UTC
+// timestamps vs a local-midnight check_in mix fine for ordering; day precision is enough.)
+function urgencyAt(b: ViewRow): number {
+  const responseDeadline = new Date(b.created_at).getTime() + RESPONSE_TARGET_HOURS * 3_600_000;
+  const arrivalDeadline =
+    b.status === "held" && b.hold_expires_at
+      ? new Date(b.hold_expires_at).getTime()
+      : fromDateStr(b.check_in).getTime();
+  return Math.min(responseDeadline, arrivalDeadline);
+}
+
+// A brand-new request still inside the response target — hasn't aged past our reply window.
+// Flags the "New" badge; the urgency sort (not this) decides order.
+export function isNewRequest(createdAt: string, hours = RESPONSE_TARGET_HOURS): boolean {
+  return !isOlderThanHours(createdAt, hours);
+}
 // "Arriving soon" = upcoming with a check-in no later than 7 days out. String compare on
 // ISO dates is chronological, so this stays a pure function of the passed `today`.
 const isSoon = (b: ViewRow, today: string) =>
@@ -165,8 +195,11 @@ export function filterAndSortByView<T extends ViewRow>(
   return list.slice().sort((a, b) => {
     if (view === "past") return b.check_in.localeCompare(a.check_in);
     if (view === "action") {
-      const rank = (s: BookingStatus) => (s === "awaiting_confirmation" ? 0 : 1);
-      return rank(a.status) - rank(b.status) || a.check_in.localeCompare(b.check_in);
+      // Most urgent first (soonest of the response/arrival clocks); equal urgency breaks
+      // by created_at, oldest first (first come, first served). NOTE: because a live hold
+      // races its hold_expires_at (minutes away, see urgencyAt), unpaid holds will briefly
+      // lead the list — that's intended ("we're about to lose the room"), not a bug to "fix".
+      return urgencyAt(a) - urgencyAt(b) || a.created_at.localeCompare(b.created_at);
     }
     return a.check_in.localeCompare(b.check_in);
   });

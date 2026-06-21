@@ -154,7 +154,7 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
   let query = supabase
     .from("bookings")
     .select(
-      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, deposit_amount, total_amount, proof_url, properties(name), room_types(name)",
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, created_at, deposit_amount, total_amount, proof_url, properties(name), room_types(name)",
     );
 
   if (filters.property) query = query.eq("property_id", filters.property);
@@ -174,12 +174,14 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
 
   const { data, error } = await query.order("check_in", { ascending: false });
   if (error || !data) return [];
-  // Reconcile lapsed holds to 'expired' for display (see effectiveStatus) and drop the
-  // internal hold_expires_at from the shape the dashboard consumes. Swap the stored proof path for
-  // a short-lived signed URL so the operator can eyeball the receipt inline instead of confirming
-  // blind (the bucket is private; the path alone isn't viewable).
+  // Reconcile lapsed holds to 'expired' for display (see effectiveStatus). created_at and
+  // hold_expires_at were once stripped here as "internal"; they are now intentionally RETAINED
+  // because the Needs-action urgency sort races both clocks (see urgencyAt in lib/bookings).
+  // Don't re-strip them without moving that sort. Swap the stored proof path for a short-lived
+  // signed URL so the operator can eyeball the receipt inline instead of confirming blind (the
+  // bucket is private; the path alone isn't viewable).
   return Promise.all(
-    data.map(async ({ hold_expires_at, proof_url, ...b }) => {
+    data.map(async ({ proof_url, ...b }) => {
       let proofUrl: string | null = null;
       if (proof_url) {
         const { data: signed } = await supabase.storage
@@ -187,7 +189,7 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
           .createSignedUrl(proof_url, 60 * 10); // 10 min
         proofUrl = signed?.signedUrl ?? null;
       }
-      return { ...b, proofUrl, status: effectiveStatus(b.status, hold_expires_at) };
+      return { ...b, proofUrl, status: effectiveStatus(b.status, b.hold_expires_at) };
     }),
   );
 });

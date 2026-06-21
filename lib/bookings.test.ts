@@ -4,6 +4,7 @@ import {
   effectiveStatus,
   filterAndSortByView,
   filterByStatus,
+  isNewRequest,
   parseBookingFilters,
   viewCounts,
 } from "./bookings";
@@ -71,19 +72,57 @@ describe("parseBookingFilters", () => {
 });
 
 // today = 2026-06-20. Rows span staying-now, soon, far-future, and several past buckets.
+// created_at / hold_expires_at only matter for the Needs-action urgency sort (B & C below).
 const TODAY = "2026-06-20";
 const ROWS = [
-  { id: "A", status: "confirmed" as const, check_in: "2026-06-22", check_out: "2026-06-25" }, // upcoming + soon
-  { id: "B", status: "held" as const, check_in: "2026-06-19", check_out: "2026-06-21" }, // staying now: upcoming + soon + action
+  {
+    id: "A",
+    status: "confirmed" as const,
+    check_in: "2026-06-22",
+    check_out: "2026-06-25",
+    created_at: "2026-06-15T00:00:00Z",
+    hold_expires_at: null,
+  }, // upcoming + soon
+  {
+    id: "B",
+    status: "held" as const,
+    check_in: "2026-06-19",
+    check_out: "2026-06-21",
+    created_at: "2026-06-19T08:00:00Z",
+    hold_expires_at: "2026-06-19T08:30:00Z",
+  }, // staying now: upcoming + soon + action; hold clock = Jun 19 08:30
   {
     id: "C",
     status: "awaiting_confirmation" as const,
     check_in: "2026-07-30",
     check_out: "2026-08-01",
+    created_at: "2026-06-20T06:00:00Z", // response clock = Jun 21 06:00 (beats the far check_in)
+    hold_expires_at: null,
   }, // upcoming, not soon, action
-  { id: "D", status: "expired" as const, check_in: "2026-06-10", check_out: "2026-06-12" }, // past (not live)
-  { id: "E", status: "confirmed" as const, check_in: "2026-05-01", check_out: "2026-05-03" }, // past (departed)
-  { id: "F", status: "cancelled" as const, check_in: "2026-06-25", check_out: "2026-06-27" }, // past (cancelled, even though future)
+  {
+    id: "D",
+    status: "expired" as const,
+    check_in: "2026-06-10",
+    check_out: "2026-06-12",
+    created_at: "2026-06-09T00:00:00Z",
+    hold_expires_at: null,
+  }, // past (not live)
+  {
+    id: "E",
+    status: "confirmed" as const,
+    check_in: "2026-05-01",
+    check_out: "2026-05-03",
+    created_at: "2026-04-28T00:00:00Z",
+    hold_expires_at: null,
+  }, // past (departed)
+  {
+    id: "F",
+    status: "cancelled" as const,
+    check_in: "2026-06-25",
+    check_out: "2026-06-27",
+    created_at: "2026-06-21T00:00:00Z",
+    hold_expires_at: null,
+  }, // past (cancelled, even though future)
 ];
 
 describe("viewCounts", () => {
@@ -104,12 +143,60 @@ describe("filterAndSortByView", () => {
     expect(ids("soon")).toEqual(["B", "A"]);
   });
 
-  it("action: awaiting before held", () => {
-    expect(ids("action")).toEqual(["C", "B"]);
+  it("action: most urgent first — B's hold clock (Jun 19) beats C's response clock (Jun 21)", () => {
+    expect(ids("action")).toEqual(["B", "C"]);
   });
 
   it("past: everything not upcoming, most recent check-in first", () => {
     expect(ids("past")).toEqual(["F", "D", "E"]);
+  });
+});
+
+describe("filterAndSortByView — action urgency", () => {
+  // min(created_at + 24h, arrival), soonest first; held races hold_expires_at, others race check_in.
+  const ACTION_ROWS = [
+    {
+      id: "freshFar", // created today, stay far off → response clock = Jun 21 11:00
+      status: "awaiting_confirmation" as const,
+      check_in: "2026-08-20",
+      check_out: "2026-08-22",
+      created_at: "2026-06-20T11:00:00Z",
+      hold_expires_at: null,
+    },
+    {
+      id: "held", // hold expires in 30 min → hold clock = Jun 20 12:00
+      status: "held" as const,
+      check_in: "2026-09-01",
+      check_out: "2026-09-03",
+      created_at: "2026-06-20T11:30:00Z",
+      hold_expires_at: "2026-06-20T12:00:00Z",
+    },
+    {
+      id: "overdue", // created 2 days ago → response clock = Jun 19 12:00 (already overdue)
+      status: "awaiting_confirmation" as const,
+      check_in: "2026-06-23",
+      check_out: "2026-06-25",
+      created_at: "2026-06-18T12:00:00Z",
+      hold_expires_at: null,
+    },
+  ];
+
+  it("orders by soonest deadline: overdue response < held's hold clock < fresh far-stay", () => {
+    expect(filterAndSortByView(ACTION_ROWS, "action", TODAY).map((r) => r.id)).toEqual([
+      "overdue",
+      "held",
+      "freshFar",
+    ]);
+  });
+});
+
+describe("isNewRequest", () => {
+  it("flags a request created inside the response window", () => {
+    expect(isNewRequest(new Date().toISOString())).toBe(true);
+  });
+
+  it("clears once a request ages past the window", () => {
+    expect(isNewRequest("2020-01-01T00:00:00Z")).toBe(false);
   });
 });
 
