@@ -78,6 +78,7 @@ export function RoomTypesSection({
                     setEditingId(null);
                     setExpandedId(null);
                     toast.success("Room type updated");
+                    if (res.notice) toast.warning(res.notice, { duration: 8000 });
                   }
                   return res;
                 }}
@@ -161,6 +162,7 @@ export function RoomTypesSection({
             if (res.ok) {
               setAdding(false);
               toast.success("Room type added");
+              if (res.notice) toast.warning(res.notice, { duration: 8000 });
             }
             return res;
           }}

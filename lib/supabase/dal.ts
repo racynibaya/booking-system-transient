@@ -3,8 +3,10 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
-import { todayStr } from "@/lib/dates";
+import { addDays, todayStr } from "@/lib/dates";
+import { bookedRoomNights, daysInRange, monthRange, occupancyPct, weekRange } from "@/lib/reports";
 
 import { createClient } from "./server";
 
@@ -48,6 +50,236 @@ export const getCurrentTenant = cache(async () => {
 
   if (error) return null;
   return data;
+});
+
+// The current operator's total room count = sum of room_types.quantity (RLS-scoped). This is the
+// tier-cap proxy (B7/D7): a hotel is one property with many rooms, so rooms — not properties —
+// track plan size. 0 if none yet.
+export const getRoomCount = cache(async (): Promise<number> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("room_types").select("quantity");
+  if (error || !data) return 0;
+  return data.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
+});
+
+// Basic operator report for the current month (P3.3). Revenue is summed from the payments record
+// (the money source of truth), occupancy from confirmed/completed stays clipped to the month. All
+// reads are RLS-scoped to the operator's own rows.
+export type OperatorReport = {
+  monthRevenue: number;
+  confirmedThisMonth: number;
+  occupancyPct: number;
+};
+export const getOperatorReport = cache(async (): Promise<OperatorReport> => {
+  const { start, end } = monthRange(todayStr());
+  const supabase = await createClient();
+
+  const [paymentsRes, staysRes, rooms] = await Promise.all([
+    // Money collected this month: confirmed payments, by their record timestamp.
+    supabase
+      .from("payments")
+      .select("amount")
+      .eq("status", "confirmed")
+      .gte("created_at", start)
+      .lt("created_at", end),
+    // Stays that sold inventory and overlap the month (half-open overlap: in < end, out > start).
+    supabase
+      .from("bookings")
+      .select("check_in, check_out")
+      .in("status", ["confirmed", "completed"])
+      .lt("check_in", end)
+      .gt("check_out", start),
+    getRoomCount(),
+  ]);
+
+  const monthRevenue = (paymentsRes.data ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const stays = staysRes.data ?? [];
+  const occupancy = occupancyPct(
+    bookedRoomNights(stays, start, end),
+    rooms,
+    daysInRange(start, end),
+  );
+
+  return { monthRevenue, confirmedThisMonth: stays.length, occupancyPct: occupancy };
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard summary reads. Three focused, RLS-scoped, cache()d reads the dashboard
+// composes in parallel: money (collected / coming / owed), occupancy (open tonight +
+// the next 7 nights), and the needs-action counts. Money is summed from the payments
+// record (the source of truth); occupancy mirrors the live held+confirmed set used
+// everywhere else (see getRoomCalendarData) and the pure unitsAvailableOn.
+// ---------------------------------------------------------------------------
+
+export type OwedBalance = {
+  bookingId: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  balance: number;
+};
+export type RevenueSummary = {
+  collectedThisWeek: number;
+  collectedThisMonth: number;
+  comingThisMonth: number;
+  owes: OwedBalance[];
+  owesTotal: number;
+};
+
+export const getRevenueSummary = cache(async (): Promise<RevenueSummary> => {
+  const today = todayStr();
+  const week = weekRange(today);
+  const month = monthRange(today);
+  const supabase = await createClient();
+
+  const [weekPayRes, monthPayRes, bookingsRes, paidRes] = await Promise.all([
+    // Collected this week / this month: confirmed payments, by their record timestamp.
+    supabase
+      .from("payments")
+      .select("amount")
+      .eq("status", "confirmed")
+      .gte("created_at", week.start)
+      .lt("created_at", week.end),
+    supabase
+      .from("payments")
+      .select("amount")
+      .eq("status", "confirmed")
+      .gte("created_at", month.start)
+      .lt("created_at", month.end),
+    // Bookings that sold inventory and could still owe a balance.
+    supabase
+      .from("bookings")
+      .select("id, guest_name, check_in, total_amount, properties(name)")
+      .in("status", ["confirmed", "completed"]),
+    // Every confirmed payment, to net off what each booking has actually paid.
+    supabase.from("payments").select("booking_id, amount").eq("status", "confirmed"),
+  ]);
+
+  const sumAmounts = (rows: { amount: number | null }[] | null) =>
+    (rows ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
+
+  const paidByBooking = new Map<string, number>();
+  for (const p of paidRes.data ?? []) {
+    paidByBooking.set(p.booking_id, (paidByBooking.get(p.booking_id) ?? 0) + (p.amount ?? 0));
+  }
+
+  const owes: OwedBalance[] = [];
+  for (const b of bookingsRes.data ?? []) {
+    const balance = (b.total_amount ?? 0) - (paidByBooking.get(b.id) ?? 0);
+    if (balance > 0) {
+      owes.push({
+        bookingId: b.id,
+        guestName: b.guest_name,
+        propertyName: b.properties?.name ?? "—",
+        checkIn: b.check_in,
+        balance,
+      });
+    }
+  }
+  owes.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+
+  // "Coming this month" = the balance still owed on confirmed stays arriving this month
+  // (guests typically pay the remainder on arrival).
+  const comingThisMonth = owes
+    .filter((o) => o.checkIn >= month.start && o.checkIn < month.end)
+    .reduce((s, o) => s + o.balance, 0);
+
+  return {
+    collectedThisWeek: sumAmounts(weekPayRes.data),
+    collectedThisMonth: sumAmounts(monthPayRes.data),
+    comingThisMonth,
+    owes,
+    owesTotal: owes.reduce((s, o) => s + o.balance, 0),
+  };
+});
+
+export type OccupancyNight = { date: string; open: number; total: number };
+export type OccupancySnapshot = {
+  tonightOpen: number;
+  tonightTotal: number;
+  nights: OccupancyNight[];
+};
+
+export const getOccupancySnapshot = cache(async (): Promise<OccupancySnapshot> => {
+  const today = todayStr();
+  const horizonEnd = addDays(today, 7); // next 7 nights, half-open [today, today+7)
+  const nowIso = new Date().toISOString();
+  const supabase = await createClient();
+
+  const [roomsRes, bookingsRes, blocksRes] = await Promise.all([
+    supabase.from("room_types").select("id, quantity"),
+    supabase
+      .from("bookings")
+      .select("room_type_id, check_in, check_out, status, hold_expires_at")
+      .in("status", ["held", "confirmed"])
+      .gte("check_out", today)
+      .lt("check_in", horizonEnd),
+    supabase
+      .from("availability_blocks")
+      .select("room_type_id, start_date, end_date")
+      .gte("end_date", today)
+      .lt("start_date", horizonEnd),
+  ]);
+
+  const rooms = roomsRes.data ?? [];
+  // Group the live held+confirmed bookings (lapsed holds free their inventory) and blocks
+  // by room_type, in lib/availability's string-range shapes.
+  const bookingsByRoom = new Map<string, { checkIn: string; checkOut: string }[]>();
+  for (const b of bookingsRes.data ?? []) {
+    if (b.status !== "confirmed" && b.hold_expires_at && b.hold_expires_at <= nowIso) continue;
+    const arr = bookingsByRoom.get(b.room_type_id) ?? [];
+    arr.push({ checkIn: b.check_in, checkOut: b.check_out });
+    bookingsByRoom.set(b.room_type_id, arr);
+  }
+  const blocksByRoom = new Map<string, { start: string; end: string }[]>();
+  for (const bl of blocksRes.data ?? []) {
+    const arr = blocksByRoom.get(bl.room_type_id) ?? [];
+    arr.push({ start: bl.start_date, end: bl.end_date });
+    blocksByRoom.set(bl.room_type_id, arr);
+  }
+
+  const total = rooms.reduce((n, r) => n + (r.quantity ?? 0), 0);
+  const nights: OccupancyNight[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(today, i);
+    const open = rooms.reduce(
+      (n, r) =>
+        n +
+        unitsAvailableOn(
+          date,
+          r.quantity ?? 0,
+          bookingsByRoom.get(r.id) ?? [],
+          blocksByRoom.get(r.id) ?? [],
+        ),
+      0,
+    );
+    nights.push({ date, open, total });
+  }
+
+  return { tonightOpen: nights[0]?.open ?? 0, tonightTotal: total, nights };
+});
+
+export type NeedsActionCounts = { needsConfirmation: number; expiringHolds: number };
+
+export const getNeedsActionCounts = cache(async (): Promise<NeedsActionCounts> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("status, hold_expires_at")
+    .in("status", ["awaiting_confirmation", "held"]);
+
+  if (error || !data) return { needsConfirmation: 0, expiringHolds: 0 };
+
+  let needsConfirmation = 0;
+  let expiringHolds = 0;
+  for (const b of data) {
+    // effectiveStatus drops lapsed holds to 'expired', so only live holds are counted —
+    // matching the bookings board's "Needs action" view (awaiting_confirmation + live held).
+    const eff = effectiveStatus(b.status, b.hold_expires_at);
+    if (eff === "awaiting_confirmation") needsConfirmation++;
+    else if (eff === "held") expiringHolds++;
+  }
+  return { needsConfirmation, expiringHolds };
 });
 
 // The current operator's payout methods (RLS-scoped — no explicit tenant filter needed).

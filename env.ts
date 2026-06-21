@@ -38,6 +38,10 @@ export const env = createEnv({
     // --- Supabase (public) --- new-format publishable key (sb_publishable_...)
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+    // --- Upgrade contact (Phase 3 / P3.1) --- Messenger link an operator taps to upgrade their
+    // plan. Billing is manual-first (B4): collection happens over Messenger/GCash, so the "Upgrade"
+    // CTA opens this chat. Optional — when unset the CTA degrades to plain "message us" copy.
+    NEXT_PUBLIC_UPGRADE_MESSENGER_URL: z.url().optional(),
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
@@ -50,6 +54,7 @@ export const env = createEnv({
     SITE_URL: process.env.SITE_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_UPGRADE_MESSENGER_URL: process.env.NEXT_PUBLIC_UPGRADE_MESSENGER_URL,
   },
   // Treat empty strings as undefined so a blank var fails required checks.
   emptyStringAsUndefined: true,
