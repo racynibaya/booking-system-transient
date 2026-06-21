@@ -1,0 +1,21 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF6EC"/>
+      <stop offset="1" stop-color="#FFE8CC"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1080" fill="url(#bg2)"/>
+  <!-- photo placeholder -->
+  <rect x="0" y="0" width="1080" height="560" fill="#0E4D64"/>
+  <text x="540" y="285" font-family="Arial, sans-serif" font-size="34" fill="#7FB7C7" text-anchor="middle">[ Place a bright photo of the child here ]</text>
+  <text x="540" y="330" font-family="Arial, sans-serif" font-size="22" fill="#5E9DAE" text-anchor="middle">keep faces consented · warm, hopeful, dignified</text>
+  <!-- tag -->
+  <rect x="60" y="600" width="300" height="56" rx="28" fill="#FF9F1C"/>
+  <text x="210" y="638" font-family="Arial, sans-serif" font-size="28" fill="#FFFFFF" text-anchor="middle" font-weight="bold">KUWENTONG TULOY</text>
+  <text x="60" y="740" font-family="Georgia, serif" font-size="56" fill="#0E4D64" font-weight="bold">"Pangarap ko</text>
+  <text x="60" y="812" font-family="Georgia, serif" font-size="56" fill="#0E4D64" font-weight="bold">maging chef."</text>
+  <text x="60" y="892" font-family="Arial, sans-serif" font-size="30" fill="#5A4632">Meet [Name], [age]. Today [he/she] is</text>
+  <text x="60" y="934" font-family="Arial, sans-serif" font-size="30" fill="#5A4632">learning culinary arts at Tuloy.</text>
+  <text x="60" y="1010" font-family="Arial, sans-serif" font-size="26" fill="#F4791F" font-weight="bold">@TuloyFoundation · #EveryChildDeservesAFuture</text>
+</svg>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { isOverRoomCap, PLANS, type PlanId } from "@/lib/plans";
 import { slugify, suffixSlug } from "@/lib/slug";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -15,17 +16,34 @@ import {
   type RoomTypeInput,
 } from "@/lib/validation";
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+// `notice` is a non-blocking nudge surfaced on success (e.g. an over-cap upgrade prompt). It is
+// never an error — the write succeeded; the UI just shows the message alongside the success toast.
+export type ActionResult = { ok: true; notice?: string } | { ok: false; error: string };
 
 // Resolve the current tenant. Returns a discriminated result: on failure it IS an
 // ActionResult, so callers can `if (!t.ok) return t;`.
 async function authedTenant(): Promise<
-  { ok: true; tenantId: string } | { ok: false; error: string }
+  { ok: true; tenantId: string; plan: PlanId } | { ok: false; error: string }
 > {
   await requireUser();
   const tenant = await getCurrentTenant();
   if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
-  return { ok: true, tenantId: tenant.id as string };
+  return { ok: true, tenantId: tenant.id as string, plan: tenant.plan as PlanId };
+}
+
+// Soft tier guard (D7): NEVER blocks a write. After a room-count change, if the tenant's total
+// rooms (sum of room_types.quantity) exceed their plan's cap, return an upgrade nudge — grace,
+// not a wall. A small operator who outgrows their tier is prompted, never locked out.
+async function roomCapNotice(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  plan: PlanId,
+): Promise<string | undefined> {
+  const { data } = await supabase.from("room_types").select("quantity").eq("tenant_id", tenantId);
+  if (!data) return undefined;
+  const total = data.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
+  if (!isOverRoomCap(plan, total)) return undefined;
+  return `You now have ${total} rooms — the ${PLANS[plan].label} plan covers up to ${PLANS[plan].roomCap}. Upgrade your plan to keep growing.`;
 }
 
 export async function createProperty(input: PropertyInput): Promise<ActionResult> {
@@ -189,7 +207,7 @@ export async function createRoomType(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/properties/${propertyId}`);
-  return { ok: true };
+  return { ok: true, notice: await roomCapNotice(supabase, t.tenantId, t.plan) };
 }
 
 export async function updateRoomType(
@@ -211,7 +229,7 @@ export async function updateRoomType(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/properties/${propertyId}`);
-  return { ok: true };
+  return { ok: true, notice: await roomCapNotice(supabase, t.tenantId, t.plan) };
 }
 
 // The photo uploads themselves happen browser-side (RLS scopes the storage path to the

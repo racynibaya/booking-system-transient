@@ -571,6 +571,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
           guest_phone: string | null;
@@ -604,6 +605,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
           guest_phone: string | null;
@@ -640,6 +642,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
           guest_phone: string | null;
@@ -742,6 +745,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
           guest_phone: string | null;
@@ -775,7 +779,7 @@ export type Database = {
         | "no_show";
       payment_kind: "deposit" | "balance";
       payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
-      tenant_plan: "free" | "business";
+      tenant_plan: "free" | "business" | "solo" | "pro";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
     CompositeTypes: {
@@ -917,7 +921,7 @@ export const Constants = {
       ],
       payment_kind: ["deposit", "balance"],
       payment_method_type: ["gcash", "maya", "bank", "grabpay"],
-      tenant_plan: ["free", "business"],
+      tenant_plan: ["free", "business", "solo", "pro"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },
   },
