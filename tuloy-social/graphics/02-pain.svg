@@ -1,0 +1,23 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f7f5"/>
+      <stop offset="1" stop-color="#ecefec"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1080" fill="url(#bg2)"/>
+  <!-- top band -->
+  <rect x="0" y="0" width="1080" height="150" fill="#c76b3f"/>
+  <text x="540" y="98" font-family="Arial, sans-serif" font-size="40" fill="#FFFFFF" text-anchor="middle" font-weight="bold" letter-spacing="2">PEAK SEASON, EVERY TIME</text>
+  <text x="80" y="320" font-family="Georgia, serif" font-size="66" fill="#1d2a2c" font-weight="bold">POV: you just</text>
+  <text x="80" y="392" font-family="Georgia, serif" font-size="66" fill="#1d2a2c" font-weight="bold">double-booked</text>
+  <text x="80" y="464" font-family="Georgia, serif" font-size="66" fill="#c76b3f" font-weight="bold">Room 2.</text>
+  <text x="80" y="560" font-family="Arial, sans-serif" font-size="34" fill="#38454a">Two guests. Same dates. Both have</text>
+  <text x="80" y="606" font-family="Arial, sans-serif" font-size="34" fill="#38454a">"proof of payment." 😮‍💨</text>
+  <!-- fix band -->
+  <rect x="80" y="690" width="920" height="230" rx="28" fill="#2c7a6b"/>
+  <text x="120" y="772" font-family="Arial, sans-serif" font-size="30" fill="#bfe0d8">The fix:</text>
+  <text x="120" y="832" font-family="Georgia, serif" font-size="48" fill="#FFFFFF" font-weight="bold">One calendar.</text>
+  <text x="120" y="888" font-family="Georgia, serif" font-size="48" fill="#e0a33e" font-weight="bold">Zero double-bookings.</text>
+  <text x="80" y="1000" font-family="Arial, sans-serif" font-size="28" fill="#5e6c6e">Tuloy · for San Juan operators · #BookDirect</text>
+</svg>
