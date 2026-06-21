@@ -53,7 +53,7 @@ export default async function BookingsPage({
         filters={{ ...sqlFilters, status }}
         resultCount={rows.length}
       />
-      <BookingsTable bookings={rows} hasAnyBookings={baseRows.length > 0} />
+      <BookingsTable bookings={rows} hasAnyBookings={baseRows.length > 0} view={view} />
     </div>
   );
 }
