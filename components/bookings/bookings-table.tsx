@@ -6,6 +6,7 @@ import { useEffect, useState, type ComponentProps } from "react";
 
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { ConfirmBookingButton } from "@/components/bookings/confirm-booking-button";
+import { HoldCountdown } from "@/components/bookings/hold-countdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -41,6 +42,11 @@ const STATUS_TONE: Record<Status, ComponentProps<typeof Badge>["tone"]> = {
 
 // Statuses an operator can still act on (Confirm/Cancel). Terminal ones show no actions.
 const ACTIVE: Status[] = ["held", "awaiting_confirmation", "confirmed"];
+
+// Left accent bar for the most time-critical Needs-action rows: red = reply overdue,
+// gold = held/hold ticking. Clipped to the card radius via overflow-hidden.
+const BAR =
+  "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-['']";
 
 // The "arriving in…" pill: green while a guest is staying, amber when arriving within 2 days.
 function datePill(b: Booking, today: string): { label: string; cls: string } {
@@ -99,8 +105,25 @@ export function BookingsTable({
           {bookings.map((b) => {
             const contact = b.guest_phone ?? b.guest_email;
             const pill = datePill(b, today);
+            const where = `${b.properties?.name ?? "—"}${b.room_types?.name ? ` · ${b.room_types.name}` : ""}`;
+            // Glanceability cues live only in Needs action (other views unchanged). isNew/isOverdue
+            // read Date.now() via isNewRequest — same boundary nit as before, harmless; the hold
+            // countdown itself is hydration-safe (see HoldCountdown).
+            const isAction = view === "action";
+            const showCountdown = isAction && b.status === "held" && Boolean(b.hold_expires_at);
+            const isOverdue = isAction && b.status !== "held" && !isNewRequest(b.created_at);
+            const isNew = isAction && isNewRequest(b.created_at);
             return (
-              <Card key={b.id} className="flex flex-col gap-2.5 p-4">
+              <Card
+                key={b.id}
+                className={`flex flex-col gap-2.5 p-4 ${
+                  isOverdue
+                    ? `${BAR} before:bg-error`
+                    : showCountdown
+                      ? `${BAR} before:bg-accent-warm`
+                      : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-title-md text-ink">{b.guest_name}</p>
@@ -109,34 +132,49 @@ export function BookingsTable({
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    {/* KNOWN ISSUE (cosmetic, deferred): isNewRequest reads Date.now() at render,
-                        so a booking sitting exactly on the response-window boundary can flip
-                        between SSR and hydration → a one-off React hydration warning on this
-                        badge. Rare + harmless; make deterministic (pass a server `now`) if it surfaces. */}
-                    {view === "action" && isNewRequest(b.created_at) && (
-                      <Badge tone="accent">New</Badge>
+                    {/* "New" is deliberately quiet (outline, not a colored fill) so it never
+                        out-shouts the red/gold urgency cues — the eye should land on those. */}
+                    {isNew && (
+                      <span className="inline-flex items-center rounded-full border border-hairline px-2.5 py-0.5 text-badge font-medium text-muted">
+                        New
+                      </span>
                     )}
                     <Badge tone={STATUS_TONE[b.status]}>{STATUS_LABELS[b.status]}</Badge>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-body-sm font-medium text-ink">
-                    <CalendarRange className="size-4 text-muted" />
-                    {prettyDate(b.check_in)} – {prettyDate(b.check_out)}
+                {isOverdue && (
+                  <span className="inline-flex w-fit items-center gap-2 rounded-full bg-error/10 px-3 py-1 text-body-sm font-semibold text-error">
+                    <span className="size-2 rounded-full bg-error" aria-hidden />
+                    Reply overdue
                   </span>
-                  <span className={`rounded-full px-2 py-0.5 text-caption-sm ${pill.cls}`}>
-                    {pill.label}
-                  </span>
-                  <span className="text-caption-sm text-muted">
-                    {b.num_guests} {b.num_guests === 1 ? "guest" : "guests"}
-                  </span>
-                </div>
+                )}
 
-                <p className="truncate text-caption-sm text-muted">
-                  {b.properties?.name ?? "—"}
-                  {b.room_types?.name ? ` · ${b.room_types.name}` : ""}
-                </p>
+                {showCountdown ? (
+                  <>
+                    <HoldCountdown expiresAt={b.hold_expires_at!} />
+                    <p className="truncate text-caption-sm text-muted">
+                      Stay {prettyDate(b.check_in)} – {prettyDate(b.check_out)} · {b.num_guests}{" "}
+                      {b.num_guests === 1 ? "guest" : "guests"} · {where}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 text-body-sm font-medium text-ink">
+                        <CalendarRange className="size-4 text-muted" />
+                        {prettyDate(b.check_in)} – {prettyDate(b.check_out)}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-caption-sm ${pill.cls}`}>
+                        {pill.label}
+                      </span>
+                      <span className="text-caption-sm text-muted">
+                        {b.num_guests} {b.num_guests === 1 ? "guest" : "guests"}
+                      </span>
+                    </div>
+                    <p className="truncate text-caption-sm text-muted">{where}</p>
+                  </>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline-soft pt-2.5">
                   <span className="text-caption-sm text-muted">
