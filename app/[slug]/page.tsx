@@ -139,12 +139,15 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
             />
           )}
           {coverUrl && (
-            <>
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${coverUrl})` }}
-              />
-            </>
+            <Image
+              src={coverUrl}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              quality={85}
+              className="object-cover object-center"
+            />
           )}
           {/* bottom legibility scrim for the white title */}
           <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
