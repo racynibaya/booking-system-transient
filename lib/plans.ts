@@ -19,6 +19,12 @@ export type Plan = {
    * one place — change it here, decide it later with real data (D-C).
    */
   price: string;
+  /**
+   * Monthly price in PESOS, for the self-serve subscription checkout (Phase A). The `price` string
+   * above is display copy; this is the number the PayMongo checkout charges. `null` = not
+   * self-serve-charged here (free has nothing to pay; business is value-priced/contact-sales).
+   */
+  priceMonthly: number | null;
   /** Max rooms (sum of room_types.quantity) before the upgrade nudge fires. null = unlimited. */
   roomCap: number | null;
   /**
@@ -40,6 +46,7 @@ export const PLANS: Record<PlanId, Plan> = {
     label: "Free",
     blurb: "Pilot — try everything.",
     price: "₱0",
+    priceMonthly: null,
     roomCap: 4,
     gateway: false,
     features: [],
@@ -49,6 +56,7 @@ export const PLANS: Record<PlanId, Plan> = {
     label: "Solo",
     blurb: "A small transient.",
     price: "₱990",
+    priceMonthly: 990,
     roomCap: 4,
     gateway: false,
     features: [
@@ -63,6 +71,7 @@ export const PLANS: Record<PlanId, Plan> = {
     label: "Pro",
     blurb: "A guesthouse or small hotel.",
     price: "₱2,500",
+    priceMonthly: 2500,
     roomCap: 15,
     gateway: false,
     inherits: "Everything in Solo, plus",
@@ -79,6 +88,7 @@ export const PLANS: Record<PlanId, Plan> = {
     label: "Business",
     blurb: "A full hotel.",
     price: "₱5,900",
+    priceMonthly: null,
     roomCap: null,
     gateway: true,
     inherits: "Everything in Pro, plus",

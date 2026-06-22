@@ -116,6 +116,35 @@ export function guestCancelledEmail(b: ConfirmationBooking): { subject: string; 
   };
 }
 
+// Operator-facing: subscription renewal nudge (Phase A). Sent by the billing cron when a plan is
+// about to lapse or has gone past due — the automated reminder that replaces "us remembering".
+export function renewalReminderEmail(input: {
+  planLabel: string;
+  price: string;
+  renewsOn: string | null;
+  pastDue: boolean;
+  settingsUrl: string;
+}): { subject: string; html: string } {
+  const rows =
+    row("Plan", input.planLabel) +
+    row("Price", `${input.price} / month`) +
+    row(input.pastDue ? "Lapsed" : "Renews", input.renewsOn ?? "—");
+
+  return {
+    subject: input.pastDue
+      ? `Your ${input.planLabel} plan is past due`
+      : `Your ${input.planLabel} plan renews soon`,
+    html: shell(
+      input.pastDue ? "Time to renew" : "Your plan renews soon",
+      input.pastDue
+        ? "Your plan has lapsed. Renew now to keep your booking page and tools running without interruption."
+        : "Just a heads-up that your plan renews soon. Renew anytime — it only takes a tap.",
+      rows,
+      `Renew from your <a href="${input.settingsUrl}" style="color:${RAUSCH};">plan settings</a>. Questions? Just reply to this email.`,
+    ),
+  };
+}
+
 // Operator-facing: "new confirmed booking" + guest contact so they can reach out.
 export function operatorBookingEmail(b: ConfirmationBooking): { subject: string; html: string } {
   const rows =

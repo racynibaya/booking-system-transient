@@ -21,12 +21,27 @@ export const env = createEnv({
     // --- Admin alerts --- where operator-change notifications go (e.g. a GCash change).
     // Comma-separated for multiple. If unset, alerts fall back to is_admin operators.
     ADMIN_ALERT_EMAIL: z.string().min(1).optional(),
+    // --- Cron secret (Phase A billing cron) --- shared secret the scheduler sends as
+    // `Authorization: Bearer <CRON_SECRET>` to /api/cron/subscription-billing. Optional: when unset
+    // the cron route refuses all calls (dormant), so the endpoint can't be triggered by anyone.
+    CRON_SECRET: z.string().min(1).optional(),
+    // --- Subscription enforcement switch (OFF during the pilot) --- when "true", the billing cron
+    // downgrades operators who stay past-due beyond the grace window to the free tier (their page
+    // stays up; the soft room-cap nudge returns). Unset/anything else = nag-only (the pilot default).
+    // Flip to "true" after the pilot to give non-payment teeth.
+    SUBSCRIPTION_ENFORCEMENT: z.string().optional(),
     // --- PayMongo (Phase 2a spike) --- operator-as-merchant gateway. Optional so the app
     // boots without them (dev/CI/non-gateway prod). The checkout action + webhook handler
     // fail gracefully when unset. SPIKE NOTE: these are a SINGLE sandbox account's keys; in
     // Phase 2b the operator's keys move to a per-tenant encrypted store, NOT env.
     PAYMONGO_SECRET_KEY: z.string().min(1).optional(),
     PAYMONGO_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // --- PayMongo PLATFORM account (operator subscription billing) --- a SEPARATE money rail from the
+    // per-tenant gateway above: operators pay TULOY for the software, on Tuloy's OWN PayMongo account.
+    // The platform secret key signs the subscription checkout; the platform whsk_ verifies its webhook.
+    // Optional → the subscription checkout is dormant when unset (the plan CTA falls back to Messenger).
+    PAYMONGO_PLATFORM_SECRET_KEY: z.string().min(1).optional(),
+    PAYMONGO_PLATFORM_WEBHOOK_SECRET: z.string().min(1).optional(),
     // --- Public base URL (Phase 2b) --- the stable origin we register PayMongo webhooks against
     // (https://SITE_URL/api/webhooks/paymongo/{token}). Unlike the per-request checkout return URL,
     // a registered webhook URL is persisted at PayMongo, so it must NOT be derived from the request
@@ -49,8 +64,12 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
     ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
+    CRON_SECRET: process.env.CRON_SECRET,
+    SUBSCRIPTION_ENFORCEMENT: process.env.SUBSCRIPTION_ENFORCEMENT,
     PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
     PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
+    PAYMONGO_PLATFORM_SECRET_KEY: process.env.PAYMONGO_PLATFORM_SECRET_KEY,
+    PAYMONGO_PLATFORM_WEBHOOK_SECRET: process.env.PAYMONGO_PLATFORM_WEBHOOK_SECRET,
     SITE_URL: process.env.SITE_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

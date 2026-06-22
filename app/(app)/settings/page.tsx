@@ -39,6 +39,9 @@ export default async function SettingsPage() {
         <PlanSection
           plan={(tenant?.plan as PlanId) ?? "free"}
           roomCount={roomCount}
+          paidUntil={tenant?.paid_until ?? null}
+          subscriptionStatus={tenant?.subscription_status ?? "trialing"}
+          checkoutEnabled={!!env.PAYMONGO_PLATFORM_SECRET_KEY}
           messengerUrl={env.NEXT_PUBLIC_UPGRADE_MESSENGER_URL}
         />
       </section>

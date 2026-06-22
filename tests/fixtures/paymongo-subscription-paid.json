@@ -1,0 +1,54 @@
+{
+  "data": {
+    "id": "evt_sub_n5d8iDxJKF7Nz8Pd6qjNZQ6V",
+    "type": "event",
+    "attributes": {
+      "data": {
+        "id": "cs_sub_140b08a1ea641ddcc5d29b58",
+        "type": "checkout_session",
+        "attributes": {
+          "status": "active",
+          "paid_at": null,
+          "livemode": false,
+          "merchant": "TULOY",
+          "metadata": {
+            "kind": "subscription",
+            "tenant_id": "6fe52349-0be9-4261-9e8c-483ce2a0ae23",
+            "plan": "solo"
+          },
+          "payments": [],
+          "line_items": [
+            {
+              "name": "Solo plan — monthly",
+              "amount": 99000,
+              "currency": "PHP",
+              "quantity": 1
+            }
+          ],
+          "description": "Solo subscription (6fe52349-0be9-4261-9e8c-483ce2a0ae23)",
+          "checkout_url": "https://checkout.paymongo.com/sub140b08a1ea641ddcc5d29b58",
+          "payment_intent": {
+            "id": "pi_sub_gnSsXmrExLZcd2SBknJw7CWn",
+            "type": "payment_intent",
+            "attributes": {
+              "amount": 99000,
+              "status": "processing",
+              "currency": "PHP",
+              "livemode": false,
+              "metadata": {
+                "kind": "subscription",
+                "tenant_id": "6fe52349-0be9-4261-9e8c-483ce2a0ae23",
+                "plan": "solo"
+              }
+            }
+          },
+          "payment_method_types": ["gcash", "card"]
+        }
+      },
+      "type": "checkout_session.payment.paid",
+      "livemode": false,
+      "previous_data": {},
+      "pending_webhooks": 1
+    }
+  }
+}

@@ -119,6 +119,21 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverview | 
   return data as unknown as DashboardOverview;
 });
 
+export type BillingHealth = {
+  paying: number;
+  due_soon: number;
+  past_due: number;
+  overdue_list: { name: string | null; plan: string; paid_until: string | null }[];
+};
+
+// Subscription billing health for the admin dashboard — who pays, who renews soon, who lapsed.
+export const getBillingHealth = cache(async (): Promise<BillingHealth | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_billing_health");
+  if (error || !data) return null;
+  return data as unknown as BillingHealth;
+});
+
 export type AdminRecentBooking = {
   booking_id: string;
   operator_name: string | null;
