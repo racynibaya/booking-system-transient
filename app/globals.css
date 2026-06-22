@@ -284,6 +284,22 @@ body {
   outline-offset: 1px;
 }
 
+/* Booked (sold-out) days. These are disabled, but instead of the generic faded
+   look we give them a distinct "taken" treatment so guests read them as already
+   booked, not merely unselectable: full opacity, a soft error tint, and a struck-
+   through date. Overrides the disabled fade (more specific than .rdp-disabled). */
+.booking-calendar .rdp-booked {
+  opacity: 1;
+}
+.booking-calendar .rdp-booked .rdp-day_button {
+  color: color-mix(in srgb, var(--color-error) 70%, var(--color-muted));
+  background-color: color-mix(in srgb, var(--color-error) 9%, transparent);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: color-mix(in srgb, var(--color-error) 55%, transparent);
+  cursor: not-allowed;
+}
+
 /* Month-nav chevron buttons. */
 .booking-calendar .rdp-button_previous:hover,
 .booking-calendar .rdp-button_next:hover {
