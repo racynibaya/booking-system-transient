@@ -34,4 +34,12 @@ describe("PLANS", () => {
   it("excludes the free signup default from the pricing grid", () => {
     expect(DISPLAY_PLANS.map((p) => p.id)).toEqual(["solo", "pro", "business"]);
   });
+
+  it("self-serve-charged tiers (solo/pro) carry a numeric priceMonthly", () => {
+    expect(PLANS.solo.priceMonthly).toBe(990);
+    expect(PLANS.pro.priceMonthly).toBe(2500);
+    // free has nothing to pay; business is value-priced/contact-sales → not self-serve-charged.
+    expect(PLANS.free.priceMonthly).toBeNull();
+    expect(PLANS.business.priceMonthly).toBeNull();
+  });
 });

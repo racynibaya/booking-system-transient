@@ -340,6 +340,62 @@ export type Database = {
           },
         ];
       };
+      subscription_payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          currency: string;
+          id: string;
+          method: string | null;
+          paid_at: string;
+          paymongo_checkout_id: string;
+          period_end: string;
+          period_start: string;
+          plan: Database["public"]["Enums"]["tenant_plan"];
+          provider_ref: string | null;
+          raw: Json | null;
+          tenant_id: string;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          method?: string | null;
+          paid_at?: string;
+          paymongo_checkout_id: string;
+          period_end: string;
+          period_start: string;
+          plan: Database["public"]["Enums"]["tenant_plan"];
+          provider_ref?: string | null;
+          raw?: Json | null;
+          tenant_id: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          method?: string | null;
+          paid_at?: string;
+          paymongo_checkout_id?: string;
+          period_end?: string;
+          period_start?: string;
+          plan?: Database["public"]["Enums"]["tenant_plan"];
+          provider_ref?: string | null;
+          raw?: Json | null;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenant_gateway_connections: {
         Row: {
           created_at: string;
@@ -444,6 +500,7 @@ export type Database = {
           id: string;
           is_admin: boolean;
           name: string | null;
+          paid_until: string | null;
           plan: Database["public"]["Enums"]["tenant_plan"];
           subscription_status: string;
           user_id: string;
@@ -459,6 +516,7 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
+          paid_until?: string | null;
           plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
           user_id: string;
@@ -474,6 +532,7 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
+          paid_until?: string | null;
           plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
           user_id?: string;
@@ -519,6 +578,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_billing_health: { Args: never; Returns: Json };
       admin_dashboard_overview: { Args: never; Returns: Json };
       admin_list_operators: {
         Args: never;
@@ -664,6 +724,11 @@ export type Database = {
         };
       };
       current_tenant_id: { Args: never; Returns: string };
+      downgrade_lapsed_subscriptions: {
+        Args: { p_grace_days?: number };
+        Returns: number;
+      };
+      flag_past_due_subscriptions: { Args: never; Returns: number };
       gateway_connection_status: {
         Args: never;
         Returns: {
@@ -729,6 +794,39 @@ export type Database = {
       };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
+      record_subscription_payment: {
+        Args: {
+          p_amount: number;
+          p_checkout_id: string;
+          p_currency?: string;
+          p_method?: string;
+          p_plan: Database["public"]["Enums"]["tenant_plan"];
+          p_provider_ref?: string;
+          p_raw?: Json;
+          p_tenant_id: string;
+        };
+        Returns: {
+          amount: number;
+          created_at: string;
+          currency: string;
+          id: string;
+          method: string | null;
+          paid_at: string;
+          paymongo_checkout_id: string;
+          period_end: string;
+          period_start: string;
+          plan: Database["public"]["Enums"]["tenant_plan"];
+          provider_ref: string | null;
+          raw: Json | null;
+          tenant_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "subscription_payments";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       resubmit_verification: { Args: never; Returns: undefined };
       set_tenant_verification: {
         Args: {
