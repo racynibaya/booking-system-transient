@@ -102,6 +102,18 @@ export function BookingCard({
     ],
     [room, stays, blockRanges],
   );
+  // "Booked" is a visual modifier, not a disable rule — sold-out days are already in
+  // disabledDays. Past days are excluded so they read as "past" (faded), while taken
+  // future days get the distinct struck-through "booked" treatment.
+  const bookedDays = useMemo(
+    () => (day: Date) => {
+      if (!room) return false;
+      const ds = toDateStr(day);
+      if (ds < todayStr()) return false;
+      return unitsAvailableOn(ds, room.quantity, stays, blockRanges) === 0;
+    },
+    [room, stays, blockRanges],
+  );
 
   const datesValid = checkIn !== "" && checkOut !== "" && checkOut > checkIn;
   const guestsValid = !!room && guests >= 1 && guests <= room.capacity;
@@ -517,6 +529,8 @@ export function BookingCard({
                 }}
                 disabled={disabledDays}
                 excludeDisabled
+                modifiers={{ booked: bookedDays }}
+                modifiersClassNames={{ booked: "rdp-booked" }}
                 style={
                   {
                     "--rdp-accent-color": "var(--color-primary)",
