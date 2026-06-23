@@ -16,6 +16,7 @@ export type ConfirmationBooking = {
   numGuests: number;
   depositAmount: number | null;
   totalAmount: number | null;
+  source?: string | null;
 };
 
 // Brand Rausch + ink, matching the app's tokens (app/globals.css).
@@ -147,6 +148,9 @@ export function renewalReminderEmail(input: {
 
 // Operator-facing: "new confirmed booking" + guest contact so they can reach out.
 export function operatorBookingEmail(b: ConfirmationBooking): { subject: string; html: string } {
+  // When Tuloy's demand-gen drove the booking, say so in the intro — the operator should feel the
+  // effort the moment it lands, not have it disappear into "just another reservation".
+  const fromTuloy = b.source === "tuloy";
   const rows =
     row("Guest", b.guestName) +
     row("Phone", b.guestPhone || "—") +
@@ -161,7 +165,9 @@ export function operatorBookingEmail(b: ConfirmationBooking): { subject: string;
     subject: `New confirmed booking — ${b.guestName}`,
     html: shell(
       "New confirmed booking",
-      "You confirmed this deposit. The dates are now held as confirmed.",
+      fromTuloy
+        ? "📣 Tuloy brought you this booking. You confirmed the deposit — the dates are now held as confirmed."
+        : "You confirmed this deposit. The dates are now held as confirmed.",
       rows,
       "This is a record for your inbox — no action needed.",
     ),

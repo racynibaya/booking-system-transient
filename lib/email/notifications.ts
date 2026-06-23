@@ -14,6 +14,9 @@ export type NotificationBookingRow = {
   num_guests: number;
   deposit_amount: number | null;
   total_amount: number | null;
+  // Optional so the confirm_booking RPC row (typed before `gen types` catches up) still assigns;
+  // present at runtime since the RPC returns the full bookings row.
+  source?: string | null;
 };
 
 export function toConfirmationBooking(b: NotificationBookingRow): ConfirmationBooking {
@@ -26,5 +29,6 @@ export function toConfirmationBooking(b: NotificationBookingRow): ConfirmationBo
     numGuests: b.num_guests,
     depositAmount: b.deposit_amount,
     totalAmount: b.total_amount,
+    source: b.source ?? null,
   };
 }

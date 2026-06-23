@@ -28,6 +28,7 @@
 *.pem
 /uploads/
 /temporary screenshots/
+/.tuloy_build/
 
 # debug
 npm-debug.log*

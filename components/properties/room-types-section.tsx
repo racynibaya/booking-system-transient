@@ -1,6 +1,7 @@
 "use client";
 
 import { BedDouble, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -37,7 +38,10 @@ export function RoomTypesSection({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Over-cap block (upgrade:true from createRoomType) → upgrade modal; holds the plan/cap/count body.
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const supabase = createClient();
   const urlFor = (path: string) => supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
@@ -163,11 +167,26 @@ export function RoomTypesSection({
               setAdding(false);
               toast.success("Room type added");
               if (res.notice) toast.warning(res.notice, { duration: 8000 });
+            } else if (res.upgrade) {
+              setUpgradeMsg(res.error);
             }
             return res;
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={upgradeMsg !== null}
+        title="Upgrade to add more rooms"
+        description={upgradeMsg ?? undefined}
+        confirmLabel="Upgrade your plan"
+        cancelLabel="Cancel"
+        onCancel={() => setUpgradeMsg(null)}
+        onConfirm={() => {
+          setUpgradeMsg(null);
+          router.push("/settings");
+        }}
+      />
 
       <ConfirmDialog
         open={deletingId !== null}

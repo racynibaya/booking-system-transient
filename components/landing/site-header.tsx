@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CtaButton } from "./cta-button";
+import { MobileMenu } from "./mobile-menu";
 
 const NAV_LINKS = [
-  { label: "Features", href: "/#features" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Features", href: "/about#features" },
+  { label: "How it works", href: "/about#how-it-works" },
+  { label: "Pricing", href: "/about#pricing" },
 ];
 
 export function SiteHeader() {
@@ -35,8 +36,9 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <CtaButton href="/login">Get started</CtaButton>
+          <MobileMenu links={NAV_LINKS} />
         </div>
       </div>
     </header>

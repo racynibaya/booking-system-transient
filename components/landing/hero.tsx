@@ -113,7 +113,7 @@ export function Hero() {
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <CtaButton href="/login">Get started free</CtaButton>
-          <CtaButton href="/#how-it-works" variant="secondary">
+          <CtaButton href="/about#how-it-works" variant="secondary">
             See how it works
           </CtaButton>
         </div>

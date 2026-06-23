@@ -132,6 +132,13 @@ export function BookingsTable({
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {/* "Tuloy brought you this" — the founder's demand-gen made visible. Brand-tinted
+                        so it reads as a positive signal, distinct from the red/gold urgency cues. */}
+                    {b.source === "tuloy" && (
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-badge font-medium text-primary">
+                        via Tuloy
+                      </span>
+                    )}
                     {/* "New" is deliberately quiet (outline, not a colored fill) so it never
                         out-shouts the red/gold urgency cues — the eye should land on those. */}
                     {isNew && (

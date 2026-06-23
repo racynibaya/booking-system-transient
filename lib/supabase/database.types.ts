@@ -89,6 +89,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -108,6 +109,7 @@ export type Database = {
           proof_url?: string | null;
           property_id: string;
           room_type_id: string;
+          source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount?: number | null;
@@ -127,6 +129,7 @@ export type Database = {
           proof_url?: string | null;
           property_id?: string;
           room_type_id?: string;
+          source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id?: string;
           total_amount?: number | null;
@@ -641,6 +644,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -675,6 +679,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -712,6 +717,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -794,12 +800,14 @@ export type Database = {
       };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
+      list_public_listings: { Args: never; Returns: Json };
       record_subscription_payment: {
         Args: {
           p_amount: number;
           p_checkout_id: string;
           p_currency?: string;
           p_method?: string;
+          p_months?: number;
           p_plan: Database["public"]["Enums"]["tenant_plan"];
           p_provider_ref?: string;
           p_raw?: Json;
@@ -853,6 +861,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;

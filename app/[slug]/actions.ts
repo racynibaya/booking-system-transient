@@ -17,6 +17,9 @@ const publicBookingInput = z.object({
   guestName: z.string().trim().min(1, "Your name is required").max(120),
   guestPhone: z.string().trim().max(40).optional().or(z.literal("")),
   guestEmail: z.email().optional().or(z.literal("")),
+  // Attribution tag from the booking link (?src=…). Pure metadata for the operator; never
+  // touches the money path. Stamped after the hold via a best-effort service-role update.
+  source: z.string().trim().max(60).optional(),
 });
 export type PublicBookingInput = z.infer<typeof publicBookingInput>;
 
@@ -85,6 +88,18 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     deposit_amount: number | null;
   } | null;
   if (!booking) return { ok: false, error: "Something went wrong. Please try again." };
+
+  // Stamp the attribution tag best-effort, AFTER the atomic hold (the money-critical RPC stays
+  // untouched). Service-role: anon has no UPDATE grant. set-once-when-null so a later request can't
+  // overwrite it; an email/availability failure here never affects the booking the guest just made.
+  if (d.source) {
+    const admin = createServiceClient();
+    await admin
+      .from("bookings")
+      .update({ source: d.source })
+      .eq("id", booking.id)
+      .is("source", null);
+  }
 
   // Payout methods are delivered WITH the hold (never via the public listing — anti-scrape). anon
   // has no grant on the table, so read through the service-role client.

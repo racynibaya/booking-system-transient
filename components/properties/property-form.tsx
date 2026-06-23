@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export function PropertyForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<PropertyInput>({
@@ -49,7 +49,8 @@ export function PropertyForm({
   const [customAmenity, setCustomAmenity] = useState("");
 
   // Amenities is a controlled array field (the rest of the form uses register).
-  const selectedAmenities = watch("amenities") ?? [];
+  // useWatch (not watch()) so the React Compiler can memoize this component.
+  const selectedAmenities = useWatch({ control, name: "amenities" }) ?? [];
   const setAmenities = (next: string[]) =>
     setValue("amenities", next, { shouldDirty: true, shouldValidate: true });
   const toggleAmenity = (label: string) =>
