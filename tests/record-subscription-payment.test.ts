@@ -61,7 +61,7 @@ async function makeOperator(email: string): Promise<Operator> {
 
 function recordPayment(
   tenantId: string,
-  opts: { plan?: string; amount?: number; checkoutId: string; ref?: string },
+  opts: { plan?: string; amount?: number; checkoutId: string; ref?: string; months?: number },
 ) {
   return admin.rpc("record_subscription_payment", {
     p_tenant_id: tenantId,
@@ -69,7 +69,15 @@ function recordPayment(
     p_amount: opts.amount ?? 990,
     p_checkout_id: opts.checkoutId,
     p_provider_ref: opts.ref ?? null,
+    ...(opts.months !== undefined ? { p_months: opts.months } : {}),
   });
+}
+
+// Whole months between two date strings, ignoring the day-of-month (period boundaries are date-aligned).
+function monthsBetween(start: string, end: string): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
 }
 
 function tenantBilling(tenantId: string) {
@@ -148,6 +156,24 @@ describe("record_subscription_payment (the platform-billing webhook seam, P7/P10
       new Date(before.data!.paid_until as string).getTime(),
     );
     expect((await ledger(op.tenantId)).data).toHaveLength(2);
+  });
+
+  it("records an annual payment (p_months=12) → advances paid_until a full year", async () => {
+    const annual = await makeOperator(`annual-${Date.now()}@example.com`);
+    const res = await recordPayment(annual.tenantId, {
+      plan: "pro",
+      amount: 25000,
+      checkoutId: "cs_year",
+      months: 12,
+    });
+    expect(res.error).toBeNull();
+    expect(res.data!.id).toBeTruthy();
+    // The ledger period spans 12 months, not 1.
+    expect(monthsBetween(res.data!.period_start, res.data!.period_end)).toBe(12);
+
+    const { data: t } = await tenantBilling(annual.tenantId);
+    expect(t!.plan).toBe("pro");
+    expect(monthsBetween(new Date().toISOString().slice(0, 10), t!.paid_until as string)).toBe(12);
   });
 
   it("refuses an unknown tenant", async () => {

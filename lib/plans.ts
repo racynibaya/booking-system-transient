@@ -8,6 +8,9 @@
 
 export type PlanId = "free" | "solo" | "pro" | "business";
 
+/** A subscription can be paid monthly or yearly. Annual is the discounted, default-on offer. */
+export type BillingInterval = "month" | "year";
+
 export type Plan = {
   id: PlanId;
   /** Display name on the pricing grid. */
@@ -25,6 +28,12 @@ export type Plan = {
    * self-serve-charged here (free has nothing to pay; business is value-priced/contact-sales).
    */
   priceMonthly: number | null;
+  /**
+   * Yearly price in PESOS — the discounted annual offer (the "2 months free" nudge toward yearly).
+   * Set to 10× the monthly price so the savings copy is literally "2 months free". `null` = no annual
+   * self-serve option (free; business is contact-sales, so annual is handled in the sales convo).
+   */
+  priceYearly: number | null;
   /** Max rooms (sum of room_types.quantity) before the upgrade nudge fires. null = unlimited. */
   roomCap: number | null;
   /**
@@ -47,6 +56,7 @@ export const PLANS: Record<PlanId, Plan> = {
     blurb: "Pilot — try everything.",
     price: "₱0",
     priceMonthly: null,
+    priceYearly: null,
     roomCap: 4,
     gateway: false,
     features: [],
@@ -57,6 +67,7 @@ export const PLANS: Record<PlanId, Plan> = {
     blurb: "A small transient.",
     price: "₱990",
     priceMonthly: 990,
+    priceYearly: 9900, // 10 months → 2 months free
     roomCap: 4,
     gateway: false,
     features: [
@@ -72,6 +83,7 @@ export const PLANS: Record<PlanId, Plan> = {
     blurb: "A guesthouse or small hotel.",
     price: "₱2,500",
     priceMonthly: 2500,
+    priceYearly: 25000, // 10 months → 2 months free
     roomCap: 15,
     gateway: false,
     inherits: "Everything in Solo, plus",
@@ -89,6 +101,7 @@ export const PLANS: Record<PlanId, Plan> = {
     blurb: "A full hotel.",
     price: "₱5,900",
     priceMonthly: null,
+    priceYearly: null, // contact-sales — annual handled in the sales convo
     roomCap: null,
     gateway: true,
     inherits: "Everything in Pro, plus",
@@ -115,4 +128,29 @@ export const DISPLAY_PLANS: Plan[] = [PLANS.solo, PLANS.pro, PLANS.business];
 export function isOverRoomCap(planId: PlanId, totalRooms: number): boolean {
   const cap = PLANS[planId].roomCap;
   return cap !== null && totalRooms > cap;
+}
+
+/** Number of months a billing interval covers — the period record_subscription_payment advances. */
+export function monthsFor(interval: BillingInterval): number {
+  return interval === "year" ? 12 : 1;
+}
+
+/**
+ * What the PayMongo checkout charges for a plan at the chosen interval, in PESOS. `null` = not
+ * self-serve-charged at that interval (free; business contact-sales; a plan with no annual price).
+ * This is the single number the checkout + webhook agree on — display copy lives in `price`.
+ */
+export function chargeFor(planId: PlanId, interval: BillingInterval): number | null {
+  const plan = PLANS[planId];
+  return interval === "year" ? plan.priceYearly : plan.priceMonthly;
+}
+
+/**
+ * Months free when paying yearly vs. 12× monthly (the "X months free" nudge). `0` when the plan has
+ * no annual price. With priceYearly = 10× monthly this is exactly 2.
+ */
+export function annualMonthsFree(planId: PlanId): number {
+  const { priceMonthly, priceYearly } = PLANS[planId];
+  if (priceMonthly === null || priceYearly === null) return 0;
+  return Math.round((priceMonthly * 12 - priceYearly) / priceMonthly);
 }

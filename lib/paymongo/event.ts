@@ -55,6 +55,7 @@ export type ParsedSubscriptionCheckoutPaid = {
   kind: string | null; // metadata.kind — "subscription" for this rail
   tenantId: string | null;
   plan: string | null;
+  interval: string | null; // metadata.interval — "month" | "year"; null/absent → monthly
   checkoutId: string | null; // cs_… — idempotency key + audit ref
   providerRef: string | null;
   // Settled amount in PESOS (the event carries centavos); undefined when absent.
@@ -72,6 +73,7 @@ export function parseSubscriptionCheckoutPaid(
     kind: attrs?.metadata?.kind ?? null,
     tenantId: attrs?.metadata?.tenant_id ?? null,
     plan: attrs?.metadata?.plan ?? null,
+    interval: attrs?.metadata?.interval ?? null,
     checkoutId: resource?.id ?? null,
     providerRef: intent?.id ?? null,
     paidPesos: typeof centavos === "number" ? centavos / 100 : undefined,

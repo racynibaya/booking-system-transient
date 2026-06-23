@@ -3,7 +3,7 @@ import {
   parseSubscriptionCheckoutPaid,
   type CheckoutPaidEvent,
 } from "@/lib/paymongo/event";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { chargeFor, monthsFor, PLANS, type BillingInterval, type PlanId } from "@/lib/plans";
 import { createServiceClient } from "@/lib/supabase/server";
 
 // Shared subscription-billing webhook body — everything AFTER signature verification, for the
@@ -28,7 +28,7 @@ export async function handleVerifiedSubscriptionEvent(rawBody: string): Promise<
     return new Response("ignored", { status: 200 });
   }
 
-  const { kind, tenantId, plan, checkoutId, providerRef, paidPesos } =
+  const { kind, tenantId, plan, interval, checkoutId, providerRef, paidPesos } =
     parseSubscriptionCheckoutPaid(event);
 
   // Defend the rail boundary: only events our subscription checkout minted (metadata.kind) belong
@@ -47,8 +47,12 @@ export async function handleVerifiedSubscriptionEvent(rawBody: string): Promise<
   }
 
   const planId = plan as PlanId;
-  // Record the actual settled amount; fall back to the plan's list price if the event omits it.
-  const amount = paidPesos ?? PLANS[planId].priceMonthly ?? 0;
+  // Period bought: "year" → 12 months, anything else (incl. absent legacy events) → monthly.
+  const billingInterval: BillingInterval = interval === "year" ? "year" : "month";
+  const months = monthsFor(billingInterval);
+  // Record the actual settled amount; fall back to the plan's list price for this interval if the
+  // event omits it.
+  const amount = paidPesos ?? chargeFor(planId, billingInterval) ?? 0;
 
   const admin = createServiceClient();
   const { error } = await admin.rpc("record_subscription_payment", {
@@ -57,6 +61,7 @@ export async function handleVerifiedSubscriptionEvent(rawBody: string): Promise<
     p_amount: amount,
     p_checkout_id: checkoutId,
     p_provider_ref: providerRef ?? undefined,
+    p_months: months,
     p_raw: event as never,
   });
 

@@ -1,19 +1,44 @@
-import { Check } from "lucide-react";
+"use client";
 
-import { DISPLAY_PLANS } from "@/lib/plans";
+import { Check } from "lucide-react";
+import { useState } from "react";
+
+import {
+  annualMonthsFree,
+  chargeFor,
+  DISPLAY_PLANS,
+  type BillingInterval,
+  type Plan,
+} from "@/lib/plans";
 
 import { CtaButton } from "./cta-button";
 
+// Public pricing grid. A monthly/annual toggle sits above the cards; ANNUAL is the default (the
+// discount nudge), with monthly always one tap away. Annual prices show the per-month equivalent +
+// a "N months free" badge so the saving is legible. Business is value-priced/contact-sales — it has
+// no annual self-serve price, so it keeps its single figure regardless of the toggle.
 export function PricingTeaser() {
+  const [interval, setInterval] = useState<BillingInterval>("year");
+
+  // Shared savings copy (Solo & Pro both = 2 months free).
+  const monthsFree = DISPLAY_PLANS.map((p) => annualMonthsFree(p.id)).find((m) => m > 0) ?? 0;
+
   return (
     <section id="pricing" className="px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <div className="text-center">
           <h2 className="text-display-lg text-balance text-ink">Pricing that grows with you</h2>
           <p className="mx-auto mt-4 max-w-md text-body-md text-body">
-            Free during the pilot. After that, a flat monthly price — no commission per booking,
-            ever.
+            Free during the pilot. After that, a flat price — no commission per booking, ever.
           </p>
+
+          <div className="mt-8 flex justify-center">
+            <IntervalToggle
+              value={interval}
+              onChange={setInterval}
+              annualHint={monthsFree > 0 ? `${monthsFree} months free` : undefined}
+            />
+          </div>
         </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
@@ -35,11 +60,7 @@ export function PricingTeaser() {
               <h3 className="text-title-md text-ink">{t.label}</h3>
               <p className="mt-1 text-body-sm text-muted">{t.blurb}</p>
 
-              <div className="mt-5 flex items-baseline gap-1">
-                <span className="text-display-md text-ink">{t.price}</span>
-                <span className="text-body-md text-muted">/ month</span>
-              </div>
-              <p className="mt-1 text-caption-sm text-muted">after the pilot · no commission</p>
+              <PriceBlock plan={t} interval={interval} />
 
               {t.inherits && (
                 <p className="mt-6 text-caption-sm font-medium text-muted">{t.inherits}</p>
@@ -71,5 +92,81 @@ export function PricingTeaser() {
         </p>
       </div>
     </section>
+  );
+}
+
+// The price line, reacting to the interval. Annual (when the plan has one) leads with the yearly
+// total, then the per-month equivalent + savings; monthly shows the flat monthly figure. A plan with
+// no annual price (Business — contact-sales) always shows its single display figure.
+function PriceBlock({ plan, interval }: { plan: Plan; interval: BillingInterval }) {
+  const annual = chargeFor(plan.id, "year");
+  const showAnnual = interval === "year" && annual !== null && plan.priceMonthly !== null;
+
+  if (showAnnual) {
+    const perMonth = Math.round(annual / 12);
+    const monthsFree = annualMonthsFree(plan.id);
+    return (
+      <>
+        <div className="mt-5 flex items-baseline gap-1">
+          <span className="text-display-md text-ink">₱{annual.toLocaleString()}</span>
+          <span className="text-body-md text-muted">/ year</span>
+        </div>
+        <p className="mt-1 text-caption-sm text-muted">
+          ₱{perMonth.toLocaleString()}/mo billed yearly
+          {monthsFree > 0 ? ` · ${monthsFree} months free` : ""}
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="mt-5 flex items-baseline gap-1">
+        <span className="text-display-md text-ink">{plan.price}</span>
+        <span className="text-body-md text-muted">/ month</span>
+      </div>
+      <p className="mt-1 text-caption-sm text-muted">after the pilot · no commission</p>
+    </>
+  );
+}
+
+// Bespoke segmented control on the project's tokens (NOT shadcn). Yearly first + default, with the
+// savings hint, so the cheaper-over-the-year choice reads as the obvious one.
+function IntervalToggle({
+  value,
+  onChange,
+  annualHint,
+}: {
+  value: BillingInterval;
+  onChange: (v: BillingInterval) => void;
+  annualHint?: string;
+}) {
+  const options: { id: BillingInterval; label: string }[] = [
+    { id: "year", label: "Yearly" },
+    { id: "month", label: "Monthly" },
+  ];
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface-soft p-1">
+      {options.map((o) => {
+        const active = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-body-sm font-medium transition-colors ${
+              active ? "bg-canvas text-ink shadow-card" : "text-muted hover:text-ink"
+            }`}
+          >
+            {o.label}
+            {o.id === "year" && annualHint && (
+              <span className="rounded-full bg-primary px-2 py-0.5 text-caption-sm font-medium text-canvas">
+                {annualHint}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }

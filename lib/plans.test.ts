@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { isOverRoomCap, PLANS, DISPLAY_PLANS } from "./plans";
+import {
+  annualMonthsFree,
+  chargeFor,
+  DISPLAY_PLANS,
+  isOverRoomCap,
+  monthsFor,
+  PLANS,
+} from "./plans";
 
 describe("isOverRoomCap", () => {
   it("is under cap at the exact limit", () => {
@@ -41,5 +48,34 @@ describe("PLANS", () => {
     // free has nothing to pay; business is value-priced/contact-sales → not self-serve-charged.
     expect(PLANS.free.priceMonthly).toBeNull();
     expect(PLANS.business.priceMonthly).toBeNull();
+  });
+
+  it("annual price is 10× monthly for solo/pro (2 months free); none for free/business", () => {
+    expect(PLANS.solo.priceYearly).toBe(9900);
+    expect(PLANS.pro.priceYearly).toBe(25000);
+    expect(PLANS.free.priceYearly).toBeNull();
+    expect(PLANS.business.priceYearly).toBeNull();
+  });
+});
+
+describe("billing interval helpers", () => {
+  it("monthsFor maps the interval to a period length", () => {
+    expect(monthsFor("month")).toBe(1);
+    expect(monthsFor("year")).toBe(12);
+  });
+
+  it("chargeFor returns the price for the interval, or null when not self-serve at it", () => {
+    expect(chargeFor("solo", "month")).toBe(990);
+    expect(chargeFor("solo", "year")).toBe(9900);
+    expect(chargeFor("pro", "year")).toBe(25000);
+    expect(chargeFor("business", "year")).toBeNull(); // contact-sales
+    expect(chargeFor("free", "month")).toBeNull();
+  });
+
+  it("annualMonthsFree is 2 for the discounted tiers, 0 where there's no annual price", () => {
+    expect(annualMonthsFree("solo")).toBe(2);
+    expect(annualMonthsFree("pro")).toBe(2);
+    expect(annualMonthsFree("business")).toBe(0);
+    expect(annualMonthsFree("free")).toBe(0);
   });
 });
