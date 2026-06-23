@@ -85,8 +85,8 @@ export function MarketplaceBrowser({ listings }: { listings: ListingCardData[] }
       ) : (
         <>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {pageItems.map((c) => (
-              <ListingCard key={c.slug} {...c} />
+            {pageItems.map((c, i) => (
+              <ListingCard key={c.slug} {...c} index={i} />
             ))}
           </div>
 

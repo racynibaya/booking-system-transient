@@ -182,6 +182,9 @@
   --animate-room-swap: room-swap 0.35s ease-out;
   /* Loading shimmer for gallery photos before they decode (sweeps surface tones). */
   --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+  /* Marketplace grid: each card rises + fades in on load (CSS-only so it never blanks
+     the grid waiting on JS). `both` holds the start state through the stagger delay. */
+  --animate-card-rise: card-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ---- Keyframes ------------------------------------------------------------ */
@@ -215,6 +218,17 @@
   }
 }
 
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ---- Base ----------------------------------------------------------------- */
 html {
   /* Smooth in-page anchor nav; scroll-padding offsets the sticky header so a
@@ -238,7 +252,8 @@ body {
   .animate-float,
   .animate-float-slow,
   .animate-room-swap,
-  .animate-shimmer {
+  .animate-shimmer,
+  .animate-card-rise {
     animation: none;
   }
 }
