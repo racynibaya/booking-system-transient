@@ -108,6 +108,7 @@ export const PLANS: Record<PlanId, Plan> = {
     features: [
       "Unlimited rooms",
       "Multiple payment methods",
+      "Boosted marketplace rotation",
       "Priority support",
       "Channel sync — coming soon",
     ],
