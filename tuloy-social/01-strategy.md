@@ -72,7 +72,7 @@ Page follower growth, post **shares** and saves (top awareness signals), reach i
 
 ## A note on accuracy
 
-Keep claims true to the current product: **no commission ever, deposits pass straight through to the operator's own GCash/gateway, free during the pilot, room-gated pricing afterward (Solo ≤4 rms ₱990 · Pro ≤15 ₱2,500 · Business ≈₱15–25k).** Don't promise the tourist marketplace yet — that's a later layer. Captions with [brackets] mark where real details (operator names, links, prices) go.
+Keep claims true to the current product: **no commission ever, deposits pass straight through to the operator's own GCash/gateway, free during the pilot, room-gated pricing afterward (Solo ≤4 rms ₱990 · Pro ≤15 ₱2,500 · Business unlimited ≈₱5,900, value-priced/contact-sales).** Don't promise the tourist marketplace yet — that's a later layer. Captions with [brackets] mark where real details (operator names, links, prices) go.
 
 ---
 

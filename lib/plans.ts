@@ -73,6 +73,7 @@ export const PLANS: Record<PlanId, Plan> = {
     features: [
       "Up to 4 rooms",
       "Live booking calendar",
+      "No double-bookings, guaranteed",
       "GCash deposits with proof upload",
       "Your own shareable booking page",
     ],
@@ -89,7 +90,6 @@ export const PLANS: Record<PlanId, Plan> = {
     inherits: "Everything in Solo, plus",
     features: [
       "Up to 15 rooms · multiple properties",
-      "No double-bookings, guaranteed",
       "Full booking management",
       "Verified operator badge",
     ],
