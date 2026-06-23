@@ -11,6 +11,11 @@ import { createClient } from "@/lib/supabase/client";
 
 const BUCKET = "property-images";
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+// The cover renders as a full-bleed hero (100vw). A small source can't be upscaled to fill it —
+// the browser stretches it and it goes blurry ("distorted banner"). Reject anything too small to
+// look sharp before it ever reaches storage.
+const MIN_WIDTH = 1280;
+const MIN_HEIGHT = 720;
 
 export function CoverImageUploader({
   propertyId,
@@ -36,6 +41,22 @@ export function CoverImageUploader({
     if (!file.type.startsWith("image/")) {
       toast.error("Please choose an image file.");
       return;
+    }
+    // Reject covers too small to fill the hero sharply. Only blocks when we can actually read the
+    // dimensions; if the browser can't decode them (e.g. some HEIC), we let it through rather than
+    // false-reject — mirrors compressImage's never-block philosophy.
+    try {
+      const probe = await createImageBitmap(file);
+      const { width, height } = probe;
+      probe.close();
+      if (width < MIN_WIDTH || height < MIN_HEIGHT) {
+        toast.error(
+          `That photo is too small (${width}×${height}) — it'll look blurry as a banner. Use one at least ${MIN_WIDTH}px wide.`,
+        );
+        return;
+      }
+    } catch {
+      // couldn't read dimensions — don't block the upload
     }
     setBusy(true);
     // Downscale/re-encode before upload (hero image) to cut storage + public-page egress.
