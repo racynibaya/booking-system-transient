@@ -212,11 +212,12 @@ export async function createRoomType(
   const currentTotal = (existing ?? []).reduce((sum, r) => sum + (r.quantity ?? 0), 0);
   if (wouldExceedRoomCap(t.plan, currentTotal, parsed.data.quantity)) {
     const cap = PLANS[t.plan].roomCap;
+    // Body copy only — no CTA sentence here; the upgrade modal's primary button carries the action.
     return {
       ok: false,
       error: `Your ${PLANS[t.plan].label} plan covers up to ${cap} room${
         cap === 1 ? "" : "s"
-      } and you already have ${currentTotal}. Upgrade your plan to add more.`,
+      } and you already have ${currentTotal}.`,
       upgrade: true,
     };
   }
