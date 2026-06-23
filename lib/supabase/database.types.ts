@@ -800,6 +800,7 @@ export type Database = {
       };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
+      list_public_listings: { Args: never; Returns: Json };
       record_subscription_payment: {
         Args: {
           p_amount: number;

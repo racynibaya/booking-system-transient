@@ -3,9 +3,9 @@ import Link from "next/link";
 import { CtaButton } from "./cta-button";
 
 const NAV_LINKS = [
-  { label: "Features", href: "/#features" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Features", href: "/about#features" },
+  { label: "How it works", href: "/about#how-it-works" },
+  { label: "Pricing", href: "/about#pricing" },
 ];
 
 export function SiteHeader() {

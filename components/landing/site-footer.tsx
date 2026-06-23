@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const FOOTER_LINKS = [
-  { label: "Features", href: "/#features" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Features", href: "/about#features" },
+  { label: "How it works", href: "/about#how-it-works" },
+  { label: "Pricing", href: "/about#pricing" },
   { label: "Sign in", href: "/login" },
 ];
 
