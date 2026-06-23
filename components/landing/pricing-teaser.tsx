@@ -12,6 +12,7 @@ import {
 } from "@/lib/plans";
 
 import { CtaButton } from "./cta-button";
+import { Reveal } from "./reveal";
 
 // Public pricing grid. A monthly/annual toggle sits above the cards; ANNUAL is the default (the
 // discount nudge), with monthly always one tap away. Annual prices show the per-month equivalent +
@@ -26,7 +27,7 @@ export function PricingTeaser() {
   return (
     <section id="pricing" className="px-6 py-24">
       <div className="mx-auto max-w-5xl">
-        <div className="text-center">
+        <Reveal className="text-center">
           <h2 className="text-display-lg text-balance text-ink">Pricing that grows with you</h2>
           <p className="mx-auto mt-4 max-w-md text-body-md text-body">
             Free during the pilot. After that, a flat price — no commission per booking, ever.
@@ -39,12 +40,13 @@ export function PricingTeaser() {
               annualHint={monthsFree > 0 ? `${monthsFree} months free` : undefined}
             />
           </div>
-        </div>
+        </Reveal>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {DISPLAY_PLANS.map((t) => (
-            <div
+          {DISPLAY_PLANS.map((t, i) => (
+            <Reveal
               key={t.id}
+              delay={i * 0.08}
               className={`relative flex flex-col rounded-xl bg-canvas p-8 text-left ${
                 t.highlight
                   ? "border-2 border-primary shadow-card md:-mt-3 md:mb-3"
@@ -83,7 +85,7 @@ export function PricingTeaser() {
                   Start free
                 </CtaButton>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
 

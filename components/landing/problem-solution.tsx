@@ -1,5 +1,7 @@
 import { CalendarCheck, Moon, MessagesSquare, type LucideIcon } from "lucide-react";
 
+import { Reveal } from "./reveal";
+
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Moon,
@@ -22,7 +24,7 @@ export function ProblemSolution() {
   return (
     <section id="features" className="px-6 py-24">
       <div className="mx-auto max-w-5xl">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-display-lg text-balance text-ink">
             Everything you lose to Facebook DMs — fixed
           </h2>
@@ -30,12 +32,13 @@ export function ProblemSolution() {
             Today your bookings live in Messenger threads, a notebook, and someone&rsquo;s memory.
             Tuloy puts them in one place that never sleeps and never double-books.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, title, body }) => (
-            <div
+          {FEATURES.map(({ icon: Icon, title, body }, i) => (
+            <Reveal
               key={title}
+              delay={i * 0.08}
               className="rounded-md border border-hairline bg-canvas p-6 shadow-card"
             >
               <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -43,7 +46,7 @@ export function ProblemSolution() {
               </span>
               <h3 className="mt-5 text-title-md text-ink">{title}</h3>
               <p className="mt-2 text-body-sm text-body">{body}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
