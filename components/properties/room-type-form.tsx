@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -32,13 +33,18 @@ export function RoomTypeForm({
     defaultValues,
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   return (
     <form
       onSubmit={handleSubmit(async (values) => {
         setFormError(null);
+        setShowUpgrade(false);
         const res = await onSubmit(values);
-        if (!res.ok) setFormError(res.error);
+        if (!res.ok) {
+          setFormError(res.error);
+          setShowUpgrade(Boolean(res.upgrade));
+        }
       })}
       className="flex flex-col gap-4 rounded-md border border-hairline p-4"
     >
@@ -67,7 +73,19 @@ export function RoomTypeForm({
         <Textarea {...register("description")} />
       </Field>
 
-      {formError && <p className="text-body-sm text-error">{formError}</p>}
+      {formError && (
+        <p className="text-body-sm text-error">
+          {formError}
+          {showUpgrade && (
+            <>
+              {" "}
+              <Link href="/settings" className="font-medium underline">
+                Upgrade your plan
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isSubmitting}>

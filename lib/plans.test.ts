@@ -6,6 +6,7 @@ import {
   isOverRoomCap,
   monthsFor,
   PLANS,
+  wouldExceedRoomCap,
 } from "./plans";
 
 describe("isOverRoomCap", () => {
@@ -27,6 +28,31 @@ describe("isOverRoomCap", () => {
   it("is under cap below the limit", () => {
     expect(isOverRoomCap("solo", 0)).toBe(false);
     expect(isOverRoomCap("free", 3)).toBe(false);
+  });
+});
+
+describe("wouldExceedRoomCap (hard block on room creation)", () => {
+  it("blocks the next room when already at the cap", () => {
+    expect(wouldExceedRoomCap("solo", 4, 1)).toBe(true);
+    expect(wouldExceedRoomCap("pro", 15, 1)).toBe(true);
+  });
+
+  it("allows adding while it stays within the cap", () => {
+    expect(wouldExceedRoomCap("solo", 3, 1)).toBe(false); // 3 → 4, exactly at cap
+    expect(wouldExceedRoomCap("pro", 10, 5)).toBe(false); // 10 → 15, exactly at cap
+    expect(wouldExceedRoomCap("solo", 0, 1)).toBe(false);
+  });
+
+  it("blocks a multi-unit room type that would cross the cap", () => {
+    expect(wouldExceedRoomCap("solo", 3, 2)).toBe(true); // 3 → 5, over 4
+  });
+
+  it("never blocks Business (null cap = unlimited)", () => {
+    expect(wouldExceedRoomCap("business", 1000, 1000)).toBe(false);
+  });
+
+  it("keeps blocking a tenant already over cap (legacy soft-rule rooms)", () => {
+    expect(wouldExceedRoomCap("solo", 6, 1)).toBe(true);
   });
 });
 

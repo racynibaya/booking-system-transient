@@ -123,12 +123,23 @@ export const DISPLAY_PLANS: Plan[] = [PLANS.solo, PLANS.pro, PLANS.business];
 
 /**
  * Pure cap math (unit-tested before the room-cap guard wires it in). Returns whether a tenant's
- * total room count exceeds their plan's cap — the basis for the soft grace + nudge, never a hard
- * block (D7). `null` cap (Business) is always under cap.
+ * total room count exceeds their plan's cap. Two callers: the soft over-cap nudge on room EDITS,
+ * and `wouldExceedRoomCap` for the hard block on room CREATION. `null` cap (Business) is always
+ * under cap.
  */
 export function isOverRoomCap(planId: PlanId, totalRooms: number): boolean {
   const cap = PLANS[planId].roomCap;
   return cap !== null && totalRooms > cap;
+}
+
+/**
+ * Hard room-cap guard (reverses D7's soft grace, 2026-06-23). Would adding `adding` rooms to a
+ * tenant that currently has `currentTotal` rooms push them past their plan's cap? `currentTotal`
+ * and `adding` are room counts (sum of room_types.quantity). Used to BLOCK room creation beyond
+ * the cap; existing rooms and edits are never blocked. `null` cap (Business) never blocks.
+ */
+export function wouldExceedRoomCap(planId: PlanId, currentTotal: number, adding: number): boolean {
+  return isOverRoomCap(planId, currentTotal + adding);
 }
 
 /** Number of months a billing interval covers — the period record_subscription_payment advances. */
