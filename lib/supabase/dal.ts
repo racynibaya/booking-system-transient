@@ -386,7 +386,7 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
   let query = supabase
     .from("bookings")
     .select(
-      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, created_at, deposit_amount, total_amount, proof_url, properties(name), room_types(name)",
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, created_at, deposit_amount, total_amount, source, proof_url, properties(name), room_types(name)",
     );
 
   if (filters.property) query = query.eq("property_id", filters.property);

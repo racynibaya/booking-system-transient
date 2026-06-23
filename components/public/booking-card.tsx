@@ -42,11 +42,13 @@ export function BookingCard({
   propertyName,
   area,
   acceptsOnlinePayment,
+  source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   acceptsOnlinePayment: boolean;
+  source?: string;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
   const [range, setRange] = useState<DateRange | undefined>();
@@ -166,6 +168,7 @@ export function BookingCard({
       guestName: name,
       guestPhone: phone,
       guestEmail: email,
+      source,
     });
     setPending(false);
     if (res.ok) {
@@ -333,6 +336,13 @@ export function BookingCard({
             </p>
           )}
         </div>
+
+        {/* Refund frame (B): honest, no Tuloy guarantee. We record money, never hold it — the
+            deposit goes straight to the host, so refunds are the host's to handle, not ours. */}
+        <p className="mt-3 text-caption text-muted">
+          Your deposit secures the booking. Cancellations &amp; refunds are handled directly by the
+          host per their policy.
+        </p>
 
         <label className="mt-4 flex flex-col gap-1">
           <span className={labelClass}>Upload your payment receipt</span>

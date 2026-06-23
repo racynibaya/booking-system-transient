@@ -110,12 +110,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function PublicBookingPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PublicBookingPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { slug } = await params;
   const result = await getListing(slug);
   if (!result) notFound();
   const { listing, coverUrl, rooms } = result;
   const { property } = listing;
+
+  // Attribution tag from the inbound link (?src=tuloy). Carried into the booking so the operator
+  // can see Tuloy drove it (dashboard badge + email). Just a label; validated again server-side.
+  const srcRaw = (await searchParams).src;
+  const source = (Array.isArray(srcRaw) ? srcRaw[0] : srcRaw)?.slice(0, 60) || undefined;
 
   const hasGoodToKnow = !!(property.check_in_time || property.check_out_time);
 
@@ -186,11 +197,17 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
                     <MapPin className="size-5 shrink-0" /> {property.area}
                   </p>
                 )}
-                {property.dot_accredited && (
-                  <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-caption text-white/90 backdrop-blur">
-                    <ShieldCheck className="size-3.5 shrink-0 text-white" /> DOT Accredited
-                  </span>
-                )}
+                {/* Trust signal. Unconditional: every page that renders is already gated to
+                    verification_status='approved' by get_public_listing, so a rendered listing IS a
+                    vetted operator. With no escrow (we never hold money), this is a cold guest's main
+                    reason to trust sending a deposit to a stranger.
+                    NOTE: the operator-self-claimed DOT badge is intentionally NOT shown — dot_accredited
+                    is a free operator-set boolean with no verification, so displaying it next to our name
+                    would publish an unverified government credential. Re-add only behind admin-verified
+                    proof (fold into the verification-doc flow). */}
+                <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-caption font-medium text-white backdrop-blur">
+                  <ShieldCheck className="size-3.5 shrink-0" /> Verified by Tuloy
+                </span>
                 {property.description && (
                   <p className="mt-4 max-w-md text-body-md leading-relaxed text-white/75">
                     {property.description}
@@ -214,6 +231,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
                 propertyName={property.name}
                 area={property.area}
                 acceptsOnlinePayment={listing.accepts_online_payment}
+                source={source}
               />
               {/* Fills the sidebar gap below the booking card on desktop. */}
               <div className="mt-4 hidden lg:block">
@@ -293,6 +311,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
           propertyName={property.name}
           area={property.area}
           acceptsOnlinePayment={listing.accepts_online_payment}
+          source={source}
         />
       </main>
     </SelectedRoomProvider>

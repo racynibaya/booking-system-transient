@@ -89,6 +89,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -108,6 +109,7 @@ export type Database = {
           proof_url?: string | null;
           property_id: string;
           room_type_id: string;
+          source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount?: number | null;
@@ -127,6 +129,7 @@ export type Database = {
           proof_url?: string | null;
           property_id?: string;
           room_type_id?: string;
+          source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id?: string;
           total_amount?: number | null;
@@ -641,6 +644,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -675,6 +679,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -712,6 +717,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
@@ -800,6 +806,7 @@ export type Database = {
           p_checkout_id: string;
           p_currency?: string;
           p_method?: string;
+          p_months?: number;
           p_plan: Database["public"]["Enums"]["tenant_plan"];
           p_provider_ref?: string;
           p_raw?: Json;
@@ -853,6 +860,7 @@ export type Database = {
           proof_url: string | null;
           property_id: string;
           room_type_id: string;
+          source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
           total_amount: number | null;
