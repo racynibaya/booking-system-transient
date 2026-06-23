@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 
 import { env } from "@/env";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { chargeFor, PLANS, type BillingInterval, type PlanId } from "@/lib/plans";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 
 // Operator subscription checkout (operator → Tuloy). The operator pays TULOY for the software on
@@ -18,15 +18,17 @@ export type SubscriptionCheckoutResult =
 
 export async function createSubscriptionCheckout(
   planId: PlanId,
+  interval: BillingInterval = "month",
 ): Promise<SubscriptionCheckoutResult> {
   await requireUser();
   const tenant = await getCurrentTenant();
   if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
 
-  // Only self-serve-charged tiers have a numeric price. free has nothing to pay; business is
-  // value-priced/contact-sales (Messenger), so it never starts a checkout here.
+  // Only self-serve-charged tiers have a numeric price at this interval. free has nothing to pay;
+  // business is value-priced/contact-sales (Messenger), so it never starts a checkout here.
   const plan = PLANS[planId];
-  if (!plan || plan.priceMonthly === null) {
+  const amount = chargeFor(planId, interval);
+  if (!plan || amount === null) {
     return { ok: false, error: "That plan isn't available for self-serve checkout." };
   }
 
@@ -50,16 +52,21 @@ export async function createSubscriptionCheckout(
       secretKey,
       lineItems: [
         {
-          name: `${plan.label} plan — monthly`,
-          amount: toCentavos(plan.priceMonthly),
+          name: `${plan.label} plan — ${interval === "year" ? "yearly" : "monthly"}`,
+          amount: toCentavos(amount),
           quantity: 1,
         },
       ],
       description: `${plan.label} subscription (${tenant.id})`,
       successUrl: `${origin}/settings/billing/return`,
       cancelUrl: `${origin}/settings`,
-      // The webhook maps the payment back to this tenant + tier via these.
-      metadata: { kind: "subscription", tenant_id: tenant.id as string, plan: planId },
+      // The webhook maps the payment back to this tenant + tier + period via these.
+      metadata: {
+        kind: "subscription",
+        tenant_id: tenant.id as string,
+        plan: planId,
+        interval,
+      },
     });
     return { ok: true, checkoutUrl };
   } catch {
