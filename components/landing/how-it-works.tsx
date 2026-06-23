@@ -1,5 +1,7 @@
 import { CheckCheck, LayoutDashboard, Share2, type LucideIcon } from "lucide-react";
 
+import { Reveal } from "./reveal";
+
 const STEPS: { n: string; icon: LucideIcon; title: string; body: string }[] = [
   {
     n: "1",
@@ -25,18 +27,19 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-surface-soft/60 px-6 py-24">
       <div className="mx-auto max-w-5xl">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-display-lg text-balance text-ink">Live in an afternoon</h2>
           <p className="mt-4 text-body-md text-body">
             No website to build, no app for your guests to download. Three steps and your Facebook
             page takes real bookings.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {STEPS.map(({ n, icon: Icon, title, body }) => (
-            <div
+          {STEPS.map(({ n, icon: Icon, title, body }, i) => (
+            <Reveal
               key={n}
+              delay={i * 0.08}
               className="relative rounded-md border border-hairline bg-canvas p-6 shadow-card"
             >
               <span className="absolute top-6 right-6 text-display-md text-hairline">{n}</span>
@@ -45,7 +48,7 @@ export function HowItWorks() {
               </span>
               <h3 className="mt-5 text-title-md text-ink">{title}</h3>
               <p className="mt-2 text-body-sm text-body">{body}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
