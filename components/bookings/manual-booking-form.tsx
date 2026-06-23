@@ -5,7 +5,7 @@ import "react-day-picker/style.css";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -33,7 +33,7 @@ export function ManualBookingForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<ManualBookingInput>({
@@ -53,10 +53,11 @@ export function ManualBookingForm({
   const [range, setRange] = useState<DateRange | undefined>();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const propertyId = watch("propertyId");
-  const roomTypeId = watch("roomTypeId");
-  const numGuests = watch("numGuests");
-  const status = watch("status");
+  // useWatch (not watch()) so the React Compiler can memoize this component.
+  const propertyId = useWatch({ control, name: "propertyId" });
+  const roomTypeId = useWatch({ control, name: "roomTypeId" });
+  const numGuests = useWatch({ control, name: "numGuests" });
+  const status = useWatch({ control, name: "status" });
 
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
