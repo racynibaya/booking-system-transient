@@ -54,15 +54,18 @@ export function isOlderThanHours(iso: string, hours: number): boolean {
   return Date.now() - new Date(iso).getTime() > hours * 60 * 60 * 1000;
 }
 
-// Whole days from today to a YYYY-MM-DD date (negative = in the past). Local-midnight based.
-export function daysFromToday(s: DateStr): number {
-  const ms = fromDateStr(s).getTime() - fromDateStr(todayStr()).getTime();
+// Whole days from `today` to a YYYY-MM-DD date (negative = in the past). Local-midnight based.
+// `today` is a param (default = the caller's local today) so a server-rendered component can pass
+// the SAME today to the client and avoid an SSR/CSR hydration mismatch (server UTC vs client local).
+export function daysFromToday(s: DateStr, today: DateStr = todayStr()): number {
+  const ms = fromDateStr(s).getTime() - fromDateStr(today).getTime();
   return Math.round(ms / 86_400_000);
 }
 
 // Relative-day label for the bookings board pill ("Today", "Tomorrow", "in 3 days", "2 wk ago").
-export function relativeDay(s: DateStr): string {
-  const d = daysFromToday(s);
+// `today` is threaded through (see daysFromToday) so the label is hydration-stable.
+export function relativeDay(s: DateStr, today: DateStr = todayStr()): string {
+  const d = daysFromToday(s, today);
   if (d === 0) return "Today";
   if (d === 1) return "Tomorrow";
   if (d === -1) return "Yesterday";
