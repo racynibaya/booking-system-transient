@@ -15,6 +15,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // Bound each action so a missed selector fails fast (~15s) instead of hanging the whole window.
+    actionTimeout: 15_000,
+    // `npm run test:e2e:watch` sets E2E_SLOWMO to slow every action down so the run is watchable
+    // in a headed window (the --headed flag flips headless off). Unset in CI → full-speed headless.
+    launchOptions: { slowMo: Number(process.env.E2E_SLOWMO) || 0 },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // Boot the app for E2E. Reuses a running dev server locally.
