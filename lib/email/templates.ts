@@ -19,11 +19,14 @@ export type ConfirmationBooking = {
   source?: string | null;
 };
 
-// Brand Rausch + ink, matching the app's tokens (app/globals.css).
-const RAUSCH = "#ff385c";
-const INK = "#222222";
-const MUTED = "#6a6a6a";
-const HAIRLINE = "#dddddd";
+// Brand tokens — Sea Glass, matching app/globals.css and the auth emails (NOT Airbnb coral).
+const PRIMARY = "#2c7a6b"; // sea-green — links / accents
+const INK = "#1d2a2c"; // deep slate-teal — headings, values
+const MUTED = "#5e6c6e"; // teal-steel — body, labels
+const MUTED_SOFT = "#8b9794"; // footer / disabled
+const SURFACE = "#ecefec"; // soft canvas
+const HAIRLINE = "#e2e7e3"; // row separators
+const LOGO_URL = "https://tuloysanjuan.com/logo/tuloy-logo.png";
 
 function peso(amount: number | null): string {
   if (amount == null) return "—";
@@ -40,35 +43,39 @@ function nights(checkIn: string, checkOut: string): number {
 }
 
 // A labelled row in the details table.
-function row(label: string, value: string): string {
+export function row(label: string, value: string): string {
   return `<tr>
-    <td style="padding:8px 0;color:${MUTED};font-size:14px;">${label}</td>
-    <td style="padding:8px 0;color:${INK};font-size:14px;text-align:right;font-weight:600;">${value}</td>
+    <td style="padding:9px 0;color:${MUTED};font-size:14px;">${label}</td>
+    <td style="padding:9px 0;color:${INK};font-size:14px;text-align:right;font-weight:600;">${value}</td>
   </tr>`;
 }
 
-// Shared shell: white card on a soft canvas, Rausch wordmark, content slot.
-function shell(heading: string, intro: string, rowsHtml: string, footer: string): string {
+// Shared shell: white card on a soft canvas, Tuloy logo, content slot. Matches the
+// branded auth emails (Supabase Confirm-signup / Reset-password) so every Tuloy email
+// reads as one family. Exported so the admin-alert path can reuse it.
+export function shell(heading: string, intro: string, rowsHtml: string, footer: string): string {
   return `<!doctype html>
-<html>
-  <body style="margin:0;background:#f7f7f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f7;padding:24px 0;">
-      <tr><td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid ${HAIRLINE};border-radius:14px;overflow:hidden;">
-          <tr><td style="padding:24px 28px 0;">
-            <span style="font-size:20px;font-weight:700;letter-spacing:-0.4px;color:${RAUSCH};">Tuloy</span>
+<html lang="en">
+  <body style="margin:0;padding:0;background-color:${SURFACE};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${SURFACE};">
+      <tr><td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+          <tr><td style="padding:32px 32px 0;">
+            <img src="${LOGO_URL}" alt="Tuloy" width="104" style="display:block;height:auto;border:0;" />
           </td></tr>
-          <tr><td style="padding:16px 28px 0;">
-            <h1 style="margin:0;font-size:22px;line-height:1.2;color:${INK};">${heading}</h1>
-            <p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:${MUTED};">${intro}</p>
+          <tr><td style="padding:24px 32px 0;">
+            <h1 style="margin:0;font-size:22px;line-height:1.3;color:${INK};font-weight:700;">${heading}</h1>
+            <p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:${MUTED};">${intro}</p>
           </td></tr>
-          <tr><td style="padding:16px 28px 4px;">
+          <tr><td style="padding:20px 32px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${HAIRLINE};">
               ${rowsHtml}
             </table>
           </td></tr>
-          <tr><td style="padding:8px 28px 28px;">
-            <p style="margin:0;font-size:13px;line-height:1.6;color:${MUTED};">${footer}</p>
+          <tr><td style="padding:24px 32px 36px;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED_SOFT};border-top:1px solid ${SURFACE};padding-top:20px;">
+              ${footer}<br />Built for San Juan, La Union operators.
+            </p>
           </td></tr>
         </table>
       </td></tr>
@@ -91,9 +98,9 @@ export function guestConfirmedEmail(b: ConfirmationBooking): { subject: string; 
     subject: "Your booking is confirmed 🎉",
     html: shell(
       `You're confirmed, ${b.guestName}!`,
-      `Your ${n}-night stay is locked in. Here are your details.`,
+      `Your ${n}-night stay is locked in — here's everything you need.`,
       rows,
-      "Need to make a change? Just reply to the message thread with your host. See you soon!",
+      "Need to change something? Reply to your host's message thread. See you in San Juan!",
     ),
   };
 }
@@ -118,9 +125,9 @@ export function guestRequestReceivedEmail(
     subject: "We got your booking request 🙌",
     html: shell(
       `Got your request, ${b.guestName}!`,
-      `Your ${n}-night request is held${window}. Pay your deposit and upload your payment screenshot on your booking page to lock these dates in.`,
+      `Your ${n}-night request is held${window}. Pay your deposit and upload your payment screenshot on your booking page to lock in these dates.`,
       rows,
-      "Finish on your booking page before the hold expires — once we receive your payment, your host will confirm.",
+      "Finish on your booking page before the hold expires — once we receive your payment, your host confirms.",
     ),
   };
 }
@@ -145,7 +152,7 @@ export function guestDepositReminderEmail(b: ConfirmationBooking): {
       `Almost there, ${b.guestName}`,
       "Your dates are still held — but not for long. Pay your deposit and upload your payment screenshot on your booking page to secure them before the hold expires.",
       rows,
-      "Once we receive your payment, your host will confirm. Didn't mean to book? You can ignore this — the hold will release on its own.",
+      "Once we receive your payment, your host confirms. Didn't mean to book? Ignore this and the hold releases on its own.",
     ),
   };
 }
@@ -162,9 +169,9 @@ export function guestCancelledEmail(b: ConfirmationBooking): { subject: string; 
     subject: "Your booking has been cancelled",
     html: shell(
       `Booking cancelled, ${b.guestName}`,
-      "The stay below has been cancelled and those dates released. If this is unexpected, just reply to the message thread with your host.",
+      "The stay below has been cancelled and those dates released. If this is unexpected, reply to your host's message thread.",
       rows,
-      "Still want to stay? You're welcome to book again anytime.",
+      "Still want to come? You're welcome to book again anytime.",
     ),
   };
 }
@@ -193,7 +200,7 @@ export function renewalReminderEmail(input: {
         ? "Your plan has lapsed. Renew now to keep your booking page and tools running without interruption."
         : "Just a heads-up that your plan renews soon. Renew anytime — it only takes a tap.",
       rows,
-      `Renew from your <a href="${input.settingsUrl}" style="color:${RAUSCH};">plan settings</a>. Questions? Just reply to this email.`,
+      `Renew from your <a href="${input.settingsUrl}" style="color:${PRIMARY};">plan settings</a>. Questions? Just reply to this email.`,
     ),
   };
 }
@@ -221,7 +228,7 @@ export function operatorBookingEmail(b: ConfirmationBooking): { subject: string;
         ? "📣 Tuloy brought you this booking. You confirmed the deposit — the dates are now held as confirmed."
         : "You confirmed this deposit. The dates are now held as confirmed.",
       rows,
-      "This is a record for your inbox — no action needed.",
+      "A record for your inbox — no action needed.",
     ),
   };
 }

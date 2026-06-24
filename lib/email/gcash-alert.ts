@@ -2,6 +2,7 @@ import "server-only";
 
 import { env } from "@/env";
 import { sendEmail } from "@/lib/email/resend";
+import { row, shell } from "@/lib/email/templates";
 import { createServiceClient } from "@/lib/supabase/server";
 
 function escapeHtml(s: string): string {
@@ -37,15 +38,12 @@ export async function notifyAdminsPayoutChanged(opts: {
 
     const who = opts.operatorName ?? opts.operatorEmail ?? "An operator";
     const subject = `Payout changed: ${who} — review within 3 days`;
-    const html = `
-      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#222;line-height:1.6">
-        <p><strong>${escapeHtml(who)}</strong>${
-          opts.operatorEmail ? ` (${escapeHtml(opts.operatorEmail)})` : ""
-        } just changed a payout method on Tuloy.</p>
-        <p>Their booking page stays live for <strong>3 days</strong>, then pauses until you confirm
-        the payout account name matches their ID.</p>
-        <p><a href="https://tuloy.racynibaya.com/admin/operators" style="color:#ff385c">Review in Admin → Operators</a></p>
-      </div>`;
+    const html = shell(
+      "Payout method changed",
+      `${escapeHtml(who)} just changed a payout method on Tuloy. Their booking page stays live for 3 days, then pauses until you confirm the payout account name matches their ID.`,
+      row("Operator", escapeHtml(who)) + row("Email", escapeHtml(opts.operatorEmail ?? "—")),
+      `Review in <a href="https://tuloysanjuan.com/admin/operators" style="color:#2c7a6b">Admin → Operators</a>.`,
+    );
     await Promise.all(recipients.map((to) => sendEmail({ to, subject, html })));
   } catch (err) {
     console.error("[gcash-alert] failed", err);
