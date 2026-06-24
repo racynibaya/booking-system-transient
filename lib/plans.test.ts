@@ -69,10 +69,14 @@ describe("PLANS", () => {
   });
 
   it("carries each tier's headline perk in its feature copy", () => {
-    // Solo's reason over Free is discovery; Pro's reason over Solo is labor-saving + featured.
+    // Solo's reason over Free is discovery; Pro's reason over Solo is automation (the inquiry-labor
+    // wedge) — auto-ack + deposit reminders — backed by a clearly-superior marketplace line.
     expect(PLANS.solo.features).toContain("Listed on the San Juan marketplace");
-    expect(PLANS.pro.features).toContain("Auto-acknowledge every inquiry");
-    expect(PLANS.pro.features).toContain("Featured marketplace placement");
+    expect(PLANS.pro.features).toContain(
+      "Auto-acknowledge every inquiry — guests never left waiting",
+    );
+    expect(PLANS.pro.features).toContain("Automatic deposit reminders — the tool chases, not you");
+    expect(PLANS.pro.features).toContain("Featured placement + priority marketplace ranking");
   });
 
   it("self-serve-charged tiers (solo/pro) carry a numeric priceMonthly", () => {

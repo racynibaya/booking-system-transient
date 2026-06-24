@@ -89,10 +89,17 @@ export const PLANS: Record<PlanId, Plan> = {
       "Your own shareable booking page",
     ],
   },
+  // Pro's reason-to-upgrade is NOT rooms (a ≤4-room operator never pays 2.5× for capacity) — it's
+  // automation that displaces the ~₱300/day inquiry labor (the sharpest WTP signal). The headline is
+  // "inquiries handled for you"; rooms are the backstop. The two automation lines are REAL behaviour
+  // (auto-ack on hold creation + the pre-expiry deposit-reminder sweep), gated to plan in
+  // ('pro','business'). "Featured placement + priority ranking" matches the already-enforced boost
+  // (pro 0.15 vs solo 0.05) + featured badge in 20260622140000 / 20260624120100 — no longer a vapor
+  // perk or an oversold marketplace line.
   pro: {
     id: "pro",
     label: "Pro",
-    blurb: "A guesthouse or small hotel.",
+    blurb: "Inquiries, handled.",
     price: "₱2,500",
     priceMonthly: 2500,
     priceYearly: 25000, // 10 months → 2 months free
@@ -100,9 +107,10 @@ export const PLANS: Record<PlanId, Plan> = {
     gateway: false,
     inherits: "Everything in Solo, plus",
     features: [
+      "Auto-acknowledge every inquiry — guests never left waiting",
+      "Automatic deposit reminders — the tool chases, not you",
+      "Featured placement + priority marketplace ranking",
       "Up to 15 rooms · multiple properties",
-      "Auto-acknowledge every inquiry",
-      "Featured marketplace placement",
     ],
     highlight: true,
   },

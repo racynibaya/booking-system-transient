@@ -98,6 +98,58 @@ export function guestConfirmedEmail(b: ConfirmationBooking): { subject: string; 
   };
 }
 
+// Guest-facing: "we got your request" — the Pro-tier auto-acknowledge (sent the moment a hold is
+// created, gated to plan in ('pro','business')). Replaces the operator's manual "yes it's available,
+// here's how to pay" reply. Nudges the guest to finish paying before the hold lapses.
+export function guestRequestReceivedEmail(
+  b: ConfirmationBooking,
+  opts?: { holdMinutes?: number },
+): { subject: string; html: string } {
+  const n = nights(b.checkIn, b.checkOut);
+  const window = opts?.holdMinutes ? ` for ${opts.holdMinutes} minutes` : "";
+  const rows =
+    row("Check-in", prettyDate(b.checkIn)) +
+    row("Check-out", prettyDate(b.checkOut)) +
+    row("Guests", String(b.numGuests)) +
+    row("Deposit due", peso(b.depositAmount)) +
+    row("Total", peso(b.totalAmount));
+
+  return {
+    subject: "We got your booking request 🙌",
+    html: shell(
+      `Got your request, ${b.guestName}!`,
+      `Your ${n}-night request is held${window}. Pay your deposit and upload your payment screenshot on your booking page to lock these dates in.`,
+      rows,
+      "Finish on your booking page before the hold expires — once we receive your payment, your host will confirm.",
+    ),
+  };
+}
+
+// Guest-facing: "your hold is about to expire" — the Pro-tier deposit-reminder follow-up (sent by the
+// pre-expiry sweep for held bookings with no proof yet, gated to plan in ('pro','business')). The tool
+// chases so the operator doesn't have to.
+export function guestDepositReminderEmail(b: ConfirmationBooking): {
+  subject: string;
+  html: string;
+} {
+  const rows =
+    row("Check-in", prettyDate(b.checkIn)) +
+    row("Check-out", prettyDate(b.checkOut)) +
+    row("Guests", String(b.numGuests)) +
+    row("Deposit due", peso(b.depositAmount)) +
+    row("Total", peso(b.totalAmount));
+
+  return {
+    subject: "Your hold is about to expire ⏳",
+    html: shell(
+      `Almost there, ${b.guestName}`,
+      "Your dates are still held — but not for long. Pay your deposit and upload your payment screenshot on your booking page to secure them before the hold expires.",
+      rows,
+      "Once we receive your payment, your host will confirm. Didn't mean to book? You can ignore this — the hold will release on its own.",
+    ),
+  };
+}
+
 // Guest-facing: "your booking was cancelled" (F2.3 lifecycle). No operator data; the
 // dates are released and the guest is invited to rebook.
 export function guestCancelledEmail(b: ConfirmationBooking): { subject: string; html: string } {
