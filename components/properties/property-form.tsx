@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SocialField } from "@/components/properties/social-input";
 import { AMENITY_GROUPS, AMENITY_OPTIONS } from "@/lib/amenities";
 import { SAN_JUAN_AREAS } from "@/lib/areas";
 import { propertyInput, type PropertyInput } from "@/lib/validation";
@@ -215,29 +216,27 @@ export function PropertyForm({
 
       <div className="flex flex-col gap-3">
         <p className="text-caption text-muted">
-          Socials — shown on your booking page so guests can follow your place.
+          Socials — shown on your booking page so guests can follow your place. Just your handle, no
+          link needed.
         </p>
-        <Field label="Facebook" error={errors.facebook_url?.message}>
-          <Input
-            type="url"
-            {...register("facebook_url")}
-            placeholder="https://facebook.com/yourpage"
-          />
-        </Field>
-        <Field label="Instagram" error={errors.instagram_url?.message}>
-          <Input
-            type="url"
-            {...register("instagram_url")}
-            placeholder="https://instagram.com/yourhandle"
-          />
-        </Field>
-        <Field label="TikTok" error={errors.tiktok_url?.message}>
-          <Input
-            type="url"
-            {...register("tiktok_url")}
-            placeholder="https://tiktok.com/@yourhandle"
-          />
-        </Field>
+        <SocialField
+          platform="facebook"
+          defaultUrl={defaultValues?.facebook_url}
+          onUrlChange={(url) => setValue("facebook_url", url, { shouldDirty: true })}
+          error={errors.facebook_url?.message}
+        />
+        <SocialField
+          platform="instagram"
+          defaultUrl={defaultValues?.instagram_url}
+          onUrlChange={(url) => setValue("instagram_url", url, { shouldDirty: true })}
+          error={errors.instagram_url?.message}
+        />
+        <SocialField
+          platform="tiktok"
+          defaultUrl={defaultValues?.tiktok_url}
+          onUrlChange={(url) => setValue("tiktok_url", url, { shouldDirty: true })}
+          error={errors.tiktok_url?.message}
+        />
       </div>
 
       {formError && <p className="text-body-sm text-error">{formError}</p>}
