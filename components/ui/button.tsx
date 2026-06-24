@@ -18,7 +18,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 rounded-sm whitespace-nowrap transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100";
 
 // Class builder, so a Link can be styled as a button without nesting <button> in <a>.
 export function buttonClassName({

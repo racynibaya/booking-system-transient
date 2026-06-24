@@ -1,5 +1,6 @@
-import { CheckCircle2, TriangleAlert } from "lucide-react";
+import { CheckCircle2, ShieldCheck, TriangleAlert } from "lucide-react";
 
+import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
 import { VerificationUploader } from "@/components/verification/verification-uploader";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
@@ -42,7 +43,8 @@ export default async function VerificationPage() {
         description="Upload these so we can confirm you're a real operator. Your booking page goes live once we approve — usually within a day."
       />
 
-      <div className="rounded-md border border-hairline bg-surface-soft p-4">
+      <div className="flex gap-3 rounded-md border border-primary/15 bg-primary/6 p-4">
+        <IconChip icon={ShieldCheck} tone="primary" />
         <p className="text-body-sm text-ink">
           <span className="font-medium">Why we verify.</span> It keeps Tuloy trustworthy for
           everyone — it protects guests from fake listings and scammers, and it protects{" "}
@@ -52,15 +54,15 @@ export default async function VerificationPage() {
       </div>
 
       {tenant.verification_status === "approved" && (
-        <div className="flex items-center gap-2 rounded-md border border-hairline bg-surface-soft p-3 text-body-sm text-ink">
-          <CheckCircle2 className="size-4 shrink-0 text-primary" />
+        <div className="flex items-center gap-2.5 rounded-md border border-success/20 bg-success-bg/50 p-3 text-body-sm text-ink">
+          <IconChip icon={CheckCircle2} tone="success" size="sm" />
           Your account is verified — your booking page is live.
         </div>
       )}
 
       {tenant.verification_status === "changes_requested" && (
-        <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary-disabled p-3 text-body-sm text-ink">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+        <div className="flex items-start gap-2.5 rounded-md border border-warning/25 bg-warning-bg/50 p-3 text-body-sm text-ink">
+          <IconChip icon={TriangleAlert} tone="warning" size="sm" />
           <span>
             <span className="font-medium">Changes requested:</span>{" "}
             {tenant.verification_note ?? "Please re-upload clearer documents."}

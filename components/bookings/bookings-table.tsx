@@ -48,6 +48,20 @@ const ACTIVE: Status[] = ["held", "awaiting_confirmation", "confirmed"];
 const BAR =
   "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-['']";
 
+// Every card carries a status-colored left spine so the board scans by color at a glance:
+// sea = confirmed/live, gold = needs-action/held, faint = pending, muted = dead. The urgent
+// Needs-action cues (red overdue / gold countdown) override this below.
+const SPINE: Record<Status, string> = {
+  pending: "before:bg-border-strong",
+  held: "before:bg-accent-warm",
+  awaiting_confirmation: "before:bg-warning",
+  confirmed: "before:bg-primary",
+  completed: "before:bg-sea",
+  cancelled: "before:bg-muted-soft",
+  expired: "before:bg-muted-soft",
+  no_show: "before:bg-error/60",
+};
+
 // The "arriving in…" pill: green while a guest is staying, amber when arriving within 2 days.
 function datePill(b: Booking, today: string): { label: string; cls: string } {
   if (b.check_in <= today && b.check_out >= today) {
@@ -106,7 +120,7 @@ export function BookingsTable({
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {bookings.map((b) => {
+          {bookings.map((b, i) => {
             const contact = b.guest_phone ?? b.guest_email;
             const pill = datePill(b, today);
             const where = `${b.properties?.name ?? "—"}${b.room_types?.name ? ` · ${b.room_types.name}` : ""}`;
@@ -117,16 +131,17 @@ export function BookingsTable({
             const showCountdown = isAction && b.status === "held" && Boolean(b.hold_expires_at);
             const isOverdue = isAction && b.status !== "held" && !isNewRequest(b.created_at);
             const isNew = isAction && isNewRequest(b.created_at);
+            const spine = isOverdue
+              ? "before:bg-error"
+              : showCountdown
+                ? "before:bg-accent-warm"
+                : SPINE[b.status];
             return (
               <Card
                 key={b.id}
-                className={`flex flex-col gap-2.5 p-4 ${
-                  isOverdue
-                    ? `${BAR} before:bg-error`
-                    : showCountdown
-                      ? `${BAR} before:bg-accent-warm`
-                      : ""
-                }`}
+                lift
+                style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
+                className={`${BAR} flex animate-card-rise flex-col gap-2.5 p-4 pl-5 ${spine}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -139,7 +154,7 @@ export function BookingsTable({
                     {/* "Tuloy brought you this" — the founder's demand-gen made visible. Brand-tinted
                         so it reads as a positive signal, distinct from the red/gold urgency cues. */}
                     {b.source === "tuloy" && (
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-badge font-medium text-primary">
+                      <span className="inline-flex items-center rounded-full bg-linear-to-r from-primary/15 to-sea/15 px-2.5 py-0.5 text-badge font-medium text-primary">
                         via Tuloy
                       </span>
                     )}

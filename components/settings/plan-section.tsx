@@ -1,6 +1,9 @@
+import { Crown, Sparkles } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { IconChip } from "@/components/ui/icon-chip";
 import { SubscribeButtons } from "@/components/settings/subscribe-buttons";
 import { DISPLAY_PLANS, PLANS, type PlanId } from "@/lib/plans";
 
@@ -50,23 +53,30 @@ export function PlanSection({
   const showSelfServe = checkoutEnabled && plan !== "business";
 
   return (
-    <Card className="flex flex-col gap-4 p-4 md:p-5">
+    <Card
+      className={`flex flex-col gap-4 p-4 shadow-glow md:p-5 ${
+        isPaid ? "border-accent/15 bg-linear-to-br from-accent/6 via-canvas to-canvas" : ""
+      }`}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <Badge tone={pastDue || overCap ? "warning" : isPaid ? "success" : "neutral"}>
-            {pastDue ? `${current.label} · Past due` : current.label}
-          </Badge>
-          <p className="mt-2 text-title-md text-ink">
-            {current.price}
-            {isPaid ? " / month" : ""}
-          </p>
-          <p className="text-body-sm text-muted">
-            {roomCount} room{roomCount === 1 ? "" : "s"}
-            {cap !== null ? ` of ${cap}` : " · unlimited"}
-          </p>
-          {isPaid && renewsOn && !pastDue && (
-            <p className="text-body-sm text-muted">Renews {renewsOn}</p>
-          )}
+        <div className="flex min-w-0 items-start gap-3">
+          <IconChip icon={isPaid ? Crown : Sparkles} tone="accent" size="lg" gradient={isPaid} />
+          <div className="min-w-0">
+            <Badge tone={pastDue || overCap ? "warning" : isPaid ? "success" : "neutral"}>
+              {pastDue ? `${current.label} · Past due` : current.label}
+            </Badge>
+            <p className="mt-2 text-title-md text-ink">
+              {current.price}
+              {isPaid ? " / month" : ""}
+            </p>
+            <p className="text-body-sm text-muted">
+              {roomCount} room{roomCount === 1 ? "" : "s"}
+              {cap !== null ? ` of ${cap}` : " · unlimited"}
+            </p>
+            {isPaid && renewsOn && !pastDue && (
+              <p className="text-body-sm text-muted">Renews {renewsOn}</p>
+            )}
+          </div>
         </div>
         <div className="sm:shrink-0">
           {showSelfServe ? (
