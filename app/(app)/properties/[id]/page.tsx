@@ -1,14 +1,16 @@
-import { CalendarDays, ExternalLink } from "lucide-react";
+import { CalendarDays, ExternalLink, ImageIcon, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CoverImageUploader } from "@/components/properties/cover-image-uploader";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 import { PropertyForm } from "@/components/properties/property-form";
+import { PropertyTabs } from "@/components/properties/property-tabs";
 import { RoomTypesSection } from "@/components/properties/room-types-section";
 import { ShareLinkButton } from "@/components/properties/share-link-button";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
 import { getProperty, requireUser } from "@/lib/supabase/dal";
 
@@ -21,7 +23,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   if (!property) notFound();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <Link
           href="/properties"
@@ -56,68 +58,84 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         />
       </div>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-display-sm text-ink">Cover photo</h2>
-          <p className="text-body-sm text-muted">
-            The full-bleed background guests see on your booking page.
-          </p>
-        </div>
-        <Card className="p-5 md:p-6">
-          <CoverImageUploader
+      <PropertyTabs
+        rooms={
+          <RoomTypesSection
             propertyId={id}
             tenantId={property.tenant_id}
-            currentPath={property.cover_image_path}
+            roomTypes={(property.room_types ?? []).map((rt) => ({
+              id: rt.id,
+              name: rt.name,
+              capacity: rt.capacity,
+              quantity: rt.quantity,
+              base_price: rt.base_price,
+              description: rt.description,
+              photos: Array.isArray(rt.photos) ? (rt.photos as string[]) : [],
+            }))}
           />
-        </Card>
-      </section>
+        }
+        details={
+          <div className="flex flex-col gap-8">
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2.5">
+                <IconChip icon={SlidersHorizontal} tone="sea" />
+                <h2 className="text-display-sm text-ink">Details</h2>
+              </div>
+              <Card className="p-5 shadow-glow md:p-6">
+                <PropertyForm
+                  action={updateProperty.bind(null, id)}
+                  submitLabel="Save changes"
+                  defaultValues={{
+                    name: property.name,
+                    area: property.area ?? "",
+                    address: property.address ?? "",
+                    description: property.description ?? "",
+                    check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
+                    check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
+                    dot_accredited: property.dot_accredited,
+                    amenities: Array.isArray(property.amenities)
+                      ? (property.amenities as string[])
+                      : [],
+                    facebook_url: property.facebook_url ?? "",
+                    instagram_url: property.instagram_url ?? "",
+                    tiktok_url: property.tiktok_url ?? "",
+                  }}
+                />
+              </Card>
+            </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-display-sm text-ink">Details</h2>
-        <Card className="p-5 md:p-6">
-          <PropertyForm
-            action={updateProperty.bind(null, id)}
-            submitLabel="Save changes"
-            defaultValues={{
-              name: property.name,
-              area: property.area ?? "",
-              address: property.address ?? "",
-              description: property.description ?? "",
-              check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
-              check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
-              dot_accredited: property.dot_accredited,
-              amenities: Array.isArray(property.amenities) ? (property.amenities as string[]) : [],
-              facebook_url: property.facebook_url ?? "",
-              instagram_url: property.instagram_url ?? "",
-              tiktok_url: property.tiktok_url ?? "",
-            }}
-          />
-        </Card>
-      </section>
-
-      <RoomTypesSection
-        propertyId={id}
-        tenantId={property.tenant_id}
-        roomTypes={(property.room_types ?? []).map((rt) => ({
-          id: rt.id,
-          name: rt.name,
-          capacity: rt.capacity,
-          quantity: rt.quantity,
-          base_price: rt.base_price,
-          description: rt.description,
-          photos: Array.isArray(rt.photos) ? (rt.photos as string[]) : [],
-        }))}
+            <section className="flex flex-col gap-3 border-t border-hairline pt-6">
+              <h2 className="text-title-md text-ink">Danger zone</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-4">
+                <p className="text-body-sm text-muted">
+                  Deleting removes this property and all its rooms.
+                </p>
+                <DeletePropertyButton id={id} />
+              </div>
+            </section>
+          </div>
+        }
+        cover={
+          <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2.5">
+                <IconChip icon={ImageIcon} tone="accent" />
+                <h2 className="text-display-sm text-ink">Cover photo</h2>
+              </div>
+              <p className="text-body-sm text-muted">
+                The full-bleed background guests see on your booking page.
+              </p>
+            </div>
+            <Card className="p-5 shadow-glow md:p-6">
+              <CoverImageUploader
+                propertyId={id}
+                tenantId={property.tenant_id}
+                currentPath={property.cover_image_path}
+              />
+            </Card>
+          </section>
+        }
       />
-
-      <section className="flex flex-col gap-3 border-t border-hairline pt-6">
-        <h2 className="text-title-md text-ink">Danger zone</h2>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-4">
-          <p className="text-body-sm text-muted">
-            Deleting removes this property and all its rooms.
-          </p>
-          <DeletePropertyButton id={id} />
-        </div>
-      </section>
     </div>
   );
 }
