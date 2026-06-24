@@ -88,6 +88,7 @@ export type Database = {
           num_guests: number;
           proof_url: string | null;
           property_id: string;
+          reminder_sent_at: string | null;
           room_type_id: string;
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
@@ -108,6 +109,7 @@ export type Database = {
           num_guests: number;
           proof_url?: string | null;
           property_id: string;
+          reminder_sent_at?: string | null;
           room_type_id: string;
           source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
@@ -128,6 +130,7 @@ export type Database = {
           num_guests?: number;
           proof_url?: string | null;
           property_id?: string;
+          reminder_sent_at?: string | null;
           room_type_id?: string;
           source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
@@ -733,6 +736,19 @@ export type Database = {
       downgrade_lapsed_subscriptions: {
         Args: { p_grace_days?: number };
         Returns: number;
+      };
+      due_deposit_reminders: {
+        Args: never;
+        Returns: {
+          check_in: string;
+          check_out: string;
+          deposit_amount: number;
+          guest_email: string;
+          guest_name: string;
+          id: string;
+          num_guests: number;
+          total_amount: number;
+        }[];
       };
       flag_past_due_subscriptions: { Args: never; Returns: number };
       gateway_connection_status: {

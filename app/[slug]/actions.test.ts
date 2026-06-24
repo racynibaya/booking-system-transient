@@ -38,6 +38,8 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("next/headers", () => ({
   headers: async () => new Map([["host", "localhost:3000"]]),
 }));
+// resend.ts imports "server-only" (unresolvable under vitest); the auto-ack send is mocked out here.
+vi.mock("@/lib/email/resend", () => ({ sendEmail: vi.fn(async () => true) }));
 
 import { createGatewayCheckout } from "./actions";
 

@@ -3,6 +3,8 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { sendEmail } from "@/lib/email/resend";
+import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
 import { getGatewayConnection } from "@/lib/supabase/gateway-dal";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
@@ -101,6 +103,14 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
       .is("source", null);
   }
 
+  // Auto-acknowledge (Pro/Business perk): email the guest the moment the hold lands, so they're never
+  // left silent and get a nudge to finish paying. Gated by plan and best-effort — a send failure (or a
+  // non-Pro tenant) never affects the booking the guest just made. Awaited (not fire-and-forget) so it
+  // actually completes before this serverless invocation ends.
+  if (d.guestEmail) {
+    await sendRequestAck(booking.tenant_id, d, booking.total_amount, booking.deposit_amount);
+  }
+
   // Payout methods are delivered WITH the hold (never via the public listing — anti-scrape). anon
   // has no grant on the table, so read through the service-role client.
   const paymentMethods = await getPaymentMethodsForGuest(booking.tenant_id);
@@ -113,6 +123,39 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     deposit: booking.deposit_amount,
     paymentMethods,
   };
+}
+
+// Pro/Business auto-acknowledge. Reads the tenant's plan (anon has no grant → service role) and only
+// emails for plan in ('pro','business'). Never throws: any failure here is swallowed so it can't roll
+// back the guest's hold (sendEmail itself is already best-effort and dry-runs without RESEND_API_KEY).
+async function sendRequestAck(
+  tenantId: string,
+  input: PublicBookingInput,
+  totalAmount: number | null,
+  depositAmount: number | null,
+): Promise<void> {
+  try {
+    const admin = createServiceClient();
+    const { data: tenant } = await admin.from("tenants").select("plan").eq("id", tenantId).single();
+    if (tenant?.plan !== "pro" && tenant?.plan !== "business") return;
+
+    const { subject, html } = guestRequestReceivedEmail(
+      {
+        guestName: input.guestName,
+        guestEmail: input.guestEmail || null,
+        guestPhone: input.guestPhone || null,
+        checkIn: input.checkIn,
+        checkOut: input.checkOut,
+        numGuests: input.numGuests,
+        depositAmount,
+        totalAmount,
+      },
+      { holdMinutes: HOLD_MINUTES },
+    );
+    await sendEmail({ to: input.guestEmail as string, subject, html });
+  } catch {
+    // best-effort: an ack failure never affects the booking
+  }
 }
 
 async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymentMethod[]> {

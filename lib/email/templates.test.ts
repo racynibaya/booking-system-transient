@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import {
   guestCancelledEmail,
   guestConfirmedEmail,
+  guestDepositReminderEmail,
+  guestRequestReceivedEmail,
   operatorBookingEmail,
   type ConfirmationBooking,
 } from "./templates";
@@ -33,6 +35,32 @@ describe("guestConfirmedEmail", () => {
   it("renders a dash when amounts are null", () => {
     const { html } = guestConfirmedEmail({ ...base, depositAmount: null, totalAmount: null });
     expect(html).toContain("—");
+  });
+});
+
+describe("guestRequestReceivedEmail", () => {
+  it("acknowledges the request with stay details and the deposit due", () => {
+    const { subject, html } = guestRequestReceivedEmail(base, { holdMinutes: 30 });
+    expect(subject).toMatch(/request/i);
+    expect(html).toContain("Got your request, Maria Santos!");
+    expect(html).toContain("for 30 minutes");
+    expect(html).toContain("3-night");
+    expect(html).toContain("₱1,500"); // deposit due
+  });
+
+  it("omits the hold window when none is given", () => {
+    const { html } = guestRequestReceivedEmail(base);
+    expect(html).not.toContain("minutes");
+  });
+});
+
+describe("guestDepositReminderEmail", () => {
+  it("nudges the guest before the hold expires with the dates and deposit", () => {
+    const { subject, html } = guestDepositReminderEmail(base);
+    expect(subject).toMatch(/expire/i);
+    expect(html).toContain("Almost there, Maria Santos");
+    expect(html).toContain("Oct 10, 2026");
+    expect(html).toContain("₱1,500");
   });
 });
 
