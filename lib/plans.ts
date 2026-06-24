@@ -72,6 +72,9 @@ export const PLANS: Record<PlanId, Plan> = {
     gateway: false,
     features: [
       "Up to 4 rooms",
+      "No double-bookings, guaranteed",
+      "Verified operator badge",
+      "Full booking management",
       "Live booking calendar",
       "GCash deposits with proof upload",
       "Your own shareable booking page",
@@ -87,12 +90,7 @@ export const PLANS: Record<PlanId, Plan> = {
     roomCap: 15,
     gateway: false,
     inherits: "Everything in Solo, plus",
-    features: [
-      "Up to 15 rooms · multiple properties",
-      "No double-bookings, guaranteed",
-      "Full booking management",
-      "Verified operator badge",
-    ],
+    features: ["Up to 15 rooms · multiple properties"],
     highlight: true,
   },
   business: {

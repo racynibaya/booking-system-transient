@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { FavoriteButton } from "@/components/favorites/favorite-button";
+
 export type ListingCardData = {
   slug: string;
   name: string;
@@ -72,6 +74,16 @@ export function ListingCard({
             }`}
           />
         )}
+        {/* Heart sits above the link so a tap saves instead of navigating (handled in the button). */}
+        <div className="absolute top-3 right-3 z-10">
+          <FavoriteButton
+            slug={slug}
+            name={name}
+            area={area}
+            coverUrl={coverUrl}
+            fromPrice={fromPrice}
+          />
+        </div>
         {/* Bottom scrim so the white verified pill stays legible over any cover photo. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white backdrop-blur">

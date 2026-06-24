@@ -2,6 +2,7 @@ import { LogIn, LogOut, MapPin, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { AmenitiesSection } from "@/components/public/amenities-section";
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
 import { LocationMap } from "@/components/public/location-map";
@@ -130,6 +131,11 @@ export default async function PublicBookingPage({
 
   const hasGoodToKnow = !!(property.check_in_time || property.check_out_time);
 
+  // Snapshot for the favourites store (mirrors a marketplace card): lowest room rate as "from" price.
+  const fromPrice = listing.room_types.length
+    ? Math.min(...listing.room_types.map((r) => r.base_price))
+    : null;
+
   return (
     <SelectedRoomProvider initialRoomId={listing.room_types[0]?.id ?? ""}>
       <main className="w-full overflow-x-hidden bg-canvas">
@@ -194,15 +200,25 @@ export default async function PublicBookingPage({
                 </span>
                 <span className="truncate text-title-md font-semibold">{property.name}</span>
               </div>
-              <div className="ml-3 hidden shrink-0 items-center gap-1.5 sm:flex">
-                <span className="text-caption-sm text-white/55">Powered by</span>
-                <Image
-                  src="/logo/tuloy-logo-white.svg"
-                  alt="Tuloy"
-                  width={208}
-                  height={112}
-                  className="h-5 w-auto"
+              <div className="ml-3 flex shrink-0 items-center gap-3">
+                <FavoriteButton
+                  size="md"
+                  slug={property.slug}
+                  name={property.name}
+                  area={property.area}
+                  coverUrl={coverUrl}
+                  fromPrice={fromPrice}
                 />
+                <div className="hidden items-center gap-1.5 sm:flex">
+                  <span className="text-caption-sm text-white/55">Powered by</span>
+                  <Image
+                    src="/logo/tuloy-logo-white.svg"
+                    alt="Tuloy"
+                    width={208}
+                    height={112}
+                    className="h-5 w-auto"
+                  />
+                </div>
               </div>
             </header>
 
