@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FavoritesNav } from "@/components/favorites/favorites-nav";
 import { CtaButton } from "@/components/landing/cta-button";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 
@@ -20,17 +21,22 @@ export function MarketplaceHeader() {
           />
         </Link>
 
-        <div className="hidden items-center gap-4 md:flex md:gap-5">
-          <Link href="/login" className="text-nav-link text-muted transition-colors hover:text-ink">
-            Sign in
-          </Link>
-          <CtaButton href="/about">List your property</CtaButton>
+        <div className="flex items-center gap-3 md:gap-5">
+          <FavoritesNav />
+          <div className="hidden items-center gap-4 md:flex md:gap-5">
+            <Link
+              href="/login"
+              className="text-nav-link text-muted transition-colors hover:text-ink"
+            >
+              Sign in
+            </Link>
+            <CtaButton href="/about">List your property</CtaButton>
+          </div>
+          <MobileMenu
+            links={[{ label: "Sign in", href: "/login" }]}
+            cta={{ label: "List your property", href: "/about" }}
+          />
         </div>
-
-        <MobileMenu
-          links={[{ label: "Sign in", href: "/login" }]}
-          cta={{ label: "List your property", href: "/about" }}
-        />
       </div>
     </header>
   );
