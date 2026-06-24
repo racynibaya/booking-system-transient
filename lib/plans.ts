@@ -47,19 +47,27 @@ export type Plan = {
 };
 
 export const PLANS: Record<PlanId, Plan> = {
-  // The pilot / unpaid default a tenant signs up on. Not a sold plan (excluded from the pricing
-  // grid). Capped at the Solo size so an operator who outgrows a small transient gets nudged to
-  // pick a paid plan — never blocked (the guard is grace + nudge, D7).
+  // The 1-room floor / downgrade target — NOT the signup default. Every adopter signs up Solo
+  // (20260624120000_pilot_default_solo.sql), so no operator sits on Free during the pilot. Excluded
+  // from the pricing grid (not a sold plan) and from marketplace discovery (list_public_listings
+  // gates to plan <> 'free'): a Free operator keeps only their own bookable /[slug] page — they run
+  // their own funnel, they're just not discoverable. The booking essentials still work; the cap is 1.
   free: {
     id: "free",
     label: "Free",
-    blurb: "Pilot — try everything.",
+    blurb: "Your own booking page.",
     price: "₱0",
     priceMonthly: null,
     priceYearly: null,
-    roomCap: 4,
+    roomCap: 1,
     gateway: false,
-    features: [],
+    features: [
+      "1 room",
+      "Your own shareable booking page",
+      "No double-bookings, guaranteed",
+      "Live booking calendar",
+      "GCash deposits with proof upload",
+    ],
   },
   solo: {
     id: "solo",
@@ -72,6 +80,7 @@ export const PLANS: Record<PlanId, Plan> = {
     gateway: false,
     features: [
       "Up to 4 rooms",
+      "Listed on the San Juan marketplace",
       "No double-bookings, guaranteed",
       "Verified operator badge",
       "Full booking management",
@@ -90,7 +99,11 @@ export const PLANS: Record<PlanId, Plan> = {
     roomCap: 15,
     gateway: false,
     inherits: "Everything in Solo, plus",
-    features: ["Up to 15 rooms · multiple properties"],
+    features: [
+      "Up to 15 rooms · multiple properties",
+      "Auto-acknowledge every inquiry",
+      "Featured marketplace placement",
+    ],
     highlight: true,
   },
   business: {

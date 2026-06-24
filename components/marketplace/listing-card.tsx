@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, ShieldCheck } from "lucide-react";
+import { MapPin, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,10 @@ export type ListingCardData = {
   area: string | null;
   coverUrl: string | null;
   fromPrice: number | null;
+  // Boosted (actively-paying Pro/Business) listings get a "Featured" badge — the visible face of the
+  // marketplace tier boost. Optional: it's a grid-only signal, deliberately NOT persisted into a
+  // saved favorite (it can change day to day).
+  featured?: boolean;
 };
 
 // A single operator in the marketplace grid. The "Verified" stamp is the signature element —
@@ -26,6 +30,7 @@ export function ListingCard({
   area,
   coverUrl,
   fromPrice,
+  featured = false,
   index = 0,
 }: ListingCardData & { index?: number }) {
   // Shimmer skeleton until the cover decodes, then fades out. `complete` is checked on mount so
@@ -73,6 +78,13 @@ export function ListingCard({
               loaded ? "opacity-0" : "opacity-100"
             }`}
           />
+        )}
+        {/* Featured = the visible face of the tier boost (actively-paying Pro/Business). Mirrors the
+            verified pill's glass treatment, set off by a gold star. */}
+        {featured && (
+          <span className="pointer-events-none absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white shadow-sm backdrop-blur">
+            <Star className="size-3.5 shrink-0 fill-amber-300 text-amber-300" /> Featured
+          </span>
         )}
         {/* Heart sits above the link so a tap saves instead of navigating (handled in the button). */}
         <div className="absolute top-3 right-3 z-10">

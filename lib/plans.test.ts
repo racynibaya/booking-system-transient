@@ -16,7 +16,7 @@ describe("isOverRoomCap", () => {
   });
 
   it("is over cap one room past the limit", () => {
-    expect(isOverRoomCap("free", 5)).toBe(true);
+    expect(isOverRoomCap("free", 2)).toBe(true); // free is the 1-room floor
     expect(isOverRoomCap("solo", 5)).toBe(true);
     expect(isOverRoomCap("pro", 16)).toBe(true);
   });
@@ -27,7 +27,7 @@ describe("isOverRoomCap", () => {
 
   it("is under cap below the limit", () => {
     expect(isOverRoomCap("solo", 0)).toBe(false);
-    expect(isOverRoomCap("free", 3)).toBe(false);
+    expect(isOverRoomCap("free", 1)).toBe(false); // exactly at the 1-room floor
   });
 });
 
@@ -64,8 +64,15 @@ describe("PLANS", () => {
     expect(PLANS.pro.gateway).toBe(false);
   });
 
-  it("excludes the free signup default from the pricing grid", () => {
+  it("excludes free (the post-pilot floor) from the pricing grid", () => {
     expect(DISPLAY_PLANS.map((p) => p.id)).toEqual(["solo", "pro", "business"]);
+  });
+
+  it("carries each tier's headline perk in its feature copy", () => {
+    // Solo's reason over Free is discovery; Pro's reason over Solo is labor-saving + featured.
+    expect(PLANS.solo.features).toContain("Listed on the San Juan marketplace");
+    expect(PLANS.pro.features).toContain("Auto-acknowledge every inquiry");
+    expect(PLANS.pro.features).toContain("Featured marketplace placement");
   });
 
   it("self-serve-charged tiers (solo/pro) carry a numeric priceMonthly", () => {
