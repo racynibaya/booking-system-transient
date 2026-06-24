@@ -11,7 +11,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AMENITY_OPTIONS } from "@/lib/amenities";
+import { AMENITY_GROUPS, AMENITY_OPTIONS } from "@/lib/amenities";
 import { SAN_JUAN_AREAS } from "@/lib/areas";
 import { propertyInput, type PropertyInput } from "@/lib/validation";
 
@@ -65,9 +65,7 @@ export function PropertyForm({
     setCustomAmenity("");
   };
   // Operator's "Other" entries — anything selected that isn't a curated option.
-  const customAmenities = selectedAmenities.filter(
-    (a) => !AMENITY_OPTIONS.includes(a as (typeof AMENITY_OPTIONS)[number]),
-  );
+  const customAmenities = selectedAmenities.filter((a) => !AMENITY_OPTIONS.includes(a));
 
   return (
     <form
@@ -139,25 +137,34 @@ export function PropertyForm({
             Tap the ones your place offers. Can&apos;t find it? Add your own below.
           </p>
 
-          <div className="flex flex-wrap gap-2">
-            {AMENITY_OPTIONS.map((label) => {
-              const on = selectedAmenities.includes(label);
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggleAmenity(label)}
-                  className={`rounded-full px-3.5 py-1.5 text-body-sm transition-[background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.97] ${
-                    on
-                      ? "bg-primary-disabled font-medium text-primary-active"
-                      : "border border-hairline text-body hover:border-border-strong hover:bg-surface-soft"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div className="flex flex-col gap-4">
+            {AMENITY_GROUPS.map((group) => (
+              <div key={group.label} className="flex flex-col gap-2">
+                <h3 className="text-caption font-medium tracking-wide text-muted uppercase">
+                  {group.label}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {group.items.map((label) => {
+                    const on = selectedAmenities.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleAmenity(label)}
+                        className={`rounded-full px-3.5 py-1.5 text-body-sm transition-[background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.97] ${
+                          on
+                            ? "bg-primary-disabled font-medium text-primary-active"
+                            : "border border-hairline text-body hover:border-border-strong hover:bg-surface-soft"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           {customAmenities.length > 0 && (
