@@ -25,8 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const gcashPaused = gcashChangedAt ? isOlderThanHours(gcashChangedAt, 72) : false;
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/80 backdrop-blur">
+    <div className="shell-ambient flex min-h-dvh flex-col">
+      <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-4 md:h-20 md:px-6">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center">
@@ -56,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       {tenant?.verification_status === "pending" && (
-        <div className="border-b border-hairline bg-surface-soft">
+        <div className="border-b border-primary/15 bg-primary/6">
           <div className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-3 text-body-sm text-ink md:px-6">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
             <span>
@@ -73,9 +73,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       )}
       {tenant?.verification_status === "changes_requested" && (
-        <div className="border-b border-hairline bg-surface-soft">
+        <div className="border-b border-warning/25 bg-warning-bg/50">
           <div className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-3 text-body-sm text-ink md:px-6">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
             <span>
               Action needed — {tenant.verification_note ?? "please re-upload your documents."}{" "}
               <Link
@@ -89,7 +89,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       )}
       {tenant?.verification_status === "suspended" && (
-        <div className="border-b border-hairline bg-surface-soft">
+        <div className="border-b border-error/20 bg-error/6">
           <div className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-3 text-body-sm text-error md:px-6">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" />
             <span>
@@ -100,9 +100,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       )}
       {gcashChangedAt && (
-        <div className="border-b border-hairline bg-surface-soft">
+        <div className="border-b border-warning/25 bg-warning-bg/50">
           <div className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-3 text-body-sm text-ink md:px-6">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
             <span>
               {gcashPaused ? (
                 <>

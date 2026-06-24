@@ -1,6 +1,7 @@
 import { Building2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { IconChip } from "@/components/ui/icon-chip";
 import { Card } from "@/components/ui/card";
 
 type PropertyCardData = {
@@ -17,10 +18,8 @@ export function PropertyCard({ property }: { property: PropertyCardData }) {
 
   return (
     <Link href={`/properties/${property.id}`} className="group block">
-      <Card className="flex items-center gap-4 p-4 transition-colors hover:bg-surface-soft">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-strong text-muted">
-          <Building2 className="size-5" />
-        </span>
+      <Card lift className="flex items-center gap-4 p-4">
+        <IconChip icon={Building2} size="lg" gradient />
         <div className="min-w-0 flex-1">
           <p className="truncate text-title-md text-ink">{property.name}</p>
           <p className="mt-0.5 truncate text-body-sm text-muted">

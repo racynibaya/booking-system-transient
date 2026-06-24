@@ -193,17 +193,17 @@ export function BookingsFilters({
               onClick={() => setParams({ view: key === "upcoming" ? null : key })}
               className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-body-sm transition-colors focus-visible:outline-none ${
                 active
-                  ? "bg-ink text-canvas"
+                  ? "bg-primary text-on-primary shadow-glow"
                   : flag
                     ? "bg-warning-bg text-warning hover:opacity-90"
-                    : "border border-hairline bg-canvas text-muted hover:text-ink"
+                    : "border border-hairline bg-canvas text-muted hover:bg-surface-soft hover:text-ink"
               }`}
             >
               {VIEW_LABELS[key]}
               {n > 0 && (
                 <span
                   className={`rounded-full px-1.5 text-caption-sm ${
-                    active ? "bg-canvas/20" : flag ? "bg-warning/20" : "bg-surface-strong text-body"
+                    active ? "bg-white/25" : flag ? "bg-warning/20" : "bg-surface-strong text-body"
                   }`}
                 >
                   {n}

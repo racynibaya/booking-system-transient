@@ -174,6 +174,13 @@
   /* ---- Elevation (single shadow tier + flat baseline) ------------------- */
   --shadow-card:
     rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+  /* Operator-shell depth (additive — public/guest surfaces keep --shadow-card).
+     Resting "glow": a faint sea-tinted float for cards that sit above the wash.
+     Hover "lift": a deeper sea-tinted shadow (mirrors the public booking CTA) for
+     the -translate-y interaction. Tints are deep-teal (--color-sea) so depth reads
+     on-brand, not generic gray. */
+  --shadow-glow: rgba(29, 42, 44, 0.04) 0 1px 2px 0, rgba(31, 111, 120, 0.08) 0 6px 16px -10px;
+  --shadow-lift: rgba(29, 42, 44, 0.06) 0 2px 4px 0, rgba(31, 111, 120, 0.28) 0 14px 30px -16px;
 
   /* ---- Animations (landing decoration — gentle, scarce) ----------------- */
   --animate-float: float 6s ease-in-out infinite;
@@ -242,6 +249,27 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Operator-shell ambient wash: two faint sea-tinted radials anchored top-left /
+   top-right over the canvas floor, so the working area has atmosphere instead of a
+   flat fill. Fixed so it reads as ambient light rather than a scrolling band. Scoped
+   to .shell-ambient — applied only to the operator shell, never public/guest pages. */
+.shell-ambient {
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(
+      62% 48% at 0% 0%,
+      color-mix(in srgb, var(--color-sunset-1) 16%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      52% 42% at 100% 0%,
+      color-mix(in srgb, var(--color-sea) 11%, transparent) 0%,
+      transparent 58%
+    );
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* Respect reduced-motion: kill decorative animation + instant anchor jumps. */
