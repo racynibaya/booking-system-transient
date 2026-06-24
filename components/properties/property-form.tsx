@@ -7,9 +7,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SocialField } from "@/components/properties/social-input";
 import { AMENITY_GROUPS, AMENITY_OPTIONS } from "@/lib/amenities";
@@ -52,6 +52,7 @@ export function PropertyForm({
   // Amenities is a controlled array field (the rest of the form uses register).
   // useWatch (not watch()) so the React Compiler can memoize this component.
   const selectedAmenities = useWatch({ control, name: "amenities" }) ?? [];
+  const area = useWatch({ control, name: "area" }) ?? "";
   const setAmenities = (next: string[]) =>
     setValue("amenities", next, { shouldDirty: true, shouldValidate: true });
   const toggleAmenity = (label: string) =>
@@ -83,16 +84,25 @@ export function PropertyForm({
         <Input {...register("name")} placeholder="Kahuna Beach House" />
       </Field>
 
-      <Field label="Barangay" error={errors.area?.message}>
-        <Select {...register("area")} defaultValue="">
-          <option value="">Select a barangay…</option>
-          {SAN_JUAN_AREAS.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {/* Barangay uses the searchable Combobox (41 options) instead of a native
+          select. Rendered with an inline label, NOT <Field>, because wrapping a
+          <button> trigger in a <label> double-fires its click and the panel
+          toggles shut on open. */}
+      <div className="flex flex-col gap-2">
+        <span className="text-caption text-muted">Barangay</span>
+        <Combobox
+          options={SAN_JUAN_AREAS}
+          value={area}
+          onChange={(v) => setValue("area", v, { shouldDirty: true, shouldValidate: true })}
+          placeholder="Select a barangay…"
+          searchPlaceholder="Search barangays…"
+          emptyLabel="No barangay matches"
+          invalid={!!errors.area}
+        />
+        {errors.area?.message && (
+          <span className="text-body-sm text-error">{errors.area.message}</span>
+        )}
+      </div>
 
       <Field label="Address" error={errors.address?.message}>
         <Input {...register("address")} placeholder="Brgy. Urbiztondo, San Juan, La Union" />
