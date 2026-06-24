@@ -75,18 +75,27 @@ describe("tenant plan lockdown (P3.1)", () => {
     op = await makeOperator(`plan-lockdown-${Date.now()}@example.com`);
   });
 
-  it("starts a new operator on the free plan", async () => {
-    const { data } = await admin.from("tenants").select("plan").eq("id", op.tenantId).single();
-    expect(data!.plan).toBe("free");
+  it("starts a new operator on the solo plan (pilot default)", async () => {
+    // Pilot packaging: the tenants.plan column default is 'solo' (20260624120000_pilot_default_solo),
+    // so every adopter signs up as Solo, not Free. This is functional/cosmetic only — no charge — so
+    // subscription_status stays trialing and paid_until null.
+    const { data } = await admin
+      .from("tenants")
+      .select("plan, subscription_status, paid_until")
+      .eq("id", op.tenantId)
+      .single();
+    expect(data!.plan).toBe("solo");
+    expect(data!.subscription_status).toBe("trialing");
+    expect(data!.paid_until).toBeNull();
   });
 
   it("denies an operator self-setting plan='business'", async () => {
     // The update is rejected at the column-grant level; even if PostgREST returns no error, the
-    // value must be unchanged when read back through service-role.
+    // value must be unchanged (still the Solo default) when read back through service-role.
     await op.client.from("tenants").update({ plan: "business" }).eq("id", op.tenantId);
 
     const { data } = await admin.from("tenants").select("plan").eq("id", op.tenantId).single();
-    expect(data!.plan).toBe("free");
+    expect(data!.plan).toBe("solo");
   });
 
   it("still lets an operator update an allowlisted column (name)", async () => {

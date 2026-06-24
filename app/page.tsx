@@ -13,6 +13,7 @@ type RpcRow = {
   area: string | null;
   cover_image_path: string | null;
   from_price: number | null;
+  featured: boolean;
 };
 
 export default async function MarketplaceHome() {
@@ -27,6 +28,7 @@ export default async function MarketplaceHome() {
     name: r.name,
     area: r.area,
     fromPrice: r.from_price,
+    featured: r.featured,
     coverUrl: r.cover_image_path
       ? supabase.storage.from("property-images").getPublicUrl(r.cover_image_path).data.publicUrl
       : null,
