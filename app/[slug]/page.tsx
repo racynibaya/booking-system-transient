@@ -1,5 +1,6 @@
-import { LogIn, LogOut, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowLeft, LogIn, LogOut, MapPin, ShieldCheck } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { FavoriteButton } from "@/components/favorites/favorite-button";
@@ -189,6 +190,13 @@ export default async function PublicBookingPage({
           <div className="relative mx-auto flex min-h-[52vh] max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:min-h-[62vh]">
             <header className="flex items-center justify-between text-canvas">
               <div className="flex min-w-0 items-center gap-2">
+                <Link
+                  href="/"
+                  aria-label="Back to home"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur transition-colors hover:bg-black/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  <ArrowLeft className="size-5" />
+                </Link>
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-canvas/15 backdrop-blur">
                   <Image
                     src="/favicon/tuloy-icon-white.svg"
