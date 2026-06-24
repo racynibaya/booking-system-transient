@@ -78,7 +78,9 @@ export function OnboardingProgress({
             <li key={s.label}>
               <Link
                 href={s.href}
-                className="group flex items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                className={`group flex items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                  s === next ? "bg-primary/5" : ""
+                }`}
               >
                 <span
                   className={`flex size-5 shrink-0 items-center justify-center rounded-full ${

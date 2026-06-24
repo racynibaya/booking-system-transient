@@ -1,12 +1,13 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { markBalanceCollected } from "@/app/(app)/dashboard/actions";
 import { Button } from "@/components/ui/button";
+import { IconChip } from "@/components/ui/icon-chip";
 import { Card } from "@/components/ui/card";
 import { formatDateShort } from "@/lib/dates";
 import type { OwedBalance } from "@/lib/supabase/dal";
@@ -31,10 +32,8 @@ export function OwesList({ owes }: { owes: OwedBalance[] }) {
 
   if (owes.length === 0) {
     return (
-      <Card className="flex items-center gap-3 p-5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success-bg text-success">
-          <Check className="size-4.5" />
-        </span>
+      <Card lift className="flex items-center gap-3 p-5">
+        <IconChip icon={Check} tone="success" />
         <p className="text-body-sm text-muted">All balances settled — nobody owes you right now.</p>
       </Card>
     );
@@ -44,8 +43,11 @@ export function OwesList({ owes }: { owes: OwedBalance[] }) {
   const remaining = owes.length - shown.length;
 
   return (
-    <Card className="flex flex-col p-5">
-      <h2 className="text-title-md text-ink">Still owes you</h2>
+    <Card lift className="flex flex-col p-5">
+      <div className="flex items-center gap-2.5">
+        <IconChip icon={Wallet} tone="warning" />
+        <h2 className="text-title-md text-ink">Still owes you</h2>
+      </div>
       <ul className="mt-3 flex flex-col divide-y divide-hairline-soft">
         {shown.map((o) => (
           <li

@@ -15,7 +15,8 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-// Inline links in the header (desktop).
+// Inline links in the header (desktop). Active item sits in a sea-tinted pill so the
+// current section reads at a glance; others lift to a soft fill on hover.
 export function TopNav() {
   const pathname = usePathname();
   return (
@@ -26,8 +27,10 @@ export function TopNav() {
           <Link
             key={it.href}
             href={it.href}
-            className={`rounded-sm px-3 py-2 text-nav-link transition-colors ${
-              active ? "text-ink" : "text-muted hover:text-ink"
+            className={`rounded-full px-3.5 py-2 text-nav-link transition-colors ${
+              active
+                ? "bg-primary/10 text-primary"
+                : "text-muted hover:bg-surface-soft hover:text-ink"
             }`}
           >
             {it.label}
@@ -38,11 +41,12 @@ export function TopNav() {
   );
 }
 
-// Thumb-reachable tab bar fixed to the bottom (mobile only). Active tab in Rausch.
+// Thumb-reachable tab bar fixed to the bottom (mobile only). The active tab's icon sits
+// in a sea-tinted orb so the current section is unmistakable on a glance.
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-hairline bg-canvas/95 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-hairline bg-canvas/90 backdrop-blur-md md:hidden">
       {ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
         const Icon = it.icon;
@@ -50,11 +54,17 @@ export function BottomNav() {
           <Link
             key={it.href}
             href={it.href}
-            className={`flex flex-col items-center gap-1 py-2.5 text-caption-sm transition-colors ${
+            className={`flex flex-col items-center gap-1 pt-2 pb-2.5 text-caption-sm transition-colors ${
               active ? "text-primary" : "text-muted"
             }`}
           >
-            <Icon className="size-5" />
+            <span
+              className={`flex items-center justify-center rounded-full px-4 py-1 transition-colors ${
+                active ? "bg-primary/12" : ""
+              }`}
+            >
+              <Icon className="size-5" />
+            </span>
             {it.label}
           </Link>
         );

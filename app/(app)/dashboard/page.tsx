@@ -1,4 +1,4 @@
-import { Check, Plus } from "lucide-react";
+import { Check, Moon, Plus, Sun, Sunrise } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -15,6 +15,7 @@ import { ShareLinkButton } from "@/components/properties/share-link-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { IconChip } from "@/components/ui/icon-chip";
 import {
   getCurrentTenant,
   getGatewayConnectionStatus,
@@ -46,7 +47,18 @@ export default async function DashboardPage() {
   // for those operators only) so it can appear as its own checklist line.
   const gateway = isBusiness ? await getGatewayConnectionStatus() : null;
 
-  const greeting = tenant?.name ? `Welcome back, ${tenant.name}.` : "Welcome to Tuloy.";
+  // Time-of-day greeting + matching coastal icon (sunrise → sun → moon), in Manila time so it
+  // reads right for San Juan operators regardless of where the server renders.
+  const hour = Number(
+    new Intl.DateTimeFormat("en-PH", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Asia/Manila",
+    }).format(new Date()),
+  );
+  const partOfDay = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const DayIcon = hour < 12 ? Sunrise : hour < 18 ? Sun : Moon;
+  const greeting = tenant?.name ? `${partOfDay}, ${tenant.name}.` : "Welcome to Tuloy.";
   const today = new Date().toLocaleDateString("en-PH", {
     weekday: "long",
     month: "long",
@@ -72,10 +84,13 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Greeting + the two daily actions, one tap each. */}
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-body-sm text-muted">{today}</p>
-          <h1 className="mt-0.5 font-display text-display-xl text-ink">{greeting}</h1>
+      <header className="flex animate-card-rise flex-wrap items-end justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <IconChip icon={DayIcon} size="lg" gradient className="hidden sm:flex" />
+          <div>
+            <p className="text-body-sm text-muted">{today}</p>
+            <h1 className="mt-0.5 font-display text-display-xl text-ink">{greeting}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/bookings/new" className={buttonClassName({ size: "sm" })}>
@@ -86,10 +101,17 @@ export default async function DashboardPage() {
       </header>
 
       {/* Starting out: the checklist leads, since there's no money/occupancy yet. */}
-      {!setupComplete && <OnboardingProgress steps={steps} bookingPage={bookingPage} />}
+      {!setupComplete && (
+        <div className="animate-card-rise" style={{ animationDelay: "70ms" }}>
+          <OnboardingProgress steps={steps} bookingPage={bookingPage} />
+        </div>
+      )}
 
       {/* Money (left) + how-full / waiting-on-you (right). */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div
+        className="grid animate-card-rise grid-cols-1 gap-4 md:grid-cols-2"
+        style={{ animationDelay: "140ms" }}
+      >
         <div className="flex flex-col gap-4">
           <MoneyHero
             collectedThisWeek={revenue.collectedThisWeek}
@@ -110,11 +132,12 @@ export default async function DashboardPage() {
 
       {/* Setup done: a slim confirmation that the page is live, with the link to post. */}
       {setupComplete && bookingPage && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <Card
+          className="flex animate-card-rise flex-wrap items-center justify-between gap-3 border-success/20 bg-linear-to-r from-success-bg/70 to-canvas p-5"
+          style={{ animationDelay: "140ms" }}
+        >
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success-bg text-success">
-              <Check className="size-4.5" />
-            </span>
+            <IconChip icon={Check} tone="success" />
             <div className="min-w-0">
               <p className="text-title-sm text-ink">Your booking page is live</p>
               <p className="truncate font-mono text-caption-sm text-muted">/{bookingPage.slug}</p>
@@ -126,7 +149,10 @@ export default async function DashboardPage() {
       )}
 
       {hasProperty && (
-        <section className="flex flex-col gap-3">
+        <section
+          className="flex animate-card-rise flex-col gap-3"
+          style={{ animationDelay: "210ms" }}
+        >
           <h2 className="text-display-sm text-ink">Your properties</h2>
           <div className="flex flex-col gap-3">
             {properties.map((p) => (

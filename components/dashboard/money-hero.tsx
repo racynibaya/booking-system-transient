@@ -17,28 +17,41 @@ export function MoneyHero({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-md p-6 text-on-primary shadow-card md:p-7"
+      className="relative overflow-hidden rounded-md p-6 text-on-primary shadow-lift md:p-7"
       style={{
         background:
           "radial-gradient(130% 150% at 0% 0%, var(--color-sunset-1) 0%, var(--color-primary) 48%, var(--color-sea) 100%)",
       }}
     >
-      <p className="text-caption text-on-primary/80">Collected this week</p>
-      <p className="mt-1 font-display text-rating-display leading-none tracking-tight">
-        {peso(collectedThisWeek)}
-      </p>
+      {/* Soft top-left light + a faint glass orb bottom-right give the flat gradient depth
+          (same treatment as the public listing hero). pointer-events-none / aria-hidden. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_12%_-10%,rgba(255,255,255,0.24),transparent_55%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -bottom-16 size-44 rounded-full bg-white/10 blur-2xl"
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <div className="rounded-sm bg-white/12 px-4 py-3">
-          <p className="text-caption-sm text-on-primary/80">Coming this month</p>
-          <p className="mt-1 text-display-sm">{peso(comingThisMonth)}</p>
-        </div>
-        <div className="rounded-sm bg-white/12 px-4 py-3">
-          <p className="text-caption-sm text-on-primary/80">Still owed</p>
-          <p className="mt-1 text-display-sm">{peso(owesTotal)}</p>
-          <p className="mt-0.5 text-caption-sm text-on-primary/70">
-            {owesCount === 0 ? "all settled" : `${owesCount} booking${owesCount > 1 ? "s" : ""}`}
-          </p>
+      <div className="relative">
+        <p className="text-caption text-on-primary/80">Collected this week</p>
+        <p className="mt-1 font-display text-rating-display leading-none tracking-tight">
+          {peso(collectedThisWeek)}
+        </p>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="rounded-sm border border-white/10 bg-white/15 px-4 py-3 backdrop-blur-sm">
+            <p className="text-caption-sm text-on-primary/80">Coming this month</p>
+            <p className="mt-1 text-display-sm">{peso(comingThisMonth)}</p>
+          </div>
+          <div className="rounded-sm border border-white/10 bg-white/15 px-4 py-3 backdrop-blur-sm">
+            <p className="text-caption-sm text-on-primary/80">Still owed</p>
+            <p className="mt-1 text-display-sm">{peso(owesTotal)}</p>
+            <p className="mt-0.5 text-caption-sm text-on-primary/70">
+              {owesCount === 0 ? "all settled" : `${owesCount} booking${owesCount > 1 ? "s" : ""}`}
+            </p>
+          </div>
         </div>
       </div>
     </div>

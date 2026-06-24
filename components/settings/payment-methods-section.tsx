@@ -144,7 +144,7 @@ export function PaymentMethodsSection({
       )}
 
       {methods.map((m) => (
-        <Card key={m.id} className="flex flex-col gap-4 p-4 md:p-5">
+        <Card key={m.id} className="flex flex-col gap-4 p-4 shadow-glow md:p-5">
           {editingId === m.id ? (
             <MethodForm method={m} onDone={() => setEditingId(null)} />
           ) : (
