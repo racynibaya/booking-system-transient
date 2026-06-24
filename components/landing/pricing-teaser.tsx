@@ -14,12 +14,13 @@ import {
 import { CtaButton } from "./cta-button";
 import { Reveal } from "./reveal";
 
-// Public pricing grid. A monthly/annual toggle sits above the cards; ANNUAL is the default (the
-// discount nudge), with monthly always one tap away. Annual prices show the per-month equivalent +
-// a "N months free" badge so the saving is legible. Business is value-priced/contact-sales — it has
-// no annual self-serve price, so it keeps its single figure regardless of the toggle.
+// Public pricing grid. A monthly/annual toggle sits above the cards; MONTHLY is the default, with
+// annual always one tap away (the "N months free" badge keeps the discount nudge visible). Annual
+// prices show the per-month equivalent + the badge so the saving is legible. Business is
+// value-priced/contact-sales — it has no annual self-serve price, so it keeps its single figure
+// regardless of the toggle.
 export function PricingTeaser() {
-  const [interval, setInterval] = useState<BillingInterval>("year");
+  const [interval, setInterval] = useState<BillingInterval>("month");
 
   // Shared savings copy (Solo & Pro both = 2 months free).
   const monthsFree = DISPLAY_PLANS.map((p) => annualMonthsFree(p.id)).find((m) => m > 0) ?? 0;
@@ -132,8 +133,8 @@ function PriceBlock({ plan, interval }: { plan: Plan; interval: BillingInterval 
   );
 }
 
-// Bespoke segmented control on the project's tokens (NOT shadcn). Yearly first + default, with the
-// savings hint, so the cheaper-over-the-year choice reads as the obvious one.
+// Bespoke segmented control on the project's tokens (NOT shadcn). Monthly is the default; the yearly
+// option carries the savings hint so the cheaper-over-the-year choice stays visible one tap away.
 function IntervalToggle({
   value,
   onChange,
