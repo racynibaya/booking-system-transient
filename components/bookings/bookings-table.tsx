@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { isNewRequest, STATUS_LABELS, type BookingView } from "@/lib/bookings";
-import { daysFromToday, fromDateStr, relativeDay, todayStr } from "@/lib/dates";
+import { daysFromToday, fromDateStr, relativeDay } from "@/lib/dates";
 import type { getBookings } from "@/lib/supabase/dal";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -58,8 +58,8 @@ function datePill(b: Booking, today: string): { label: string; cls: string } {
       return { label: "Staying now", cls: "bg-success-bg text-success" };
     return { label: "Dates active", cls: "bg-surface-strong text-body" };
   }
-  const d = daysFromToday(b.check_in);
-  const label = relativeDay(b.check_in);
+  const d = daysFromToday(b.check_in, today);
+  const label = relativeDay(b.check_in, today);
   if (d >= 0 && d <= 2) return { label, cls: "bg-warning-bg text-warning" };
   return { label, cls: "bg-surface-strong text-body" };
 }
@@ -72,12 +72,16 @@ export function BookingsTable({
   bookings,
   hasAnyBookings,
   view,
+  today,
 }: {
   bookings: Booking[];
   hasAnyBookings: boolean;
   view: BookingView;
+  // `today` (YYYY-MM-DD) is computed once on the server and passed in, so the date pills render
+  // identically on server and client — no hydration mismatch from the client recomputing its own
+  // local today (server UTC vs client local would diverge near midnight).
+  today: string;
 }) {
-  const today = todayStr();
   // The proof receipt to show enlarged, in-app (so the operator never leaves the board to check it).
   const [proof, setProof] = useState<string | null>(null);
 

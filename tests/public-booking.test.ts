@@ -49,6 +49,13 @@ async function makeOperatorTenant(email: string): Promise<string> {
     .eq("user_id", data.user!.id)
     .single();
   if (tErr) throw tErr;
+  // get_public_listing gates on verification_status='approved' (operator_verification migration);
+  // real operators are approved, so approve the seeded tenant or the public read seam returns null.
+  const { error: vErr } = await admin
+    .from("tenants")
+    .update({ verification_status: "approved" })
+    .eq("id", tenant!.id);
+  if (vErr) throw vErr;
   return tenant!.id as string;
 }
 
