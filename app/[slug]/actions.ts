@@ -18,7 +18,7 @@ const publicBookingInput = z.object({
   numGuests: z.number().int().positive(),
   guestName: z.string().trim().min(1, "Your name is required").max(120),
   guestPhone: z.string().trim().max(40).optional().or(z.literal("")),
-  guestEmail: z.email().optional().or(z.literal("")),
+  guestEmail: z.email("Please enter a valid email address"),
   // Attribution tag from the booking link (?src=…). Pure metadata for the operator; never
   // touches the money path. Stamped after the hold via a best-effort service-role update.
   source: z.string().trim().max(60).optional(),
@@ -66,7 +66,7 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     p_num_guests: d.numGuests,
     p_guest_name: d.guestName,
     p_guest_phone: d.guestPhone || undefined,
-    p_guest_email: d.guestEmail || undefined,
+    p_guest_email: d.guestEmail,
     p_hold_minutes: HOLD_MINUTES,
   });
 
