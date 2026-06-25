@@ -72,6 +72,17 @@ describe("guestCancelledEmail", () => {
     expect(html).toContain("Oct 10, 2026");
     expect(html).toContain("Oct 13, 2026");
   });
+
+  it("includes the operator's reason when given", () => {
+    const { html } = guestCancelledEmail(base, "The room flooded");
+    expect(html).toContain("The room flooded");
+  });
+
+  it("escapes HTML in the reason so it can't break the markup", () => {
+    const { html } = guestCancelledEmail(base, '<script>alert("x")</script>');
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
 });
 
 describe("operatorBookingEmail", () => {
