@@ -11,7 +11,14 @@ import {
   viewCounts,
 } from "@/lib/bookings";
 import { todayStr } from "@/lib/dates";
-import { getBookingFilterOptions, getBookings, requireUser } from "@/lib/supabase/dal";
+import {
+  getBookingFilterOptions,
+  getBookings,
+  getCurrentTenant,
+  requireUser,
+} from "@/lib/supabase/dal";
+
+import { BookingsLive } from "./bookings-live";
 
 // F2.1 bookings dashboard — the operator's daily driver. Filtering is server-side and
 // URL-driven (?property=&room=&status=&q=&from=&to=&view=), so a filtered board is
@@ -26,9 +33,10 @@ export default async function BookingsPage({
   await requireUser();
   const { status, view, ...sqlFilters } = parseBookingFilters(await searchParams);
 
-  const [baseRows, options] = await Promise.all([
+  const [baseRows, options, tenant] = await Promise.all([
     getBookings(sqlFilters),
     getBookingFilterOptions(),
+    getCurrentTenant(),
   ]);
 
   const today = todayStr();
@@ -37,6 +45,7 @@ export default async function BookingsPage({
 
   return (
     <div className="flex flex-col gap-6">
+      {tenant && <BookingsLive tenantId={tenant.id} />}
       <PageHeader
         title="Bookings"
         description="See, filter, and confirm or cancel your bookings."
