@@ -62,6 +62,19 @@ export async function createHoldViaRpc(input: {
   return booking.id;
 }
 
+// Read back the cancellation_reason a test wrote, by the unique guest name it used. Service role
+// — a verification read of the row the flow under test just mutated (F2.1).
+export async function readCancellationReason(guestName: string): Promise<string | null> {
+  const admin = serviceClient();
+  const { data, error } = await admin
+    .from("bookings")
+    .select("cancellation_reason")
+    .eq("guest_name", guestName)
+    .maybeSingle();
+  if (error) throw new Error(`Could not read cancellation_reason: ${error.message}`);
+  return (data?.cancellation_reason as string | null) ?? null;
+}
+
 // Pick a real, publicly-bookable seeded listing and the operator who owns it. A property is
 // publicly visible only when its tenant is `approved` AND gcash_changed_at IS NULL (see seed.sql /
 // get_public_listing). We read that join with the service role, then resolve the owning operator's

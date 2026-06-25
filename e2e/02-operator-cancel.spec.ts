@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 import { randomFutureStay } from "./helpers/calendar";
-import { createHoldViaRpc, pickBookableListing } from "./helpers/listing";
+import { createHoldViaRpc, pickBookableListing, readCancellationReason } from "./helpers/listing";
 import { signInAsOperator } from "./helpers/operator";
 import { beat } from "./helpers/watch";
+
+const CANCEL_REASON = "The room is no longer available for these dates — so sorry!";
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 // Scenario 2 — cancel / free the dates.
@@ -42,11 +44,20 @@ test("operator cancels a booking and frees the dates", async ({ page }) => {
       .first()
       .click();
     await expect(page.getByRole("button", { name: /yes, cancel it/i })).toBeVisible();
+
+    // The operator types a reason — it's persisted on the booking and (when a guest email
+    // exists) sent to the guest. This hold has no email, so nothing is sent here.
+    await page.getByPlaceholder(/no longer available/i).fill(CANCEL_REASON);
     await beat(page);
     await page.getByRole("button", { name: /yes, cancel it/i }).click();
 
     await expect(page.getByText(/booking cancelled/i)).toBeVisible({ timeout: 15_000 });
     await beat(page, 1800);
+  });
+
+  await test.step("The reason was persisted on the cancelled booking", async () => {
+    const reason = await readCancellationReason(guestName);
+    expect(reason).toBe(CANCEL_REASON);
   });
 
   console.log("\n✓ Booking cancelled — dates freed.\n");
