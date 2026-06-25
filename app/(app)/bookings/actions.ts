@@ -63,19 +63,28 @@ export async function confirmBooking(bookingId: string): Promise<ActionResult> {
 // F2.3: notify the guest once. The .select().maybeSingle() returns the flipped row on the
 // winning call and null on a no-op re-cancel (0 rows) — so we send the cancellation email
 // ONLY when a row actually changed, the same fire-once guard as confirmBooking.
-export async function cancelBooking(bookingId: string): Promise<ActionResult> {
+// The optional reason is bounded to keep the email + column sane; an empty/blank string
+// normalizes to null so a no-note cancel doesn't store "".
+const cancelReason = z.string().trim().max(500).optional();
+
+export async function cancelBooking(bookingId: string, reason?: string): Promise<ActionResult> {
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };
   }
+  const parsedReason = cancelReason.safeParse(reason);
+  if (!parsedReason.success) {
+    return { ok: false, error: "That reason is too long (500 characters max)." };
+  }
+  const cancellationReason = parsedReason.data?.length ? parsedReason.data : null;
 
-  await requireUser();
+  const user = await requireUser();
   const tenant = await getCurrentTenant();
   if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
 
   const supabase = await createClient();
   const { data: cancelled, error } = await supabase
     .from("bookings")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", cancellation_reason: cancellationReason })
     .eq("id", bookingId)
     .in("status", ["held", "awaiting_confirmation", "confirmed"])
     .select(
@@ -85,10 +94,19 @@ export async function cancelBooking(bookingId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "Couldn't cancel this booking. Please try again." };
 
   // Best-effort guest notification — never affects the result (the booking is cancelled
-  // either way). Only the winning call has a row to send for.
+  // either way). Only the winning call has a row to send for. reply-to is the operator so the
+  // guest's reply actually reaches the host (there's no in-app messaging).
   if (cancelled?.guest_email) {
-    const { subject, html } = guestCancelledEmail(toConfirmationBooking(cancelled));
-    await sendEmail({ to: cancelled.guest_email, subject, html });
+    const { subject, html } = guestCancelledEmail(
+      toConfirmationBooking(cancelled),
+      cancellationReason,
+    );
+    await sendEmail({
+      to: cancelled.guest_email,
+      subject,
+      html,
+      replyTo: user.email ?? undefined,
+    });
   }
 
   revalidatePath("/bookings");
@@ -192,7 +210,10 @@ async function sendConfirmationEmails(
 
   if (b.guest_email) {
     const { subject, html } = guestConfirmedEmail(data);
-    sends.push(sendEmail({ to: b.guest_email, subject, html }));
+    // reply-to the operator so the guest can reply straight to their host.
+    sends.push(
+      sendEmail({ to: b.guest_email, subject, html, replyTo: operatorEmail ?? undefined }),
+    );
   }
   if (operatorEmail) {
     const { subject, html } = operatorBookingEmail(data);

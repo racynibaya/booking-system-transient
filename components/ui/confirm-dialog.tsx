@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export function ConfirmDialog({
   pending = false,
   onConfirm,
   onCancel,
+  children,
 }: {
   open: boolean;
   title: string;
@@ -26,6 +27,9 @@ export function ConfirmDialog({
   pending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  // Optional extra content rendered between the description and the action buttons
+  // (e.g. a reason textarea). Most callers don't pass it.
+  children?: ReactNode;
 }) {
   // Drives the entrance transition: mount hidden, flip to shown on the next frame.
   // Depends only on `open` so a `pending` change mid-action can't re-trigger the animation.
@@ -78,6 +82,8 @@ export function ConfirmDialog({
         {description && (
           <p className="mt-2 text-body-sm leading-relaxed text-muted">{description}</p>
         )}
+
+        {children && <div className="mt-4">{children}</div>}
 
         <div className="mt-6 flex justify-end gap-3">
           <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={onCancel}>
