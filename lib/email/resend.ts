@@ -18,6 +18,9 @@ export type EmailMessage = {
   to: string;
   subject: string;
   html: string;
+  // Optional Reply-To (e.g. the operator on guest-facing mail) so a guest reply reaches
+  // the host rather than the no-reply sender.
+  replyTo?: string;
 };
 
 // Verified-domain sender in prod; the resend.dev sandbox address is only ever used
@@ -51,6 +54,7 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
       to: message.to,
       subject: message.subject,
       html: message.html,
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
     });
     if (error) {
       console.error("[email] send failed", message.subject, error);

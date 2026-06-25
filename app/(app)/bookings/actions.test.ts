@@ -118,10 +118,30 @@ describe("cancelBooking — F2.1 guarded status write", () => {
   it("flips an active booking to cancelled, guarding on the occupancy statuses", async () => {
     const res = await cancelBooking(BOOKING_ID);
     expect(res).toEqual({ ok: true });
-    expect(updateMock).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(updateMock).toHaveBeenCalledWith({ status: "cancelled", cancellation_reason: null });
     expect(eqMock).toHaveBeenCalledWith("id", BOOKING_ID);
     expect(inMock).toHaveBeenCalledWith("status", ["held", "awaiting_confirmation", "confirmed"]);
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+  });
+
+  it("persists the operator's reason and passes it to the guest email", async () => {
+    const res = await cancelBooking(BOOKING_ID, "  Room flooded, so sorry!  ");
+    expect(res).toEqual({ ok: true });
+    // Trimmed and written to the column.
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "cancelled",
+      cancellation_reason: "Room flooded, so sorry!",
+    });
+    // The note reaches the guest, with reply-to pointed at the operator.
+    const arg = sendEmailMock.mock.calls[0]?.[0];
+    expect(arg?.html).toContain("Room flooded, so sorry!");
+    expect(arg?.replyTo).toBe("operator@example.com");
+  });
+
+  it("rejects a reason over the length cap without touching the database", async () => {
+    const res = await cancelBooking(BOOKING_ID, "x".repeat(501));
+    expect(res.ok).toBe(false);
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("sends the guest a cancellation email on the winning cancel", async () => {

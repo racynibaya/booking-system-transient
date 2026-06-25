@@ -75,6 +75,7 @@ export type Database = {
       };
       bookings: {
         Row: {
+          cancellation_reason: string | null;
           check_in: string;
           check_out: string;
           created_at: string;
@@ -96,6 +97,7 @@ export type Database = {
           total_amount: number | null;
         };
         Insert: {
+          cancellation_reason?: string | null;
           check_in: string;
           check_out: string;
           created_at?: string;
@@ -117,6 +119,7 @@ export type Database = {
           total_amount?: number | null;
         };
         Update: {
+          cancellation_reason?: string | null;
           check_in?: string;
           check_out?: string;
           created_at?: string;

@@ -598,7 +598,7 @@ export function BookingCard({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={labelClass}>Email (optional)</span>
+            <span className={labelClass}>Email</span>
             <input
               type="email"
               value={email}
@@ -619,7 +619,7 @@ export function BookingCard({
             </button>
             <button
               type="button"
-              disabled={pending || name.trim() === ""}
+              disabled={pending || name.trim() === "" || email.trim() === ""}
               onClick={reserve}
               className={`flex-1 ${ctaClass}`}
             >

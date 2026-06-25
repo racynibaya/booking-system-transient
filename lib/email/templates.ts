@@ -28,6 +28,16 @@ const SURFACE = "#ecefec"; // soft canvas
 const HAIRLINE = "#e2e7e3"; // row separators
 const LOGO_URL = "https://tuloysanjuan.com/logo/tuloy-logo.png";
 
+// Escape free-text (e.g. the operator's cancellation reason) before interpolating into the
+// HTML email, so a stray < or & can't break or inject markup.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function peso(amount: number | null): string {
   if (amount == null) return "—";
   return `₱${amount.toLocaleString("en-PH")}`;
@@ -100,7 +110,7 @@ export function guestConfirmedEmail(b: ConfirmationBooking): { subject: string; 
       `You're confirmed, ${b.guestName}!`,
       `Your ${n}-night stay is locked in — here's everything you need.`,
       rows,
-      "Need to change something? Reply to your host's message thread. See you in San Juan!",
+      "Need to change something? Just reply to this email to reach your host. See you in San Juan!",
     ),
   };
 }
@@ -159,17 +169,22 @@ export function guestDepositReminderEmail(b: ConfirmationBooking): {
 
 // Guest-facing: "your booking was cancelled" (F2.3 lifecycle). No operator data; the
 // dates are released and the guest is invited to rebook.
-export function guestCancelledEmail(b: ConfirmationBooking): { subject: string; html: string } {
+export function guestCancelledEmail(
+  b: ConfirmationBooking,
+  reason?: string | null,
+): { subject: string; html: string } {
   const rows =
     row("Check-in", prettyDate(b.checkIn)) +
     row("Check-out", prettyDate(b.checkOut)) +
     row("Guests", String(b.numGuests));
 
+  const note = reason?.trim() ? ` Your host's note: “${escapeHtml(reason.trim())}”.` : "";
+
   return {
     subject: "Your booking has been cancelled",
     html: shell(
       `Booking cancelled, ${b.guestName}`,
-      "The stay below has been cancelled and those dates released. If this is unexpected, reply to your host's message thread.",
+      `The stay below has been cancelled and those dates released.${note} If this is unexpected, just reply to this email to reach your host.`,
       rows,
       "Still want to come? You're welcome to book again anytime.",
     ),
