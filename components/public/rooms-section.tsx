@@ -133,7 +133,7 @@ function RoomGallery({
       <button
         type="button"
         onClick={() => onOpen(0)}
-        className="group relative block aspect-3/2 w-full overflow-hidden rounded-md border border-hairline bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="group relative block aspect-3/2 w-full overflow-hidden rounded-md border border-hairline bg-surface-soft shadow-e2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <GalleryImage
           src={photos[0]}
@@ -153,7 +153,7 @@ function RoomGallery({
           onScroll={(e) =>
             setActive(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))
           }
-          className="flex snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overflow-y-hidden rounded-md border border-hairline [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overflow-y-hidden rounded-md border border-hairline shadow-e1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {photos.map((url, i) => (
             <button
@@ -186,7 +186,7 @@ function RoomGallery({
 
       {/* Desktop: balanced mosaic. The outer radius clips tile corners; gaps read as seams. */}
       <div
-        className={`hidden aspect-3/2 gap-2 overflow-hidden rounded-md border border-hairline sm:grid ${layout.grid}`}
+        className={`hidden aspect-3/2 gap-2 overflow-hidden rounded-md border border-hairline shadow-e2 sm:grid ${layout.grid}`}
       >
         {tiles.map((url, i) => (
           <Tile

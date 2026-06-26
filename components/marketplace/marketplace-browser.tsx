@@ -52,15 +52,15 @@ export function MarketplaceBrowser({ listings }: { listings: ListingCardData[] }
   return (
     <div ref={topRef} className="scroll-mt-24">
       <div className="flex flex-col gap-4">
-        <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted" />
+        <div className="relative max-w-lg">
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2 text-muted" />
           <input
             type="search"
             value={query}
             onChange={(e) => onSearch(e.target.value)}
             aria-label="Search stays by name or area"
             placeholder="Search by name or area"
-            className="h-11 w-full rounded-full border border-hairline bg-canvas pr-4 pl-10 text-body-md text-ink placeholder:text-muted-soft focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+            className="h-12 w-full rounded-full border border-hairline bg-canvas pr-4 pl-11 text-body-md text-ink shadow-e1 transition-shadow placeholder:text-muted-soft hover:shadow-e2 focus-visible:border-primary focus-visible:shadow-e2 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
           />
         </div>
 

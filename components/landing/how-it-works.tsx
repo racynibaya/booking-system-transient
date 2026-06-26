@@ -40,7 +40,7 @@ export function HowItWorks() {
             <Reveal
               key={n}
               delay={i * 0.08}
-              className="relative rounded-md border border-hairline bg-canvas p-6 shadow-card"
+              className="relative rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-shadow duration-200 hover:shadow-e3"
             >
               <span className="absolute top-6 right-6 text-display-md text-hairline">{n}</span>
               <span className="flex size-11 items-center justify-center rounded-full bg-ink text-canvas">

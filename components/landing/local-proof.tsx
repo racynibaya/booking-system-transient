@@ -13,7 +13,7 @@ export function LocalProof() {
           {AREAS.map((area) => (
             <span
               key={area}
-              className="rounded-full border border-hairline bg-canvas px-4 py-1.5 text-body-sm text-ink"
+              className="rounded-full border border-hairline bg-canvas px-4 py-1.5 text-body-sm text-ink shadow-e1"
             >
               {area}
             </span>

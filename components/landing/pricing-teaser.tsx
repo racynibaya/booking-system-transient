@@ -50,8 +50,8 @@ export function PricingTeaser() {
               delay={i * 0.08}
               className={`relative flex flex-col rounded-xl bg-canvas p-8 text-left ${
                 t.highlight
-                  ? "border-2 border-primary shadow-card md:-mt-3 md:mb-3"
-                  : "border border-hairline"
+                  ? "border-2 border-primary shadow-e3 md:-mt-3 md:mb-3"
+                  : "border border-hairline shadow-e1 transition-shadow duration-200 hover:shadow-e2"
               }`}
             >
               {t.highlight && (
