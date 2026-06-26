@@ -25,12 +25,11 @@ const publicBookingInput = z
     // touches the money path. Stamped after the hold via a best-effort service-role update.
     source: z.string().trim().max(60).optional(),
   })
-  // Guest-facing 2-night minimum. This is the authoritative enforcement (server-side); the
-  // booking-card mirrors it for UX via the same meetsMinStay rule. A 1-night or inverted range
-  // both fail here, which also subsumes the RPC's INVALID_RANGE for this path. Safe: the date
-  // regex above guarantees parseable YYYY-MM-DD strings before this refine runs.
-  .refine((v) => meetsMinStay(v.checkIn, v.checkOut), {
-    message: `Minimum stay is ${MIN_STAY_NIGHTS} nights.`,
+  // Basic range sanity (check-out after check-in). The per-property minimum-stay gate can't live
+  // in the static schema — it depends on the room's property setting — so it's enforced in the
+  // action body below (still server-side: the P5 trust boundary).
+  .refine((v) => v.checkOut > v.checkIn, {
+    message: "Check-out must be after check-in.",
     path: ["checkOut"],
   });
 export type PublicBookingInput = z.infer<typeof publicBookingInput>;
@@ -65,6 +64,25 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your details." };
   }
   const d = parsed.data;
+
+  // Per-property guest-facing minimum stay (the authoritative server-side gate; the booking-card
+  // mirrors it for UX). Config read, not money — fetched via the service client like the other
+  // tenant reads here. Fall back to the default if the row can't be read, never skip the check.
+  {
+    const admin = createServiceClient();
+    const { data: rt } = await admin
+      .from("room_types")
+      .select("properties(min_stay_nights)")
+      .eq("id", d.roomTypeId)
+      .single();
+    const minNights = rt?.properties?.min_stay_nights ?? MIN_STAY_NIGHTS;
+    if (!meetsMinStay(d.checkIn, d.checkOut, minNights)) {
+      return {
+        ok: false,
+        error: `Minimum stay is ${minNights} ${minNights === 1 ? "night" : "nights"}.`,
+      };
+    }
+  }
 
   // Anon, session-less client → the create_booking_hold RPC (granted anon) enforces
   // the no-double-booking invariant atomically (architecture P1) and stamps total/deposit.
