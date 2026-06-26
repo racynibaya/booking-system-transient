@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { FavoriteButton } from "@/components/favorites/favorite-button";
+import { Reveal } from "@/components/motion";
 import { AmenitiesSection } from "@/components/public/amenities-section";
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
 import { LocationMap } from "@/components/public/location-map";
@@ -159,7 +160,7 @@ export default async function PublicBookingPage({
           </div>
         )}
         {/* ---- Hero banner (brand sunset / photographic) ------------------------------ */}
-        <section className="relative w-full overflow-hidden">
+        <section className="grain relative w-full overflow-hidden">
           {/* Brand sunset gradient base — or the operator's cover photo layered over it. */}
           <div className="absolute inset-0 bg-linear-to-br from-sunset-1 via-sunset-2 to-sunset-3" />
           {/* soft top-left highlight gives the flat gradient some depth */}
@@ -186,11 +187,12 @@ export default async function PublicBookingPage({
                 fill
                 sizes="100vw"
                 quality={30}
-                className="hidden scale-110 object-cover blur-2xl brightness-90 lg:block"
+                className="hidden scale-110 object-cover blur-2xl brightness-90 motion-safe:animate-kenburns lg:block"
               />
               {/* The cover photo. Mobile: fill edge-to-edge, sharp, gentle center-crop (a small
-                  landscape shot reads far better full than letterboxed). Desktop: show the WHOLE
-                  photo (contain), centered over the blurred backdrop — nothing cropped. */}
+                  landscape shot reads far better full than letterboxed) — gets a slow ken-burns
+                  drift. Desktop: show the WHOLE photo (contain), centered over the blurred
+                  backdrop — nothing cropped, so no zoom there. */}
               <Image
                 src={coverUrl}
                 alt=""
@@ -198,14 +200,14 @@ export default async function PublicBookingPage({
                 priority
                 sizes="100vw"
                 quality={90}
-                className="object-cover object-center lg:object-contain"
+                className="object-cover object-center motion-safe:max-lg:animate-kenburns lg:object-contain"
               />
             </>
           )}
           {/* bottom legibility scrim for the white title */}
           <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
 
-          <div className="relative mx-auto flex min-h-[52vh] max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:min-h-[62vh]">
+          <div className="relative z-10 mx-auto flex min-h-[52vh] max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:min-h-[62vh]">
             <header className="flex items-center justify-between text-canvas">
               <div className="flex min-w-0 items-center gap-2">
                 <Link
@@ -249,7 +251,7 @@ export default async function PublicBookingPage({
             </header>
 
             <div className="flex flex-1 flex-col justify-end py-8 md:py-12">
-              <div className="max-w-xl text-canvas">
+              <Reveal className="max-w-xl text-canvas">
                 <h1 className="text-hero tracking-tight text-canvas">{property.name}</h1>
                 {property.area && (
                   <p className="mt-3 flex items-center gap-1.5 text-display-sm text-white/85">
@@ -275,7 +277,7 @@ export default async function PublicBookingPage({
                 <p className="mt-5 text-body-sm text-white/70">
                   Book direct · real-time availability · no booking fees
                 </p>
-              </div>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -314,7 +316,7 @@ export default async function PublicBookingPage({
                 <h2 className="text-display-sm tracking-tight text-ink">Good to know</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {property.check_in_time && (
-                    <div className="flex items-center gap-3 rounded-md border border-hairline p-4">
+                    <div className="flex items-center gap-3 rounded-md border border-hairline bg-canvas p-4 shadow-e1">
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-soft text-primary">
                         <LogIn className="size-4" />
                       </span>
@@ -327,7 +329,7 @@ export default async function PublicBookingPage({
                     </div>
                   )}
                   {property.check_out_time && (
-                    <div className="flex items-center gap-3 rounded-md border border-hairline p-4">
+                    <div className="flex items-center gap-3 rounded-md border border-hairline bg-canvas p-4 shadow-e1">
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-soft text-primary">
                         <LogOut className="size-4" />
                       </span>

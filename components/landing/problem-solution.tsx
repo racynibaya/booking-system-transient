@@ -39,7 +39,7 @@ export function ProblemSolution() {
             <Reveal
               key={title}
               delay={i * 0.08}
-              className="rounded-md border border-hairline bg-canvas p-6 shadow-card"
+              className="rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-shadow duration-200 hover:shadow-e3"
             >
               <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Icon className="size-5" />

@@ -3,10 +3,19 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
+import { useMounted } from "@/components/motion/use-mounted";
+
 // Fade + rise a block into view the first time it scrolls in. Drop-in replacement for a
 // plain `div`: it renders one motion.div carrying the passed className, so it can stand in
 // for an existing grid/flex item without changing layout. `delay` lets callers stagger
-// sibling cards. Honors prefers-reduced-motion by rendering a static, fully-visible div.
+// sibling cards.
+//
+// Reduced-motion is honored by rendering a static, fully-visible div — but only AFTER mount.
+// `useReducedMotion()` is false during SSR and resolves to the real value only on the client,
+// so branching on it directly would make the server (animated) and client (static) markup
+// disagree → a hydration mismatch that can leave sections stuck hidden. Gating on `mounted`
+// keeps SSR + first client paint identical (both animated); reduced-motion users settle to the
+// static block a frame later.
 export function Reveal({
   children,
   className,
@@ -17,8 +26,9 @@ export function Reveal({
   delay?: number;
 }) {
   const reduce = useReducedMotion();
+  const mounted = useMounted();
 
-  if (reduce) {
+  if (mounted && reduce) {
     return <div className={className}>{children}</div>;
   }
 

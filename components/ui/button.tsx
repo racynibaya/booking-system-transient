@@ -2,11 +2,15 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 // Hand-built on the design tokens (context/ui-token.md → app/globals.css @theme).
 // primary = Rausch CTA (button-primary), secondary = ink-outline, ghost = text-only.
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "cta";
 type Size = "md" | "sm";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-on-primary hover:bg-primary-active disabled:bg-primary-disabled",
+  // Marketing/hero CTA: a sea-glass gradient with real depth (e2 → e3 on hover) + a faint
+  // brightness lift, so the single most important action on a page reads as the loud moment.
+  // Use sparingly — not a drop-in for every primary button.
+  cta: "bg-linear-to-br from-sunset-1 via-primary to-sea text-on-primary shadow-e2 hover:shadow-e3 hover:brightness-[1.04] disabled:from-primary-disabled disabled:via-primary-disabled disabled:to-primary-disabled disabled:shadow-none",
   secondary:
     "border border-ink bg-canvas text-ink hover:bg-surface-soft disabled:border-hairline disabled:text-muted-soft",
   ghost: "text-ink hover:underline disabled:text-muted-soft disabled:no-underline",

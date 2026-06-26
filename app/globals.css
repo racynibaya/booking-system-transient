@@ -182,6 +182,26 @@
   --shadow-glow: rgba(29, 42, 44, 0.04) 0 1px 2px 0, rgba(31, 111, 120, 0.08) 0 6px 16px -10px;
   --shadow-lift: rgba(29, 42, 44, 0.06) 0 2px 4px 0, rgba(31, 111, 120, 0.28) 0 14px 30px -16px;
 
+  /* Elevation scale (e1→e4) — public + operator surfaces. Each tier is multi-layer,
+     low-opacity, and SEA-tinted (deep teal --color-sea 31,111,120) so depth reads on-brand
+     rather than generic gray, plus an `inset 0 1px 0` top-edge highlight so a card catches
+     "light" on its upper lip and reads as a physical object, not a painted rectangle. Named
+     e1..e4 (not sm/md/lg) deliberately, to avoid overriding Tailwind's default shadow-*
+     utilities. e1 = barely raised · e2 = floating card · e3 = high float (booking card,
+     popover) · e4 = overlay / modal. */
+  --shadow-e1:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5), rgba(29, 42, 44, 0.04) 0 1px 2px 0,
+    rgba(31, 111, 120, 0.06) 0 2px 8px -2px;
+  --shadow-e2:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55), rgba(29, 42, 44, 0.05) 0 2px 4px -1px,
+    rgba(31, 111, 120, 0.1) 0 8px 20px -8px;
+  --shadow-e3:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6), rgba(29, 42, 44, 0.06) 0 4px 8px -2px,
+    rgba(31, 111, 120, 0.16) 0 18px 40px -16px;
+  --shadow-e4:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6), rgba(29, 42, 44, 0.08) 0 8px 16px -4px,
+    rgba(31, 111, 120, 0.22) 0 30px 60px -24px;
+
   /* ---- Animations (landing decoration — gentle, scarce) ----------------- */
   --animate-float: float 6s ease-in-out infinite;
   --animate-float-slow: float 8s ease-in-out infinite;
@@ -192,6 +212,13 @@
   /* Marketplace grid: each card rises + fades in on load (CSS-only so it never blanks
      the grid waiting on JS). `both` holds the start state through the stagger delay. */
   --animate-card-rise: card-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Slow ken-burns drift on large hero photos — gentle zoom + pan so a static cover
+     breathes instead of sitting flat. Subtle on purpose; killed under reduced-motion. */
+  --animate-kenburns: kenburns 18s ease-in-out infinite alternate;
+
+  /* Shared easing token — the brand's signature ease-out spring, reused across
+     CSS transitions and motion/react springs so all motion shares one rhythm. */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ---- Keyframes ------------------------------------------------------------ */
@@ -236,6 +263,15 @@
   }
 }
 
+@keyframes kenburns {
+  0% {
+    transform: scale(1.04) translateY(0);
+  }
+  100% {
+    transform: scale(1.1) translateY(-1.2%);
+  }
+}
+
 /* ---- Base ----------------------------------------------------------------- */
 html {
   /* Smooth in-page anchor nav; scroll-padding offsets the sticky header so a
@@ -272,6 +308,56 @@ body {
   background-attachment: fixed;
 }
 
+/* Public depth wash: the same technique as .shell-ambient, but a NON-fixed variant for
+   guest hero/section backdrops, so large color fields get atmosphere instead of a flat
+   block. Layered sea-glass radials (light sea top-left, deep teal top-right, a faint surf
+   warmth at the foot). Apply to a section, then float content above it with a z-indexed
+   wrapper. */
+.surface-mesh {
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(
+      70% 55% at 12% 0%,
+      color-mix(in srgb, var(--color-sunset-1) 24%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      62% 50% at 100% 8%,
+      color-mix(in srgb, var(--color-sea) 16%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      55% 45% at 50% 100%,
+      color-mix(in srgb, var(--color-accent) 7%, transparent) 0%,
+      transparent 55%
+    );
+  background-repeat: no-repeat;
+}
+
+/* Film grain: a tiled SVG fractal-noise overlay at very low opacity, soft-light blended so
+   it sits as texture over both color washes and photos (stops big fills from looking like
+   flat vinyl). pointer-events:none so it never intercepts taps; needs a positioned parent. */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+
+/* Standalone top-edge highlight for glass / elevated surfaces that carry their own shadow
+   (the elevation tiers already bake this in; use this only when layering manually). */
+.edge-highlight {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
 /* Respect reduced-motion: kill decorative animation + instant anchor jumps. */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -281,7 +367,8 @@ body {
   .animate-float-slow,
   .animate-room-swap,
   .animate-shimmer,
-  .animate-card-rise {
+  .animate-card-rise,
+  .animate-kenburns {
     animation: none;
   }
 }

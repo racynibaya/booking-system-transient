@@ -48,7 +48,7 @@ export function ListingCard({
       style={{ animationDelay: `${Math.min(index, 7) * 60}ms` }}
       className="group flex animate-card-rise flex-col gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
-      <div className="relative aspect-3/2 overflow-hidden rounded-md border border-hairline bg-surface-soft">
+      <div className="relative aspect-3/2 overflow-hidden rounded-md border border-hairline bg-surface-soft shadow-e1 transition-[box-shadow,transform] duration-300 ease-out group-hover:-translate-y-0.5 group-hover:shadow-e3">
         {coverUrl ? (
           <Image
             ref={imgRef}
@@ -57,7 +57,7 @@ export function ListingCard({
             fill
             sizes="(min-width: 1280px) 290px, (min-width: 1024px) 30vw, (min-width: 640px) 45vw, 100vw"
             onLoad={() => setLoaded(true)}
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           />
         ) : (
           <div className="absolute inset-0 bg-linear-to-br from-sunset-1 via-sunset-2 to-sunset-3">
@@ -96,6 +96,10 @@ export function ListingCard({
             fromPrice={fromPrice}
           />
         </div>
+        {/* Top vignette: gives photos art-directed depth and keeps the glass badges legible. */}
+        {coverUrl && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-linear-to-b from-black/20 to-transparent" />
+        )}
         {/* Bottom scrim so the white verified pill stays legible over any cover photo. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white backdrop-blur">
