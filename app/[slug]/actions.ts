@@ -6,23 +6,33 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
+import { meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
 import { getGatewayConnection } from "@/lib/supabase/gateway-dal";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 
 // Public booking input (P5: validated at the trust boundary). The guest is anonymous.
-const publicBookingInput = z.object({
-  roomTypeId: z.uuid(),
-  checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
-  checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
-  numGuests: z.number().int().positive(),
-  guestName: z.string().trim().min(1, "Your name is required").max(120),
-  guestPhone: z.string().trim().max(40).optional().or(z.literal("")),
-  guestEmail: z.email("Please enter a valid email address"),
-  // Attribution tag from the booking link (?src=…). Pure metadata for the operator; never
-  // touches the money path. Stamped after the hold via a best-effort service-role update.
-  source: z.string().trim().max(60).optional(),
-});
+const publicBookingInput = z
+  .object({
+    roomTypeId: z.uuid(),
+    checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+    checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+    numGuests: z.number().int().positive(),
+    guestName: z.string().trim().min(1, "Your name is required").max(120),
+    guestPhone: z.string().trim().max(40).optional().or(z.literal("")),
+    guestEmail: z.email("Please enter a valid email address"),
+    // Attribution tag from the booking link (?src=…). Pure metadata for the operator; never
+    // touches the money path. Stamped after the hold via a best-effort service-role update.
+    source: z.string().trim().max(60).optional(),
+  })
+  // Guest-facing 2-night minimum. This is the authoritative enforcement (server-side); the
+  // booking-card mirrors it for UX via the same meetsMinStay rule. A 1-night or inverted range
+  // both fail here, which also subsumes the RPC's INVALID_RANGE for this path. Safe: the date
+  // regex above guarantees parseable YYYY-MM-DD strings before this refine runs.
+  .refine((v) => meetsMinStay(v.checkIn, v.checkOut), {
+    message: `Minimum stay is ${MIN_STAY_NIGHTS} nights.`,
+    path: ["checkOut"],
+  });
 export type PublicBookingInput = z.infer<typeof publicBookingInput>;
 
 export type PublicPaymentMethod = {
