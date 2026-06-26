@@ -39,6 +39,7 @@ export function PropertyForm({
       dot_accredited: false,
       check_in_time: "14:00",
       check_out_time: "14:00",
+      min_stay_nights: 2,
       amenities: [],
       facebook_url: "",
       instagram_url: "",
@@ -132,6 +133,19 @@ export function PropertyForm({
           )}
         </div>
       </div>
+
+      <Field label="Minimum nights" error={errors.min_stay_nights?.message}>
+        <Input
+          type="number"
+          min={1}
+          max={30}
+          className="max-w-28"
+          {...register("min_stay_nights", { valueAsNumber: true })}
+        />
+        <span className="text-body-sm text-muted">
+          Shortest stay guests can book online. Walk-ins you record manually aren&apos;t affected.
+        </span>
+      </Field>
 
       <Field label="Description" error={errors.description?.message}>
         <Textarea {...register("description")} placeholder="A short description guests will see." />

@@ -67,4 +67,12 @@ describe("meetsMinStay", () => {
     expect(meetsMinStay("2026-10-12", "2026-10-12")).toBe(false);
     expect(meetsMinStay("2026-10-12", "2026-10-11")).toBe(false);
   });
+
+  it("honors an explicit per-property minimum", () => {
+    // minNights = 1 accepts a single night
+    expect(meetsMinStay("2026-10-10", "2026-10-11", 1)).toBe(true);
+    // minNights = 3 rejects a 2-night stay but accepts 3
+    expect(meetsMinStay("2026-10-10", "2026-10-12", 3)).toBe(false);
+    expect(meetsMinStay("2026-10-10", "2026-10-13", 3)).toBe(true);
+  });
 });

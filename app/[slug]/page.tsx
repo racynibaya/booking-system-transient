@@ -31,6 +31,7 @@ type Listing = {
     tiktok_url: string | null;
     check_in_time: string | null;
     check_out_time: string | null;
+    min_stay_nights: number;
     cover_image_path: string | null;
     photos: { path: string; caption: string }[] | null;
   };
@@ -300,6 +301,7 @@ export default async function PublicBookingPage({
                 propertyName={property.name}
                 area={property.area}
                 acceptsOnlinePayment={listing.accepts_online_payment}
+                minStayNights={property.min_stay_nights}
                 source={source}
               />
               {/* Fills the sidebar gap below the booking card on desktop. */}
@@ -382,6 +384,7 @@ export default async function PublicBookingPage({
           propertyName={property.name}
           area={property.area}
           acceptsOnlinePayment={listing.accepts_online_payment}
+          minStayNights={property.min_stay_nights}
           source={source}
         />
       </main>

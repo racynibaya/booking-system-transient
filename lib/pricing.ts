@@ -14,10 +14,12 @@ import { fromDateStr, type DateStr } from "./dates";
 const MS_PER_DAY = 86_400_000;
 
 /**
- * Guest-facing minimum stay. A public booking must span at least this many nights.
- * Enforced server-side in the public booking schema (the P5 trust boundary) and mirrored
- * in the booking-card UX. Deliberately NOT a create_booking_hold invariant: operators can
- * still record shorter walk-in/off-platform stays via the manual booking path.
+ * Default guest-facing minimum stay, and the fallback when a property's setting isn't loaded.
+ * Operators set their own per-property minimum (properties.min_stay_nights, default 2); this
+ * constant is the column default and the safe fallback. Enforced server-side in the public
+ * booking action (the P5 trust boundary) and mirrored in the booking-card UX. Deliberately NOT a
+ * create_booking_hold invariant: operators can still record shorter walk-in/off-platform stays
+ * via the manual booking path.
  */
 export const MIN_STAY_NIGHTS = 2;
 
@@ -29,11 +31,16 @@ export function nights(checkIn: DateStr, checkOut: DateStr): number {
 
 /**
  * Whether a stay satisfies the guest-facing minimum. Single source of the rule, shared by the
- * public booking schema (server enforcement) and the booking-card (UX). An inverted/zero range
- * yields <= 0 nights and is rejected too.
+ * public booking action (server enforcement) and the booking-card (UX). `minNights` is the
+ * property's setting, defaulting to MIN_STAY_NIGHTS. An inverted/zero range yields <= 0 nights
+ * and is rejected too.
  */
-export function meetsMinStay(checkIn: DateStr, checkOut: DateStr): boolean {
-  return nights(checkIn, checkOut) >= MIN_STAY_NIGHTS;
+export function meetsMinStay(
+  checkIn: DateStr,
+  checkOut: DateStr,
+  minNights: number = MIN_STAY_NIGHTS,
+): boolean {
+  return nights(checkIn, checkOut) >= minNights;
 }
 
 /** Stay total = nightly rate × nights, rounded to 2 decimals (mirrors numeric(10,2)). */

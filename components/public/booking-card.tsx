@@ -42,12 +42,15 @@ export function BookingCard({
   propertyName,
   area,
   acceptsOnlinePayment,
+  minStayNights = MIN_STAY_NIGHTS,
   source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   acceptsOnlinePayment: boolean;
+  // Per-property guest-facing minimum stay. Defaults to MIN_STAY_NIGHTS as a safety net.
+  minStayNights?: number;
   source?: string;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
@@ -125,9 +128,9 @@ export function BookingCard({
   }, [room, checkIn, checkOut, datesValid, stays, blockRanges]);
 
   const stayNights = datesValid ? nights(checkIn, checkOut) : 0;
-  // Mirror the server-side 2-night minimum (lib/pricing) so the CTA explains itself rather
-  // than letting the guest reach the action only to be rejected. The schema is the real gate.
-  const minStayOk = !datesValid || meetsMinStay(checkIn, checkOut);
+  // Mirror the server-side per-property minimum (lib/pricing) so the CTA explains itself rather
+  // than letting the guest reach the action only to be rejected. The action is the real gate.
+  const minStayOk = !datesValid || meetsMinStay(checkIn, checkOut, minStayNights);
   const canContinue = datesValid && guestsValid && available && minStayOk;
 
   const total = room ? computeTotal(room.base_price, stayNights) : 0;
@@ -561,7 +564,7 @@ export function BookingCard({
             <p className="text-body-sm text-error">Not available for those dates.</p>
           )}
 
-          {/* 2-night minimum: a valid-but-too-short range passes availability, so without this the
+          {/* Minimum stay: a valid-but-too-short range passes availability, so without this the
               guest would see a price yet a dead Reserve button. Spell out exactly what to do. */}
           {datesValid && available && !minStayOk && (
             <div className="flex items-start gap-3 rounded-md border border-primary/25 bg-primary-disabled/40 p-4">
@@ -570,11 +573,11 @@ export function BookingCard({
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-body-sm font-semibold text-ink">
-                  {MIN_STAY_NIGHTS}-night minimum stay
+                  {minStayNights}-night minimum stay
                 </span>
                 <span className="text-body-sm text-body">
                   You&apos;ve picked {stayNights} {stayNights === 1 ? "night" : "nights"} — add{" "}
-                  {MIN_STAY_NIGHTS - stayNights} more to continue.
+                  {minStayNights - stayNights} more to continue.
                 </span>
               </div>
             </div>

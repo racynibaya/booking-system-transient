@@ -237,6 +237,7 @@ export type Database = {
           facebook_url: string | null;
           id: string;
           instagram_url: string | null;
+          min_stay_nights: number;
           name: string;
           photos: Json;
           slug: string;
@@ -258,6 +259,7 @@ export type Database = {
           facebook_url?: string | null;
           id?: string;
           instagram_url?: string | null;
+          min_stay_nights?: number;
           name: string;
           photos?: Json;
           slug: string;
@@ -279,6 +281,7 @@ export type Database = {
           facebook_url?: string | null;
           id?: string;
           instagram_url?: string | null;
+          min_stay_nights?: number;
           name?: string;
           photos?: Json;
           slug?: string;
@@ -589,7 +592,6 @@ export type Database = {
     Functions: {
       admin_billing_health: { Args: never; Returns: Json };
       admin_dashboard_overview: { Args: never; Returns: Json };
-      admin_preview_listing: { Args: { p_slug: string }; Returns: Json };
       admin_list_operators: {
         Args: never;
         Returns: {
@@ -610,6 +612,7 @@ export type Database = {
         }[];
       };
       admin_platform_stats: { Args: never; Returns: Json };
+      admin_preview_listing: { Args: { p_slug: string }; Returns: Json };
       admin_recent_activity: {
         Args: never;
         Returns: {
@@ -637,6 +640,7 @@ export type Database = {
           p_provider_ref?: string;
         };
         Returns: {
+          cancellation_reason: string | null;
           check_in: string;
           check_out: string;
           created_at: string;
@@ -650,6 +654,7 @@ export type Database = {
           num_guests: number;
           proof_url: string | null;
           property_id: string;
+          reminder_sent_at: string | null;
           room_type_id: string;
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
@@ -672,6 +677,7 @@ export type Database = {
           p_raw_payload?: Json;
         };
         Returns: {
+          cancellation_reason: string | null;
           check_in: string;
           check_out: string;
           created_at: string;
@@ -685,6 +691,7 @@ export type Database = {
           num_guests: number;
           proof_url: string | null;
           property_id: string;
+          reminder_sent_at: string | null;
           room_type_id: string;
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
@@ -710,6 +717,7 @@ export type Database = {
           p_room_type_id: string;
         };
         Returns: {
+          cancellation_reason: string | null;
           check_in: string;
           check_out: string;
           created_at: string;
@@ -723,6 +731,7 @@ export type Database = {
           num_guests: number;
           proof_url: string | null;
           property_id: string;
+          reminder_sent_at: string | null;
           room_type_id: string;
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
@@ -867,6 +876,7 @@ export type Database = {
       submit_proof: {
         Args: { p_booking_id: string; p_proof_url: string };
         Returns: {
+          cancellation_reason: string | null;
           check_in: string;
           check_out: string;
           created_at: string;
@@ -880,6 +890,7 @@ export type Database = {
           num_guests: number;
           proof_url: string | null;
           property_id: string;
+          reminder_sent_at: string | null;
           room_type_id: string;
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
