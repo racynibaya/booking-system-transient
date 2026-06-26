@@ -93,6 +93,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                     description: property.description ?? "",
                     check_in_time: (property.check_in_time ?? "14:00").slice(0, 5),
                     check_out_time: (property.check_out_time ?? "14:00").slice(0, 5),
+                    min_stay_nights: property.min_stay_nights ?? 2,
                     dot_accredited: property.dot_accredited,
                     amenities: Array.isArray(property.amenities)
                       ? (property.amenities as string[])

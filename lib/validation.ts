@@ -29,6 +29,9 @@ export const propertyInput = z.object({
   description: optionalText(2000),
   check_in_time: timeStr,
   check_out_time: timeStr,
+  // Guest-facing minimum stay (public bookings only). Default 2 lives on the DB column; the
+  // form/action/page supply this explicitly (no .default() here — see header note).
+  min_stay_nights: z.number().int().min(1, "At least 1 night").max(30, "At most 30 nights"),
   dot_accredited: z.boolean(),
   // Curated chips + free-text "Other". Free strings persisted to the jsonb column; bounded
   // to keep the public list sane. No .default() (see header note) — the form/action/page
