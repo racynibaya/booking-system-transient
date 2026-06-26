@@ -25,11 +25,9 @@ export const env = createEnv({
     // `Authorization: Bearer <CRON_SECRET>` to /api/cron/subscription-billing. Optional: when unset
     // the cron route refuses all calls (dormant), so the endpoint can't be triggered by anyone.
     CRON_SECRET: z.string().min(1).optional(),
-    // --- Subscription enforcement switch (OFF during the pilot) --- when "true", the billing cron
-    // downgrades operators who stay past-due beyond the grace window to the free tier (their page
-    // stays up; the soft room-cap nudge returns). Unset/anything else = nag-only (the pilot default).
-    // Flip to "true" after the pilot to give non-payment teeth.
-    SUBSCRIPTION_ENFORCEMENT: z.string().optional(),
+    // NOTE: the subscription-enforcement switch moved OUT of env into the DB (public.billing_config,
+    // enforcement_mode off|dry_run|enforce) so the SQL money rail is self-contained and the live
+    // booking-engine guard can read it. There is no SUBSCRIPTION_ENFORCEMENT env var anymore.
     // --- PayMongo (Phase 2a spike) --- operator-as-merchant gateway. Optional so the app
     // boots without them (dev/CI/non-gateway prod). The checkout action + webhook handler
     // fail gracefully when unset. SPIKE NOTE: these are a SINGLE sandbox account's keys; in
@@ -65,7 +63,6 @@ export const env = createEnv({
     EMAIL_FROM: process.env.EMAIL_FROM,
     ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
-    SUBSCRIPTION_ENFORCEMENT: process.env.SUBSCRIPTION_ENFORCEMENT,
     PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
     PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
     PAYMONGO_PLATFORM_SECRET_KEY: process.env.PAYMONGO_PLATFORM_SECRET_KEY,

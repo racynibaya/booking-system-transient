@@ -12,5 +12,10 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**"],
+    // Run test FILES one at a time. These suites share ONE real database, and a few touch a global
+    // singleton (public.billing_config — the subscription-enforcement switch). Parallel files would
+    // race on that shared mode, so serialize at the file level for determinism. Tests within a file
+    // still run in order. Cost is small (suite is seconds); the payoff is no shared-state flakiness.
+    fileParallelism: false,
   },
 });

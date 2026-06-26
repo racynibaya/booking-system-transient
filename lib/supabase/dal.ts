@@ -320,6 +320,17 @@ export const getGatewayConnectionStatus = cache(async (): Promise<GatewayConnect
   };
 });
 
+// Whether the current operator can take new bookings, from the single entitlement authority
+// (tenant_subscription_entitlement via current_tenant_can_accept_bookings). false = their plan lapsed
+// and enforcement is on, so their public page + manual entry are paused until they renew. Defaults to
+// "can book" on any read error so a transient failure never shows a false "paused" notice.
+export const getBookingsPaused = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("current_tenant_can_accept_bookings");
+  if (error || data === null || data === undefined) return false;
+  return data === false;
+});
+
 // The current operator's properties (RLS-scoped — no explicit tenant filter
 // needed) with a room_type count for the list view.
 export const getProperties = cache(async () => {

@@ -154,15 +154,17 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ac
 
   if (error) {
     const m = error.message;
-    const friendly = m.includes("NO_AVAILABILITY")
-      ? "Those dates aren't available for this room."
-      : m.includes("INVALID_GUESTS")
-        ? "That's more guests than this room holds."
-        : m.includes("INVALID_RANGE")
-          ? "Check-out must be after check-in."
-          : m.includes("UNKNOWN_ROOM_TYPE")
-            ? "That room couldn't be found. Please pick again."
-            : "Something went wrong. Please try again.";
+    const friendly = m.includes("SUBSCRIPTION_LAPSED")
+      ? "Your plan has lapsed, so new bookings are paused. Renew in Settings to take bookings again."
+      : m.includes("NO_AVAILABILITY")
+        ? "Those dates aren't available for this room."
+        : m.includes("INVALID_GUESTS")
+          ? "That's more guests than this room holds."
+          : m.includes("INVALID_RANGE")
+            ? "Check-out must be after check-in."
+            : m.includes("UNKNOWN_ROOM_TYPE")
+              ? "That room couldn't be found. Please pick again."
+              : "Something went wrong. Please try again.";
     return { ok: false, error: friendly };
   }
 

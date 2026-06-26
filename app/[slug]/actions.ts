@@ -100,13 +100,15 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
 
   if (error) {
     const m = error.message;
-    const friendly = m.includes("NO_AVAILABILITY")
-      ? "Just taken — those dates aren't available anymore."
-      : m.includes("INVALID_GUESTS")
-        ? "That's more guests than this room holds."
-        : m.includes("INVALID_RANGE")
-          ? "Check-out must be after check-in."
-          : "Something went wrong. Please try again.";
+    const friendly = m.includes("SUBSCRIPTION_LAPSED")
+      ? "This booking page is closed right now. Please contact the host to book."
+      : m.includes("NO_AVAILABILITY")
+        ? "Just taken — those dates aren't available anymore."
+        : m.includes("INVALID_GUESTS")
+          ? "That's more guests than this room holds."
+          : m.includes("INVALID_RANGE")
+            ? "Check-out must be after check-in."
+            : "Something went wrong. Please try again.";
     return { ok: false, error: friendly };
   }
 

@@ -12,8 +12,23 @@ type PropertyCardData = {
   room_types: { count: number }[];
 };
 
+// Real state of the public booking page, so the card never claims a status that isn't true.
+// Same vocabulary as the onboarding badge ("Under review") and the plan card ("Page closed").
+export type PageStatus = "live" | "review" | "paused";
+const STATUS_LABEL: Record<PageStatus, string> = {
+  live: "Live",
+  review: "Under review",
+  paused: "Page closed",
+};
+
 // Tappable property row, reused on the dashboard and the properties list.
-export function PropertyCard({ property }: { property: PropertyCardData }) {
+export function PropertyCard({
+  property,
+  pageStatus,
+}: {
+  property: PropertyCardData;
+  pageStatus?: PageStatus;
+}) {
   const rooms = property.room_types?.[0]?.count ?? 0;
 
   return (
@@ -26,7 +41,8 @@ export function PropertyCard({ property }: { property: PropertyCardData }) {
             {property.area ?? "—"} · {rooms} room type{rooms === 1 ? "" : "s"}
           </p>
           <p className="mt-1 truncate text-caption-sm text-muted-soft">
-            tuloy.ph/{property.slug} · goes live soon
+            tuloy.ph/{property.slug}
+            {pageStatus ? ` · ${STATUS_LABEL[pageStatus]}` : ""}
           </p>
         </div>
         <ChevronRight className="size-5 shrink-0 text-muted-soft transition-transform group-hover:translate-x-0.5" />
