@@ -85,18 +85,21 @@ export type Database = {
           enforcement_mode: string;
           grace_days: number;
           id: boolean;
+          require_activation: boolean;
           updated_at: string;
         };
         Insert: {
           enforcement_mode?: string;
           grace_days?: number;
           id?: boolean;
+          require_activation?: boolean;
           updated_at?: string;
         };
         Update: {
           enforcement_mode?: string;
           grace_days?: number;
           id?: boolean;
+          require_activation?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -592,6 +595,7 @@ export type Database = {
           paid_until: string | null;
           plan: Database["public"]["Enums"]["tenant_plan"];
           subscription_status: string;
+          trial_ends_at: string | null;
           user_id: string;
           verification_note: string | null;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
@@ -608,6 +612,7 @@ export type Database = {
           paid_until?: string | null;
           plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
+          trial_ends_at?: string | null;
           user_id: string;
           verification_note?: string | null;
           verification_status?: Database["public"]["Enums"]["tenant_verification"];
@@ -624,6 +629,7 @@ export type Database = {
           paid_until?: string | null;
           plan?: Database["public"]["Enums"]["tenant_plan"];
           subscription_status?: string;
+          trial_ends_at?: string | null;
           user_id?: string;
           verification_note?: string | null;
           verification_status?: Database["public"]["Enums"]["tenant_verification"];
@@ -677,6 +683,7 @@ export type Database = {
           counts_as_paid: boolean | null;
           enforcement_mode: string | null;
           is_lapsed: boolean | null;
+          is_unactivated: boolean | null;
           tenant_id: string | null;
         };
         Relationships: [];
@@ -716,6 +723,7 @@ export type Database = {
           paid_until: string | null;
           plan: Database["public"]["Enums"]["tenant_plan"];
           subscription_status: string;
+          trial_ends_at: string | null;
           user_id: string;
           verification_note: string | null;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
