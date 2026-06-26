@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Info, Loader2 } from "lucide-react";
+import { BadgeCheck, Ban, Check, Eye, Home, Info, Loader2, Undo2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,14 @@ import { Card } from "@/components/ui/card";
 import { isOlderThanHours } from "@/lib/dates";
 import { PAYMENT_METHOD_LABELS } from "@/lib/validation";
 
-import { getOperatorDocs, requestChanges, setVerification, type OperatorDoc } from "../actions";
+import {
+  getOperatorDocs,
+  getOperatorListing,
+  requestChanges,
+  setVerification,
+  type OperatorDoc,
+  type OperatorListing,
+} from "../actions";
 
 export type AdminOperator = {
   tenant_id: string;
@@ -60,6 +67,10 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
   const [docs, setDocs] = useState<OperatorDoc[] | null>(null);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [listing, setListing] = useState<OperatorListing | null>(null);
+  const [listingLoaded, setListingLoaded] = useState(false);
+  const [loadingListing, setLoadingListing] = useState(false);
+  const [showListing, setShowListing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState(op.verification_note ?? "");
   const [custom, setCustom] = useState(false);
@@ -108,11 +119,31 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
     }
   }
 
+  async function toggleListing() {
+    if (showListing) {
+      setShowListing(false);
+      return;
+    }
+    setShowListing(true);
+    if (!listingLoaded) {
+      setLoadingListing(true);
+      const res = await getOperatorListing(op.tenant_id);
+      setLoadingListing(false);
+      if (res.ok) {
+        setListing(res.listing);
+        setListingLoaded(true);
+      } else {
+        toast.error(res.error);
+        setShowListing(false);
+      }
+    }
+  }
+
   const s = STATUS[op.verification_status];
 
   return (
     <Card className="flex flex-col gap-4 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-title-md text-ink">{op.name ?? "(unnamed)"}</p>
@@ -146,13 +177,29 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2 sm:shrink-0">
-          <Button size="sm" variant="ghost" onClick={toggleDocs}>
-            <Eye className="size-4" /> {showDocs ? "Hide" : "View"} documents
+        <div className="grid grid-cols-2 gap-2 *:w-full lg:flex lg:shrink-0 lg:flex-wrap lg:*:w-auto">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={toggleDocs}
+            aria-label={`${showDocs ? "Hide" : "View"} documents`}
+          >
+            <Eye className="size-4" />
+            <span>{showDocs ? "Hide" : "View"} documents</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={toggleListing}
+            aria-label={`${showListing ? "Hide" : "View"} listing`}
+          >
+            <Home className="size-4" />
+            <span>{showListing ? "Hide" : "View"} listing</span>
           </Button>
           {gcashFlagged && (
-            <Button size="sm" disabled={pending} onClick={confirmGcash}>
-              Confirm GCash
+            <Button size="sm" disabled={pending} onClick={confirmGcash} aria-label="Confirm GCash">
+              <BadgeCheck className="size-4" />
+              <span>Confirm GCash</span>
             </Button>
           )}
           {op.verification_status !== "suspended" && (
@@ -160,6 +207,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
               size="sm"
               variant="secondary"
               disabled={pending}
+              aria-label="Request changes"
               onClick={() => {
                 const existing = op.verification_note ?? "";
                 setNote(existing);
@@ -167,12 +215,19 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
                 setNoteOpen((v) => !v);
               }}
             >
-              Request changes
+              <Undo2 className="size-4" />
+              <span>Request changes</span>
             </Button>
           )}
           {op.verification_status !== "approved" && (
-            <Button size="sm" disabled={pending} onClick={() => act("approved")}>
-              Approve
+            <Button
+              size="sm"
+              disabled={pending}
+              onClick={() => act("approved")}
+              aria-label="Approve"
+            >
+              <Check className="size-4" />
+              <span>Approve</span>
             </Button>
           )}
           {op.verification_status !== "suspended" && (
@@ -181,8 +236,10 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
               variant="secondary"
               disabled={pending}
               onClick={() => act("suspended")}
+              aria-label={op.verification_status === "approved" ? "Suspend" : "Reject"}
             >
-              {op.verification_status === "approved" ? "Suspend" : "Reject"}
+              <Ban className="size-4" />
+              <span>{op.verification_status === "approved" ? "Suspend" : "Reject"}</span>
             </Button>
           )}
         </div>
@@ -269,6 +326,159 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             </>
           ) : (
             <p className="text-body-sm text-muted">No documents uploaded yet.</p>
+          )}
+        </div>
+      )}
+
+      {showListing && (
+        <div className="border-t border-hairline pt-3">
+          {loadingListing ? (
+            <p className="flex items-center gap-2 text-body-sm text-muted">
+              <Loader2 className="size-4 animate-spin" /> Loading listing…
+            </p>
+          ) : !listing ? (
+            <p className="text-body-sm text-muted">No property created yet.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="flex items-start gap-1.5 text-caption text-muted">
+                <Info className="mt-0.5 size-3.5 shrink-0" />
+                What guests would see — check the text and photos for anything fake, abusive, or
+                off-platform before approving.
+              </p>
+
+              <div className="flex flex-col gap-4 rounded-md border border-hairline bg-surface-soft p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
+                    <p className="text-display-sm text-ink">{listing.name}</p>
+                    <p className="text-caption text-muted">
+                      /{listing.slug}
+                      {listing.area ? ` · ${listing.area}` : ""}
+                      {listing.address ? ` · ${listing.address}` : ""}
+                    </p>
+                  </div>
+                  <a
+                    href={`/${listing.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-caption text-primary underline"
+                  >
+                    Open customer view ↗
+                  </a>
+                </div>
+
+                {(listing.facebook_url || listing.instagram_url || listing.tiktok_url) && (
+                  <div className="flex flex-wrap gap-3">
+                    {listing.facebook_url && (
+                      <a
+                        href={listing.facebook_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-caption text-primary underline"
+                      >
+                        Facebook
+                      </a>
+                    )}
+                    {listing.instagram_url && (
+                      <a
+                        href={listing.instagram_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-caption text-primary underline"
+                      >
+                        Instagram
+                      </a>
+                    )}
+                    {listing.tiktok_url && (
+                      <a
+                        href={listing.tiktok_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-caption text-primary underline"
+                      >
+                        TikTok
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {listing.description && (
+                  <p className="text-body-sm whitespace-pre-wrap text-body">
+                    {listing.description}
+                  </p>
+                )}
+                {listing.about && (
+                  <p className="text-body-sm whitespace-pre-wrap text-body">{listing.about}</p>
+                )}
+
+                {listing.amenities.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {listing.amenities.map((a, i) => (
+                      <Badge key={i} tone="neutral">
+                        {a}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {(listing.cover_url || listing.photo_urls.length > 0) && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {[...(listing.cover_url ? [listing.cover_url] : []), ...listing.photo_urls].map(
+                      (url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          <div className="aspect-[4/3] overflow-hidden rounded-md border border-hairline bg-surface-soft">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt={`${listing.name} photo ${i + 1}`}
+                              className="size-full object-cover transition-transform hover:scale-105"
+                            />
+                          </div>
+                        </a>
+                      ),
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  {listing.rooms.length === 0 ? (
+                    <p className="text-caption text-muted">No rooms added yet.</p>
+                  ) : (
+                    listing.rooms.map((r) => (
+                      <div key={r.id} className="rounded-md border border-hairline bg-canvas p-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="text-body-sm font-medium text-ink">{r.name}</p>
+                          <p className="text-caption text-muted">
+                            ₱{r.base_price} · {r.capacity} pax · {r.quantity} room
+                            {r.quantity === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        {r.description && (
+                          <p className="mt-1 text-caption whitespace-pre-wrap text-muted">
+                            {r.description}
+                          </p>
+                        )}
+                        {r.photo_urls.length > 0 && (
+                          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                            {r.photo_urls.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                <div className="aspect-[4/3] overflow-hidden rounded-md border border-hairline bg-surface-soft">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={url}
+                                    alt={`${r.name} photo ${i + 1}`}
+                                    className="size-full object-cover transition-transform hover:scale-105"
+                                  />
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

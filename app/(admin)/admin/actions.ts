@@ -57,6 +57,90 @@ export async function getOperatorDocs(
   return { ok: true, docs };
 }
 
+export type OperatorListingRoom = {
+  id: string;
+  name: string;
+  capacity: number;
+  quantity: number;
+  base_price: number;
+  description: string | null;
+  photo_urls: string[];
+};
+
+export type OperatorListing = {
+  name: string;
+  slug: string;
+  area: string | null;
+  address: string | null;
+  description: string | null;
+  about: string | null;
+  amenities: string[];
+  cover_url: string | null;
+  photo_urls: string[];
+  facebook_url: string | null;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  rooms: OperatorListingRoom[];
+};
+
+// Load the property + rooms an operator created, for admin review BEFORE approval — a troll/malice
+// check on the public-facing content (an unverified operator's listing is invisible everywhere else,
+// since get_public_listing gates on verification_status='approved'). Gated on is_admin; uses the
+// service-role client for the cross-tenant read. Images live in the public property-images bucket,
+// so getPublicUrl is enough — no signed URLs (same bucket the public listing reads from).
+export async function getOperatorListing(
+  tenantId: string,
+): Promise<{ ok: true; listing: OperatorListing | null } | { ok: false; error: string }> {
+  const me = await getCurrentTenant();
+  if (!me?.is_admin) return { ok: false, error: "Not authorized." };
+
+  const admin = createServiceClient();
+  const { data: property, error } = await admin
+    .from("properties")
+    .select(
+      "id, name, slug, area, address, description, about, amenities, cover_image_path, photos, facebook_url, instagram_url, tiktok_url",
+    )
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error) return { ok: false, error: "Couldn't load the listing." };
+  if (!property) return { ok: true, listing: null };
+
+  const publicUrl = (path: string) =>
+    admin.storage.from("property-images").getPublicUrl(path).data.publicUrl;
+
+  const { data: rooms } = await admin
+    .from("room_types")
+    .select("id, name, capacity, quantity, base_price, description, photos")
+    .eq("property_id", property.id)
+    .order("created_at", { ascending: true });
+
+  const listing: OperatorListing = {
+    name: property.name,
+    slug: property.slug,
+    area: property.area,
+    address: property.address,
+    description: property.description,
+    about: property.about,
+    amenities: (property.amenities as string[] | null) ?? [],
+    cover_url: property.cover_image_path ? publicUrl(property.cover_image_path) : null,
+    photo_urls: ((property.photos as string[] | null) ?? []).map(publicUrl),
+    facebook_url: property.facebook_url,
+    instagram_url: property.instagram_url,
+    tiktok_url: property.tiktok_url,
+    rooms: (rooms ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      capacity: r.capacity,
+      quantity: r.quantity,
+      base_price: r.base_price,
+      description: r.description,
+      photo_urls: ((r.photos as string[] | null) ?? []).map(publicUrl),
+    })),
+  };
+
+  return { ok: true, listing };
+}
+
 // Approve / suspend / re-queue an operator. The set_tenant_verification RPC also self-checks
 // is_admin (defense in depth), but we gate here too so a non-admin never reaches it.
 export async function setVerification(

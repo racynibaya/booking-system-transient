@@ -589,6 +589,7 @@ export type Database = {
     Functions: {
       admin_billing_health: { Args: never; Returns: Json };
       admin_dashboard_overview: { Args: never; Returns: Json };
+      admin_preview_listing: { Args: { p_slug: string }; Returns: Json };
       admin_list_operators: {
         Args: never;
         Returns: {
