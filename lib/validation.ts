@@ -71,6 +71,38 @@ export const paymentMethodInput = z
   });
 export type PaymentMethodInput = z.infer<typeof paymentMethodInput>;
 
+// Operator PAYOUT destination (centralized aggregator: where Tuloy disburses the operator's share).
+// Distinct from PAYMENT_METHOD_TYPES (what guests send deposits to) — payouts go only to GCash or a
+// bank. No rate fields: commission/service-fee rates are admin-managed, never operator-supplied.
+export const PAYOUT_METHODS = ["gcash", "bank"] as const;
+export type PayoutMethod = (typeof PAYOUT_METHODS)[number];
+
+export const PAYOUT_METHOD_LABELS: Record<PayoutMethod, string> = {
+  gcash: "GCash",
+  bank: "Bank account",
+};
+
+export const payoutAccountInput = z
+  .object({
+    method: z.enum(PAYOUT_METHODS),
+    // Name PayMongo checks against the receiving account — a mismatch makes the transfer fail.
+    payout_name: z.string().trim().min(1, "Account name is required").max(80),
+    account_number: z.string().trim().min(1, "Account number is required").max(34),
+    bank_name: optionalText(60),
+    // Receiving-institution code. Banks pick it from the institutions list; GCash is resolved
+    // server-side to the fixed GCash InstaPay code, so it's optional on the input.
+    payout_bic: optionalText(40),
+  })
+  .refine((v) => v.method !== "bank" || !!v.bank_name, {
+    message: "Bank name is required",
+    path: ["bank_name"],
+  })
+  .refine((v) => v.method !== "bank" || !!v.payout_bic, {
+    message: "Select your bank",
+    path: ["payout_bic"],
+  });
+export type PayoutAccountInput = z.infer<typeof payoutAccountInput>;
+
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 
 // Half-open [start_date, end_date) — the end day is not blocked (matches bookings).

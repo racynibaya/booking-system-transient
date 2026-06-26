@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { DayPicker, type DateRange } from "react-day-picker";
 
 import {
-  createGatewayCheckout,
+  createPlatformCheckout,
   createPublicBooking,
   submitProof,
   type PublicPaymentMethod,
@@ -195,7 +195,7 @@ export function BookingCard({
     setError(null);
     setPayingOnline(true);
     payingOnlineRef.current = true; // suppress the leave-tab guard for this intentional redirect
-    const res = await createGatewayCheckout(bookingId);
+    const res = await createPlatformCheckout(bookingId);
     if (res.ok) {
       window.location.href = res.checkoutUrl;
     } else {
@@ -268,11 +268,11 @@ export function BookingCard({
         {acceptsOnlinePayment && (
           <div className="mt-4 flex flex-col gap-2">
             <button type="button" disabled={payingOnline} onClick={payOnline} className={ctaClass}>
-              {payingOnline ? "Opening secure checkout…" : `Pay ₱${deposit ?? "—"} online`}
+              {payingOnline ? "Opening secure checkout…" : "Pay online"}
             </button>
             <p className="text-center text-caption text-muted">
-              Instant confirmation — pay on a secure PayMongo page and your booking is confirmed the
-              moment it goes through.
+              Instant confirmation — you&apos;ll see your deposit and a small convenience fee on a
+              secure PayMongo page, and your booking is confirmed the moment it goes through.
             </p>
             <div className="mt-2 flex items-center gap-3 text-caption-sm text-muted-soft">
               <span className="h-px flex-1 bg-hairline" />

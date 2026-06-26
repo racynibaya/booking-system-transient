@@ -1,8 +1,9 @@
-import { Sparkles, Wallet, Zap } from "lucide-react";
+import { Banknote, Sparkles, Wallet, Zap } from "lucide-react";
 
 import { env } from "@/env";
 import { GatewaySection } from "@/components/settings/gateway-section";
 import { PaymentMethodsSection } from "@/components/settings/payment-methods-section";
+import { PayoutAccountSection } from "@/components/settings/payout-account-section";
 import { PlanSection } from "@/components/settings/plan-section";
 import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
@@ -12,17 +13,19 @@ import {
   getCurrentTenant,
   getGatewayConnectionStatus,
   getPaymentMethods,
+  getPayoutAccount,
   getRoomCount,
   requireUser,
 } from "@/lib/supabase/dal";
 
 export default async function SettingsPage() {
   await requireUser();
-  const [methods, tenant, roomCount, bookingsPaused] = await Promise.all([
+  const [methods, tenant, roomCount, bookingsPaused, payoutAccount] = await Promise.all([
     getPaymentMethods(),
     getCurrentTenant(),
     getRoomCount(),
     getBookingsPaused(),
+    getPayoutAccount(),
   ]);
   // Online payments are a Business-plan capability — only fetch/show the section for that tier.
   const gatewayStatus = tenant?.plan === "business" ? await getGatewayConnectionStatus() : null;
@@ -67,6 +70,20 @@ export default async function SettingsPage() {
           </p>
         </div>
         <PaymentMethodsSection methods={methods ?? []} tenantId={tenant?.id ?? ""} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2.5">
+            <IconChip icon={Banknote} tone="sea" />
+            <h2 className="text-display-sm text-ink">Get paid</h2>
+          </div>
+          <p className="text-body-sm text-muted">
+            Where we send your share after a guest pays. Just your GCash or bank — no PayMongo
+            account needed.
+          </p>
+        </div>
+        <PayoutAccountSection account={payoutAccount} />
       </section>
 
       {gatewayStatus && (

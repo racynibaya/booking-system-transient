@@ -111,6 +111,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_charge_amount: number | null;
           gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
@@ -133,6 +134,7 @@ export type Database = {
           check_out: string;
           created_at?: string;
           deposit_amount?: number | null;
+          gateway_charge_amount?: number | null;
           gateway_checkout_url?: string | null;
           guest_email?: string | null;
           guest_name: string;
@@ -155,6 +157,7 @@ export type Database = {
           check_out?: string;
           created_at?: string;
           deposit_amount?: number | null;
+          gateway_charge_amount?: number | null;
           gateway_checkout_url?: string | null;
           guest_email?: string | null;
           guest_name?: string;
@@ -259,6 +262,85 @@ export type Database = {
           },
           {
             foreignKeyName: "payments_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payout_ledger: {
+        Row: {
+          booking_id: string;
+          clear_eta: string;
+          created_at: string;
+          deposit_amount: number;
+          fail_reason: string | null;
+          guest_service_fee: number;
+          id: string;
+          operator_commission: number;
+          owner_payout: number;
+          paymongo_fee: number;
+          payout_id: string | null;
+          payout_ref: string | null;
+          status: Database["public"]["Enums"]["payout_ledger_status"];
+          stay_value: number;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          booking_id: string;
+          clear_eta: string;
+          created_at?: string;
+          deposit_amount: number;
+          fail_reason?: string | null;
+          guest_service_fee: number;
+          id?: string;
+          operator_commission: number;
+          owner_payout: number;
+          paymongo_fee: number;
+          payout_id?: string | null;
+          payout_ref?: string | null;
+          status?: Database["public"]["Enums"]["payout_ledger_status"];
+          stay_value: number;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          booking_id?: string;
+          clear_eta?: string;
+          created_at?: string;
+          deposit_amount?: number;
+          fail_reason?: string | null;
+          guest_service_fee?: number;
+          id?: string;
+          operator_commission?: number;
+          owner_payout?: number;
+          paymongo_fee?: number;
+          payout_id?: string | null;
+          payout_ref?: string | null;
+          status?: Database["public"]["Enums"]["payout_ledger_status"];
+          stay_value?: number;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payout_ledger_booking_id_fkey";
+            columns: ["booking_id"];
+            isOneToOne: true;
+            referencedRelation: "bookings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_ledger_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "payout_ledger_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
             referencedRelation: "tenants";
@@ -582,6 +664,66 @@ export type Database = {
           },
         ];
       };
+      tenant_payout_accounts: {
+        Row: {
+          account_number: string;
+          bank_name: string | null;
+          commission_rate: number;
+          created_at: string;
+          id: string;
+          method: Database["public"]["Enums"]["payout_method"];
+          payout_bic: string | null;
+          payout_name: string;
+          service_fee_rate: number;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_number: string;
+          bank_name?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          method: Database["public"]["Enums"]["payout_method"];
+          payout_bic?: string | null;
+          payout_name: string;
+          service_fee_rate?: number;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_number?: string;
+          bank_name?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          method?: Database["public"]["Enums"]["payout_method"];
+          payout_bic?: string | null;
+          payout_name?: string;
+          service_fee_rate?: number;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_payout_accounts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "tenant_payout_accounts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           created_at: string;
@@ -690,6 +832,10 @@ export type Database = {
       };
     };
     Functions: {
+      add_banking_days: {
+        Args: { p_days: number; p_from: string };
+        Returns: string;
+      };
       admin_billing_health: { Args: never; Returns: Json };
       admin_dashboard_overview: { Args: never; Returns: Json };
       admin_list_operators: {
@@ -763,6 +909,18 @@ export type Database = {
           total_amount: number;
         }[];
       };
+      claim_due_payouts: {
+        Args: never;
+        Returns: {
+          account_number: string;
+          method: Database["public"]["Enums"]["payout_method"];
+          payout_bic: string;
+          payout_id: string;
+          payout_name: string;
+          tenant_id: string;
+          total: number;
+        }[];
+      };
       confirm_booking: {
         Args: {
           p_amount?: number;
@@ -775,6 +933,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_charge_amount: number | null;
           gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
@@ -812,6 +971,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_charge_amount: number | null;
           gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
@@ -852,6 +1012,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_charge_amount: number | null;
           gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
@@ -961,6 +1122,18 @@ export type Database = {
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
       list_public_listings: { Args: never; Returns: Json };
+      mark_payout_failed: {
+        Args: { p_payout_id: string; p_reason: string };
+        Returns: number;
+      };
+      mark_payout_paid: {
+        Args: { p_payout_id: string; p_provider_ref: string };
+        Returns: number;
+      };
+      reconcile_disbursement: {
+        Args: { p_payout_id: string; p_reason?: string; p_succeeded: boolean };
+        Returns: number;
+      };
       record_subscription_payment: {
         Args: {
           p_amount: number;
@@ -1012,6 +1185,7 @@ export type Database = {
           check_out: string;
           created_at: string;
           deposit_amount: number | null;
+          gateway_charge_amount: number | null;
           gateway_checkout_url: string | null;
           guest_email: string | null;
           guest_name: string;
@@ -1048,6 +1222,8 @@ export type Database = {
         | "no_show";
       payment_kind: "deposit" | "balance";
       payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
+      payout_ledger_status: "clearing" | "payable" | "paid" | "failed" | "refunded" | "clawed_back";
+      payout_method: "gcash" | "bank";
       tenant_plan: "free" | "business" | "solo" | "pro";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
@@ -1190,6 +1366,8 @@ export const Constants = {
       ],
       payment_kind: ["deposit", "balance"],
       payment_method_type: ["gcash", "maya", "bank", "grabpay"],
+      payout_ledger_status: ["clearing", "payable", "paid", "failed", "refunded", "clawed_back"],
+      payout_method: ["gcash", "bank"],
       tenant_plan: ["free", "business", "solo", "pro"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },

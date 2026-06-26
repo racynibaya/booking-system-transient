@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { nights, computeTotal, computeDeposit, meetsMinStay, MIN_STAY_NIGHTS } from "./pricing";
+import {
+  computeBookingSplit,
+  computeDeposit,
+  computeTotal,
+  meetsMinStay,
+  MIN_STAY_NIGHTS,
+  nights,
+  PAYMONGO_FIXED,
+  PAYMONGO_MDR,
+} from "./pricing";
 
 describe("nights", () => {
   it("counts whole nights in a half-open stay", () => {
@@ -74,5 +83,42 @@ describe("meetsMinStay", () => {
     // minNights = 3 rejects a 2-night stay but accepts 3
     expect(meetsMinStay("2026-10-10", "2026-10-12", 3)).toBe(false);
     expect(meetsMinStay("2026-10-10", "2026-10-13", 3)).toBe(true);
+  });
+});
+
+// Centralized-aggregator money model: Tuloy take = operator commission + guest service fee, both
+// sized on the full stay and collected through the deposit; the PayMongo fee is passed to the guest.
+describe("computeBookingSplit", () => {
+  const rates = { commissionRate: 0.05, serviceFeeRate: 0.06 };
+
+  it("splits a ₱4,000 stay / ₱2,000 deposit per the decided model", () => {
+    const s = computeBookingSplit(4000, 2000, rates);
+    expect(s.serviceFee).toBe(240); // 6% of stay
+    expect(s.operatorCommission).toBe(200); // 5% of stay
+    expect(s.ownerPayout).toBe(1800); // deposit − commission
+    expect(s.tuloyRevenue).toBe(440); // service fee + commission ≈ 11% of stay
+    // Guest charge grosses up the PayMongo fee: (2000 + 240 + 15) / (1 − 0.035) = 2336.79
+    expect(s.guestTotal).toBeCloseTo(2336.79, 2);
+  });
+
+  it("reconciles: after PayMongo takes its fee, the wallet holds deposit + service fee", () => {
+    const s = computeBookingSplit(4000, 2000, rates);
+    const paymongoFee = s.guestTotal * PAYMONGO_MDR + PAYMONGO_FIXED;
+    const walletAfterFee = s.guestTotal - paymongoFee;
+    expect(walletAfterFee).toBeCloseTo(s.deposit + s.serviceFee, 2);
+    expect(walletAfterFee).toBeCloseTo(s.ownerPayout + s.tuloyRevenue, 2);
+  });
+
+  it("nets the operator 95% of the full stay (deposit payout + check-in balance)", () => {
+    const s = computeBookingSplit(4000, 2000, rates);
+    const collectedAtCheckIn = s.stayValue - s.deposit; // paid directly to operator, off-platform
+    expect(s.ownerPayout + collectedAtCheckIn).toBeCloseTo(0.95 * s.stayValue, 2);
+  });
+
+  it("honors per-owner discounted rates", () => {
+    const s = computeBookingSplit(4000, 2000, { commissionRate: 0.025, serviceFeeRate: 0.03 });
+    expect(s.operatorCommission).toBe(100);
+    expect(s.serviceFee).toBe(120);
+    expect(s.tuloyRevenue).toBe(220);
   });
 });

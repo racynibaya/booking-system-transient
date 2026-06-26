@@ -8,6 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Unit tests mock behavior and don't need real env; skip @/env validation so importing a module
+    // that pulls in @/env (e.g. app/[slug]/actions.ts) doesn't throw on missing vars at import time.
+    env: { SKIP_ENV_VALIDATION: "true" },
     // Unit/component tests only. E2E (booking flow, async Server Components)
     // lives in ./e2e and runs under Playwright. DB-backed integration tests
     // live in ./tests and run via `npm run test:integration` (they need a

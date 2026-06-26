@@ -3,10 +3,11 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { env } from "@/env";
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
-import { meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
+import { computeBookingSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
 import { getGatewayConnection } from "@/lib/supabase/gateway-dal";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
@@ -305,6 +306,117 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
       return { ok: true, checkoutUrl: claimed.gateway_checkout_url };
     }
     // Lost the race — another concurrent call already stored a session; reuse theirs.
+    const { data: existing } = await admin
+      .from("bookings")
+      .select("gateway_checkout_url")
+      .eq("id", bookingId)
+      .single();
+    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? checkoutUrl };
+  } catch {
+    return { ok: false, error: "Couldn't start the payment. Please try again." };
+  }
+}
+
+// --- Platform checkout (centralized aggregator) ------------------------------------------
+//
+// The new model: ALL guest payments are collected into ONE Tuloy PayMongo account (env platform key),
+// not the operator's. The guest is charged the deposit + a bundled service fee (their 6% + the
+// grossed-up PayMongo fee — see computeBookingSplit); the operator's 5% is withheld later at payout
+// (the ledger, not here). The operator needs no PayMongo account — just an active payout destination
+// (tenant_payout_accounts), which also carries their per-owner rates. Confirmation is identical to
+// Model A: the webhook → confirm_booking_gateway is the source of truth; the redirect is UX only.
+//
+// This runs ALONGSIDE the dormant Model-A createGatewayCheckout above (kept for reversibility); the
+// guest UI is switched to this path in a follow-up slice.
+export async function createPlatformCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
+  if (!z.uuid().safeParse(bookingId).success) {
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+  if (!env.PAYMONGO_PLATFORM_SECRET_KEY) {
+    return { ok: false, error: "Online payment isn't available right now." };
+  }
+
+  const admin = createServiceClient();
+  const { data: booking } = await admin
+    .from("bookings")
+    .select(
+      "tenant_id, status, deposit_amount, total_amount, gateway_checkout_url, property:properties(slug, name)",
+    )
+    .eq("id", bookingId)
+    .single();
+
+  if (!booking) return { ok: false, error: "We couldn't find that booking." };
+  if (booking.status !== "held") {
+    return { ok: false, error: "This booking is no longer awaiting payment." };
+  }
+  if (!booking.deposit_amount || booking.deposit_amount <= 0) {
+    return { ok: false, error: "This booking has no deposit to collect." };
+  }
+  if (!booking.total_amount || booking.total_amount <= 0) {
+    return { ok: false, error: "This booking has no total to charge." };
+  }
+
+  // Reuse the single-use session on any repeat call (double-charge guard — same as Model A).
+  if (booking.gateway_checkout_url) {
+    return { ok: true, checkoutUrl: booking.gateway_checkout_url };
+  }
+
+  // The operator must have an active payout destination; it also carries their per-owner rates.
+  const { data: payout } = await admin
+    .from("tenant_payout_accounts")
+    .select("commission_rate, service_fee_rate, status")
+    .eq("tenant_id", booking.tenant_id)
+    .maybeSingle();
+  if (!payout || payout.status !== "active") {
+    return { ok: false, error: "Online payment isn't available for this host yet." };
+  }
+
+  const split = computeBookingSplit(Number(booking.total_amount), Number(booking.deposit_amount), {
+    commissionRate: Number(payout.commission_rate),
+    serviceFeeRate: Number(payout.service_fee_rate),
+  });
+
+  const property = booking.property as { slug: string; name: string } | null;
+  const slug = property?.slug ?? "";
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = `${proto}://${host}`;
+
+  // Two guest-facing lines that sum to split.guestTotal: the deposit, and a softly-named fee line
+  // that bundles the guest's service fee + the grossed-up PayMongo fee. Centavo math so the two lines
+  // reconcile exactly to the grossed-up total.
+  const depositCentavos = toCentavos(split.deposit);
+  const feeCentavos = toCentavos(split.guestTotal) - depositCentavos;
+
+  try {
+    const { checkoutUrl } = await createCheckoutSession({
+      secretKey: env.PAYMONGO_PLATFORM_SECRET_KEY,
+      lineItems: [
+        { name: `Deposit — ${property?.name ?? "booking"}`, amount: depositCentavos, quantity: 1 },
+        { name: "Convenience fee", amount: feeCentavos, quantity: 1 },
+      ],
+      description: `Booking deposit (${bookingId})`,
+      successUrl: `${origin}/${slug}/pay/return?b=${bookingId}`,
+      cancelUrl: `${origin}/${slug}`,
+      metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
+    });
+
+    // Claim the session URL atomically — only the call that finds the column still null wins; any
+    // concurrent caller reuses the stored URL, so the guest always sees one payment page. We also
+    // stamp the grossed-up charge so the webhook's confirm can verify the settled amount against it
+    // (confirm_booking_gateway → coalesce(gateway_charge_amount, deposit_amount)).
+    const { data: claimed } = await admin
+      .from("bookings")
+      .update({ gateway_checkout_url: checkoutUrl, gateway_charge_amount: split.guestTotal })
+      .eq("id", bookingId)
+      .is("gateway_checkout_url", null)
+      .select("gateway_checkout_url")
+      .maybeSingle();
+    if (claimed?.gateway_checkout_url) {
+      return { ok: true, checkoutUrl: claimed.gateway_checkout_url };
+    }
     const { data: existing } = await admin
       .from("bookings")
       .select("gateway_checkout_url")

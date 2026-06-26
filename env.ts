@@ -40,6 +40,12 @@ export const env = createEnv({
     // Optional → the subscription checkout is dormant when unset (the plan CTA falls back to Messenger).
     PAYMONGO_PLATFORM_SECRET_KEY: z.string().min(1).optional(),
     PAYMONGO_PLATFORM_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // --- PayMongo PAYOUTS (centralized aggregator, money-OUT) --- the platform's OWN wallet account
+    // that batch transfers are sent FROM (number/name/BIC, per PayMongo Money Movement setup). All
+    // optional → the payout cron is dormant until set, so it can never disburse on a half-configured env.
+    PAYMONGO_PAYOUT_SOURCE_NUMBER: z.string().min(1).optional(),
+    PAYMONGO_PAYOUT_SOURCE_NAME: z.string().min(1).optional(),
+    PAYMONGO_PAYOUT_SOURCE_BIC: z.string().min(1).optional(),
     // --- Public base URL (Phase 2b) --- the stable origin we register PayMongo webhooks against
     // (https://SITE_URL/api/webhooks/paymongo/{token}). Unlike the per-request checkout return URL,
     // a registered webhook URL is persisted at PayMongo, so it must NOT be derived from the request
@@ -67,6 +73,9 @@ export const env = createEnv({
     PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
     PAYMONGO_PLATFORM_SECRET_KEY: process.env.PAYMONGO_PLATFORM_SECRET_KEY,
     PAYMONGO_PLATFORM_WEBHOOK_SECRET: process.env.PAYMONGO_PLATFORM_WEBHOOK_SECRET,
+    PAYMONGO_PAYOUT_SOURCE_NUMBER: process.env.PAYMONGO_PAYOUT_SOURCE_NUMBER,
+    PAYMONGO_PAYOUT_SOURCE_NAME: process.env.PAYMONGO_PAYOUT_SOURCE_NAME,
+    PAYMONGO_PAYOUT_SOURCE_BIC: process.env.PAYMONGO_PAYOUT_SOURCE_BIC,
     SITE_URL: process.env.SITE_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
