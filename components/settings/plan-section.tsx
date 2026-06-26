@@ -48,9 +48,11 @@ export function PlanSection({
   const pastDue = subscriptionStatus === "past_due";
   const renewsOn = formatDate(paidUntil);
 
-  // Business is value-priced/contact-sales — always the Messenger path. Self-serve PayMongo checkout
-  // is the path for solo/pro when the platform account is configured.
-  const showSelfServe = checkoutEnabled && plan !== "business";
+  // Business is the top tier — nothing higher to upgrade to, so it shows no CTA (just a top-plan
+  // note). Self-serve PayMongo checkout is the path for solo/pro when the platform account is
+  // configured; otherwise solo/pro fall back to the Messenger path.
+  const isTopTier = plan === "business";
+  const showSelfServe = checkoutEnabled && !isTopTier;
 
   return (
     <Card
@@ -58,7 +60,7 @@ export function PlanSection({
         isPaid ? "border-accent/15 bg-linear-to-br from-accent/6 via-canvas to-canvas" : ""
       }`}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <IconChip icon={isPaid ? Crown : Sparkles} tone="accent" size="lg" gradient={isPaid} />
           <div className="min-w-0">
@@ -78,7 +80,15 @@ export function PlanSection({
             )}
           </div>
         </div>
-        <div className="sm:shrink-0">
+        {isTopTier && (
+          <p className="text-body-sm text-muted sm:shrink-0 sm:text-right">
+            You&rsquo;re on Business — our top plan.
+          </p>
+        )}
+      </div>
+
+      {!isTopTier && (
+        <div className="border-t border-hairline pt-4">
           {showSelfServe ? (
             <SubscribeButtons offers={SELF_SERVE_OFFERS} currentPlan={plan} />
           ) : messengerUrl ? (
@@ -89,6 +99,7 @@ export function PlanSection({
               className={buttonClassName({
                 size: "sm",
                 variant: pastDue || overCap ? "primary" : "secondary",
+                className: "w-full sm:w-auto",
               })}
             >
               {isPaid ? "Upgrade" : "Choose a plan"}
@@ -97,7 +108,7 @@ export function PlanSection({
             <span className="text-body-sm text-muted">Message us to upgrade</span>
           )}
         </div>
-      </div>
+      )}
 
       {pastDue && (
         <p className="text-body-sm text-warning">
