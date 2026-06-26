@@ -323,6 +323,8 @@ export function RoomsSection({ rooms }: { rooms: RoomCard[] }) {
 
   return (
     <section className="flex flex-col gap-4">
+      <h2 className="text-display-sm tracking-tight text-ink">The room</h2>
+
       <article key={room.id} className="flex animate-room-swap flex-col gap-4">
         <RoomGallery photos={room.photoUrls} name={room.name} onOpen={setLightboxIndex} />
 

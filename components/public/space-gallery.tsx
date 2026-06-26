@@ -1,13 +1,13 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Images, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type SpacePhoto = { url: string; caption: string };
 
 // Optimized photo (next/image `fill`) with a shimmer skeleton until it decodes. Mirrors
-// rooms-section's GalleryImage; kept local so "The Space" gallery stays self-contained.
+// rooms-section's GalleryImage; kept local so "The space" gallery stays self-contained.
 function GalleryImage({
   src,
   alt,
@@ -44,32 +44,6 @@ function GalleryImage({
         }`}
       />
     </>
-  );
-}
-
-const MAX_MOSAIC_TILES = 6;
-
-// Per photo-count grid template + each tile's span, so the block is always a balanced rectangle.
-function mosaicLayout(count: number): { grid: string; spans: string[] } {
-  if (count === 2) return { grid: "grid-cols-2 grid-rows-1", spans: ["", ""] };
-  if (count === 3) {
-    return { grid: "grid-cols-3 grid-rows-2", spans: ["col-span-2 row-span-2", "", ""] };
-  }
-  if (count === 4) return { grid: "grid-cols-2 grid-rows-2", spans: ["", "", "", ""] };
-  if (count === 5) {
-    return { grid: "grid-cols-4 grid-rows-2", spans: ["col-span-2 row-span-2", "", "", "", ""] };
-  }
-  // 6 or more — 3×2 even grid.
-  return { grid: "grid-cols-3 grid-rows-2", spans: ["", "", "", "", "", ""] };
-}
-
-// Subtle bottom caption overlay shown on a tile when the photo has one.
-function CaptionOverlay({ caption }: { caption: string }) {
-  if (!caption) return null;
-  return (
-    <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/60 to-transparent px-3 pt-6 pb-2 text-left text-caption font-medium text-white">
-      {caption}
-    </span>
   );
 }
 
@@ -175,111 +149,50 @@ function Lightbox({
   );
 }
 
-// "The Space" — captioned showcase of the property's shared areas (kitchen, common room, view).
-// Mobile gets a swipeable scroll-snap carousel; desktop gets a balanced mosaic. Every photo opens
-// the lightbox. Renders nothing when there are no photos.
+// "The space" — a clean captioned showcase of the property's shared areas (kitchen, common room,
+// view). A uniform gallery-wall grid: equal aspect-4/3 tiles in tidy rows, each with its label
+// set INSIDE the tile (bottom-left, over a soft gradient) so the grid stays perfectly aligned and
+// the captions read as the signature detail. Always-visible labels (touch has no hover). Distinct
+// by design from the rooms gallery's single selected-room booking showcase. Each tile opens the
+// lightbox. Returns null when there are no photos.
 export function SpaceGallery({ photos }: { photos: SpacePhoto[] }) {
-  const [active, setActive] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (photos.length === 0) return null;
 
-  const count = photos.length;
-  const layout = mosaicLayout(count);
-  const tiles = photos.slice(0, MAX_MOSAIC_TILES);
-  const multi = count > 1;
-
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-5">
       <h2 className="text-display-sm tracking-tight text-ink">The space</h2>
 
-      {!multi ? (
-        <button
-          type="button"
-          onClick={() => setLightboxIndex(0)}
-          className="group relative block aspect-3/2 w-full overflow-hidden rounded-md border border-hairline bg-surface-soft shadow-e2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <GalleryImage
-            src={photos[0].url}
-            alt={photos[0].caption || "Property photo 1"}
-            sizes="(min-width: 1024px) 680px, 100vw"
-            imgClassName="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
-          />
-          <CaptionOverlay caption={photos[0].caption} />
-        </button>
-      ) : (
-        <div className="relative">
-          {/* Mobile: swipeable carousel. Each slide snaps full-width; tapping opens the lightbox. */}
-          <div className="sm:hidden">
-            <div
-              onScroll={(e) =>
-                setActive(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))
-              }
-              className="flex snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overflow-y-hidden rounded-md border border-hairline shadow-e1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {photos.map((photo, i) => (
-                <button
-                  key={photo.url}
-                  type="button"
-                  onClick={() => setLightboxIndex(i)}
-                  className="relative block aspect-3/2 w-full shrink-0 snap-center bg-surface-soft"
-                >
-                  <GalleryImage
-                    src={photo.url}
-                    alt={photo.caption || `Property photo ${i + 1}`}
-                    sizes="100vw"
-                    imgClassName="object-cover"
-                  />
-                  <CaptionOverlay caption={photo.caption} />
-                </button>
-              ))}
-            </div>
-            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 backdrop-blur">
-              {photos.map((_, i) => (
-                <span
-                  key={i}
-                  className={`rounded-full transition-all duration-200 ${
-                    active === i ? "size-2 bg-white" : "size-1.5 bg-white/55"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop: balanced mosaic. */}
-          <div
-            className={`hidden aspect-3/2 gap-2 overflow-hidden rounded-md border border-hairline shadow-e2 sm:grid ${layout.grid}`}
-          >
-            {tiles.map((photo, i) => (
-              <button
-                key={photo.url}
-                type="button"
-                onClick={() => setLightboxIndex(i)}
-                className={`group relative block overflow-hidden bg-surface-soft focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${layout.spans[i]}`}
-              >
-                <GalleryImage
-                  src={photo.url}
-                  alt={photo.caption || `Property photo ${i + 1}`}
-                  sizes="(min-width: 1024px) 400px, 50vw"
-                  imgClassName={`object-cover transition-transform duration-500 ease-out ${
-                    i === 0 ? "group-hover:scale-[1.02]" : "group-hover:scale-[1.03]"
-                  }`}
-                />
-                <CaptionOverlay caption={photo.caption} />
-              </button>
-            ))}
-          </div>
-
-          {/* Desktop-only — the carousel already lets mobile guests browse every photo. */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
+        {photos.map((photo, i) => (
           <button
+            key={photo.url}
             type="button"
-            onClick={() => setLightboxIndex(0)}
-            className="absolute right-3 bottom-3 hidden items-center gap-1.5 rounded-md border border-hairline bg-canvas px-3 py-1.5 text-button-sm text-ink shadow-card transition-colors hover:bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-surface-strong sm:flex"
+            onClick={() => setLightboxIndex(i)}
+            aria-label={photo.caption ? `View ${photo.caption}` : `View photo ${i + 1}`}
+            className="group relative block aspect-4/3 overflow-hidden rounded-md border border-hairline bg-surface-soft shadow-e1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <Images className="size-4" /> Show all photos
+            <GalleryImage
+              src={photo.url}
+              alt={photo.caption || `Property photo ${i + 1}`}
+              sizes="(min-width: 1024px) 360px, 50vw"
+              imgClassName="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]"
+            />
+            {photo.caption && (
+              <>
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/65 via-black/15 to-transparent"
+                />
+                <span className="pointer-events-none absolute inset-x-3 bottom-2.5 truncate text-left text-caption font-medium text-white">
+                  {photo.caption}
+                </span>
+              </>
+            )}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
       {lightboxIndex !== null && (
         <Lightbox
