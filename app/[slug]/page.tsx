@@ -12,7 +12,7 @@ import { RoomsSection, type RoomCard } from "@/components/public/rooms-section";
 import { SelectedRoomProvider } from "@/components/public/selected-room-context";
 import { SocialLinks } from "@/components/public/social-links";
 import { formatTime } from "@/lib/dates";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createClient } from "@/lib/supabase/server";
 
 type Listing = {
   property: {
@@ -40,11 +40,23 @@ async function getListing(slug: string): Promise<{
   coverUrl: string | null;
   ogImageUrl: string | null;
   rooms: RoomCard[];
+  preview: boolean;
 } | null> {
   const supabase = createAnonClient();
   const { data } = await supabase.rpc("get_public_listing", { p_slug: slug });
-  const listing = data as unknown as Listing | null;
-  if (!listing?.property) return null;
+  let listing = data as unknown as Listing | null;
+
+  // Admin preview: an unverified/suspended listing is dark to the public (get_public_listing gates
+  // on approved), but an admin can see the real guest-facing page to vet it before approving.
+  // admin_preview_listing self-guards on is_admin, so anonymous visitors still fall through to 404.
+  let preview = false;
+  if (!listing?.property) {
+    const authed = await createClient();
+    const { data: previewData } = await authed.rpc("admin_preview_listing", { p_slug: slug });
+    listing = previewData as unknown as Listing | null;
+    if (!listing?.property) return null;
+    preview = true;
+  }
 
   const publicUrl = (path: string) =>
     supabase.storage.from("property-images").getPublicUrl(path).data.publicUrl;
@@ -73,7 +85,7 @@ async function getListing(slug: string): Promise<{
     photoUrls: (r.photos ?? []).map(publicUrl),
   }));
 
-  return { listing, coverUrl, ogImageUrl, rooms };
+  return { listing, coverUrl, ogImageUrl, rooms, preview };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -122,7 +134,7 @@ export default async function PublicBookingPage({
   const { slug } = await params;
   const result = await getListing(slug);
   if (!result) notFound();
-  const { listing, coverUrl, rooms } = result;
+  const { listing, coverUrl, rooms, preview } = result;
   const { property } = listing;
 
   // Attribution tag from the inbound link (?src=tuloy). Carried into the booking so the operator
@@ -140,6 +152,12 @@ export default async function PublicBookingPage({
   return (
     <SelectedRoomProvider initialRoomId={listing.room_types[0]?.id ?? ""}>
       <main className="w-full overflow-x-hidden bg-canvas">
+        {preview && (
+          <div className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-ink px-4 py-2 text-center text-caption font-medium text-canvas">
+            <ShieldCheck className="size-3.5 shrink-0" />
+            Admin preview — this listing isn’t publicly visible yet
+          </div>
+        )}
         {/* ---- Hero banner (brand sunset / photographic) ------------------------------ */}
         <section className="relative w-full overflow-hidden">
           {/* Brand sunset gradient base — or the operator's cover photo layered over it. */}
