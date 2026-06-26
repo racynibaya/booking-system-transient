@@ -58,6 +58,10 @@ export async function createSubscriptionCheckout(
         },
       ],
       description: `${plan.label} subscription (${tenant.id})`,
+      // QR Ph leads: it's the method currently enabled on Tuloy's platform account (paid by scanning
+      // with GCash/Maya/any bank app). The rest stay in the list so they appear automatically once
+      // PayMongo activates them — PayMongo ignores requested-but-disabled methods, so this is safe.
+      paymentMethodTypes: ["qrph", "gcash", "paymaya", "grab_pay", "card"],
       successUrl: `${origin}/settings/billing/return`,
       cancelUrl: `${origin}/settings`,
       // The webhook maps the payment back to this tenant + tier + period via these.
