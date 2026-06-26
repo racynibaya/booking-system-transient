@@ -2,12 +2,22 @@ import { Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { ShareLinkButton } from "@/components/properties/share-link-button";
+import { type PageStatus } from "@/components/properties/property-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export type SetupStep = { label: string; done: boolean; href: string };
-export type BookingPageInfo = { name: string; slug: string; live: boolean };
+export type BookingPageInfo = { name: string; slug: string; status: PageStatus };
+
+const PAGE_STATUS_BADGE: Record<
+  PageStatus,
+  { tone: "success" | "warning" | "danger"; label: string }
+> = {
+  live: { tone: "success", label: "Live" },
+  review: { tone: "warning", label: "Under review" },
+  paused: { tone: "danger", label: "Page closed" },
+};
 
 // Onboarding card: a progress ring (% of setup done) beside a vertical checklist of what's left,
 // so a starting operator can see exactly what stands between them and taking bookings. The
@@ -107,8 +117,8 @@ export function OnboardingProgress({
             <span className="min-w-0 truncate rounded-sm bg-surface-soft px-3 py-2 font-mono text-caption-sm text-muted">
               /{bookingPage.slug}
             </span>
-            <Badge tone={bookingPage.live ? "success" : "warning"}>
-              {bookingPage.live ? "Live" : "Under review"}
+            <Badge tone={PAGE_STATUS_BADGE[bookingPage.status].tone}>
+              {PAGE_STATUS_BADGE[bookingPage.status].label}
             </Badge>
           </div>
           <ShareLinkButton slug={bookingPage.slug} name={bookingPage.name} />

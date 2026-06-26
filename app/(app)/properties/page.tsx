@@ -1,15 +1,29 @@
 import { Building2, Plus } from "lucide-react";
 import Link from "next/link";
 
-import { PropertyCard } from "@/components/properties/property-card";
+import { PropertyCard, type PageStatus } from "@/components/properties/property-card";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { getProperties, requireUser } from "@/lib/supabase/dal";
+import {
+  getBookingsPaused,
+  getCurrentTenant,
+  getProperties,
+  requireUser,
+} from "@/lib/supabase/dal";
 
 export default async function PropertiesPage() {
   await requireUser();
-  const properties = await getProperties();
+  const [properties, tenant, bookingsPaused] = await Promise.all([
+    getProperties(),
+    getCurrentTenant(),
+    getBookingsPaused(),
+  ]);
+  const pageStatus: PageStatus = bookingsPaused
+    ? "paused"
+    : tenant?.verification_status === "approved"
+      ? "live"
+      : "review";
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +53,7 @@ export default async function PropertiesPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {properties.map((p) => (
-            <PropertyCard key={p.id} property={p} />
+            <PropertyCard key={p.id} property={p} pageStatus={pageStatus} />
           ))}
         </div>
       )}

@@ -17,6 +17,7 @@ import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/icon-chip";
 import {
+  getBookingsPaused,
   getCurrentTenant,
   getGatewayConnectionStatus,
   getNeedsActionCounts,
@@ -26,22 +27,27 @@ import {
   getRevenueSummary,
   requireUser,
 } from "@/lib/supabase/dal";
+import type { PageStatus } from "@/components/properties/property-card";
 
 export default async function DashboardPage() {
   await requireUser();
-  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction] = await Promise.all([
-    getCurrentTenant(),
-    getProperties(),
-    getPaymentMethods(),
-    getRevenueSummary(),
-    getOccupancySnapshot(),
-    getNeedsActionCounts(),
-  ]);
+  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction, bookingsPaused] =
+    await Promise.all([
+      getCurrentTenant(),
+      getProperties(),
+      getPaymentMethods(),
+      getRevenueSummary(),
+      getOccupancySnapshot(),
+      getNeedsActionCounts(),
+      getBookingsPaused(),
+    ]);
 
   const roomCount = properties.reduce((n, p) => n + (p.room_types?.[0]?.count ?? 0), 0);
   const hasProperty = properties.length > 0;
   const isVerified = tenant?.verification_status === "approved";
   const isBusiness = tenant?.plan === "business";
+  // The booking page's REAL public state: closed when lapsed+enforced, else live once approved.
+  const pageStatus: PageStatus = bookingsPaused ? "paused" : isVerified ? "live" : "review";
 
   // Online-payments gateway only matters on Business — fetch it only there (extra round-trip
   // for those operators only) so it can appear as its own checklist line.
@@ -78,7 +84,7 @@ export default async function DashboardPage() {
   ];
   const setupComplete = steps.every((s) => s.done);
   const bookingPage: BookingPageInfo | undefined = primary
-    ? { name: primary.name, slug: primary.slug, live: isVerified }
+    ? { name: primary.name, slug: primary.slug, status: pageStatus }
     : undefined;
 
   return (
@@ -130,8 +136,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Setup done: a slim confirmation that the page is live, with the link to post. */}
-      {setupComplete && bookingPage && (
+      {/* Setup done AND not lapsed: a slim confirmation that the page is live. When the plan has
+          lapsed the page is closed, so we suppress this — the closed banner carries that message. */}
+      {setupComplete && bookingPage && pageStatus === "live" && (
         <Card
           className="flex animate-card-rise flex-wrap items-center justify-between gap-3 border-success/20 bg-linear-to-r from-success-bg/70 to-canvas p-5"
           style={{ animationDelay: "140ms" }}
@@ -156,7 +163,7 @@ export default async function DashboardPage() {
           <h2 className="text-display-sm text-ink">Your properties</h2>
           <div className="flex flex-col gap-3">
             {properties.map((p) => (
-              <PropertyCard key={p.id} property={p} />
+              <PropertyCard key={p.id} property={p} pageStatus={pageStatus} />
             ))}
           </div>
         </section>

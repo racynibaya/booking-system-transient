@@ -7,7 +7,7 @@ import { signOut } from "@/app/auth/actions";
 import { BottomNav, TopNav } from "@/components/app/operator-nav";
 import { Button } from "@/components/ui/button";
 import { isOlderThanHours } from "@/lib/dates";
-import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
+import { getBookingsPaused, getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 
 // Operator shell. Slim header on all sizes (brand + desktop nav + sign-out); a
 // thumb-reachable bottom tab bar on mobile. requireUser() gates the first server
@@ -23,6 +23,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const gcashChangedAt =
     tenant?.verification_status === "approved" ? tenant.gcash_changed_at : null;
   const gcashPaused = gcashChangedAt ? isOlderThanHours(gcashChangedAt, 72) : false;
+
+  // Subscription lapsed AND enforcement on → the booking page is closed. Surface it across the whole
+  // dashboard (nudge, not a lock — they keep managing existing bookings and can renew). Dormant while
+  // enforcement is off, so this never shows during the pilot.
+  const bookingsPaused = await getBookingsPaused();
 
   return (
     <div className="shell-ambient flex min-h-dvh flex-col">
@@ -116,6 +121,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   confirm.
                 </>
               )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {bookingsPaused && (
+        <div className="border-b border-error/20 bg-error/6">
+          <div className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-3 text-body-sm text-ink md:px-6">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-error" />
+            <span>
+              Your booking page is closed because your plan lapsed — guests can&rsquo;t book and you
+              can&rsquo;t add new bookings until you renew.{" "}
+              <Link
+                href="/settings"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Renew your plan
+              </Link>{" "}
+              to reopen it. Your property and existing bookings are safe.
             </span>
           </div>
         </div>

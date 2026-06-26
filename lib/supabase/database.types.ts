@@ -68,10 +68,38 @@ export type Database = {
             foreignKeyName: "availability_blocks_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "availability_blocks_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
         ];
+      };
+      billing_config: {
+        Row: {
+          enforcement_mode: string;
+          grace_days: number;
+          id: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          enforcement_mode?: string;
+          grace_days?: number;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          enforcement_mode?: string;
+          grace_days?: number;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       bookings: {
         Row: {
@@ -159,6 +187,13 @@ export type Database = {
             foreignKeyName: "bookings_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "bookings_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -211,6 +246,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "bookings";
             referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
           },
           {
             foreignKeyName: "payments_tenant_id_fkey";
@@ -293,6 +335,13 @@ export type Database = {
             foreignKeyName: "properties_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "properties_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -342,6 +391,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "properties";
             referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "room_types_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
           },
           {
             foreignKeyName: "room_types_tenant_id_fkey";
@@ -403,6 +459,13 @@ export type Database = {
             foreignKeyName: "subscription_payments_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "subscription_payments_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -450,6 +513,13 @@ export type Database = {
             foreignKeyName: "tenant_gateway_connections_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: true;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "tenant_gateway_connections_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -493,6 +563,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "tenant_payment_methods_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
           {
             foreignKeyName: "tenant_payment_methods_tenant_id_fkey";
             columns: ["tenant_id"];
@@ -580,6 +657,13 @@ export type Database = {
             foreignKeyName: "verification_documents_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenant_subscription_entitlement";
+            referencedColumns: ["tenant_id"];
+          },
+          {
+            foreignKeyName: "verification_documents_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -587,7 +671,16 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      tenant_subscription_entitlement: {
+        Row: {
+          can_accept_bookings: boolean | null;
+          counts_as_paid: boolean | null;
+          enforcement_mode: string | null;
+          is_lapsed: boolean | null;
+          tenant_id: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       admin_billing_health: { Args: never; Returns: Json };
@@ -604,6 +697,35 @@ export type Database = {
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
         }[];
+      };
+      admin_mark_subscription_paid: {
+        Args: {
+          p_paid_until: string;
+          p_plan?: Database["public"]["Enums"]["tenant_plan"];
+          p_tenant_id: string;
+        };
+        Returns: {
+          created_at: string;
+          gcash_changed_at: string | null;
+          gcash_name: string | null;
+          gcash_number: string | null;
+          gcash_qr_path: string | null;
+          id: string;
+          is_admin: boolean;
+          name: string | null;
+          paid_until: string | null;
+          plan: Database["public"]["Enums"]["tenant_plan"];
+          subscription_status: string;
+          user_id: string;
+          verification_note: string | null;
+          verification_status: Database["public"]["Enums"]["tenant_verification"];
+        };
+        SetofOptions: {
+          from: "*";
+          to: "tenants";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       admin_notification_recipients: {
         Args: never;
@@ -745,6 +867,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      current_tenant_can_accept_bookings: { Args: never; Returns: boolean };
       current_tenant_id: { Args: never; Returns: string };
       downgrade_lapsed_subscriptions: {
         Args: { p_grace_days?: number };

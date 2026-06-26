@@ -31,6 +31,7 @@ export function PlanSection({
   roomCount,
   paidUntil,
   subscriptionStatus,
+  bookingsPaused = false,
   checkoutEnabled,
   messengerUrl,
 }: {
@@ -38,6 +39,9 @@ export function PlanSection({
   roomCount: number;
   paidUntil: string | null;
   subscriptionStatus: string;
+  // true = the plan lapsed AND enforcement is on, so the public page + manual entry are CLOSED to new
+  // bookings until renewal (the single entitlement authority decides this — see getBookingsPaused).
+  bookingsPaused?: boolean;
   checkoutEnabled: boolean;
   messengerUrl?: string;
 }) {
@@ -64,8 +68,16 @@ export function PlanSection({
         <div className="flex min-w-0 items-start gap-3">
           <IconChip icon={isPaid ? Crown : Sparkles} tone="accent" size="lg" gradient={isPaid} />
           <div className="min-w-0">
-            <Badge tone={pastDue || overCap ? "warning" : isPaid ? "success" : "neutral"}>
-              {pastDue ? `${current.label} · Past due` : current.label}
+            <Badge
+              tone={
+                bookingsPaused || pastDue || overCap ? "warning" : isPaid ? "success" : "neutral"
+              }
+            >
+              {bookingsPaused
+                ? `${current.label} · Page closed`
+                : pastDue
+                  ? `${current.label} · Past due`
+                  : current.label}
             </Badge>
             <p className="mt-2 text-title-md text-ink">
               {current.price}
@@ -110,14 +122,22 @@ export function PlanSection({
         </div>
       )}
 
-      {pastDue && (
+      {bookingsPaused ? (
         <p className="text-body-sm text-warning">
-          Your {current.label} plan is past due{renewsOn ? ` (lapsed ${renewsOn})` : ""}. Renew to
-          keep it active.
+          Your booking page is closed because your {current.label} plan lapsed
+          {renewsOn ? ` (${renewsOn})` : ""}. Guests can&rsquo;t book and you can&rsquo;t add
+          bookings until you renew — your property and existing bookings are safe.
         </p>
+      ) : (
+        pastDue && (
+          <p className="text-body-sm text-warning">
+            Your {current.label} plan is past due{renewsOn ? ` (lapsed ${renewsOn})` : ""}. Renew to
+            keep it active.
+          </p>
+        )
       )}
 
-      {overCap && !pastDue && (
+      {overCap && !pastDue && !bookingsPaused && (
         <p className="text-body-sm text-warning">
           You&rsquo;re over the {current.label} limit of {cap} rooms. Your booking page keeps
           working — upgrade when you&rsquo;re ready to keep growing.

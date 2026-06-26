@@ -31,23 +31,28 @@ export async function GET(request: Request) {
 
   const admin = createServiceClient();
 
-  // 1. Flag lapsed actives. Idempotent — re-running flips nothing already past_due.
+  // 1. Flag lapsed actives. Idempotent — re-running flips nothing already past_due. This is now purely
+  // COSMETIC (drives the past-due badge + reminders): actual enforcement is LIVE at the booking engine
+  // via tenant_subscription_entitlement, so it no longer depends on this cron running.
   const { data: flagged, error: flagErr } = await admin.rpc("flag_past_due_subscriptions");
   if (flagErr) {
     return Response.json({ ok: false, error: flagErr.message }, { status: 500 });
   }
 
-  // 1b. Enforcement (DORMANT in the pilot): only when the switch is flipped on, downgrade operators
-  // past-due beyond the grace window to free. Default OFF = nag-only, so this can't fire by accident.
-  let downgraded = 0;
-  if (env.SUBSCRIPTION_ENFORCEMENT === "true") {
-    const { data: d, error: dErr } = await admin.rpc("downgrade_lapsed_subscriptions", {
-      p_grace_days: 7,
-    });
-    if (dErr) {
-      return Response.json({ ok: false, error: dErr.message }, { status: 500 });
-    }
-    downgraded = d ?? 0;
+  // 1b. Observability for the live enforcement switch (billing_config, the single source of truth —
+  // replaces the old SUBSCRIPTION_ENFORCEMENT env flag and the plan-mutating downgrade). When the mode
+  // is 'dry_run' or 'enforce', report how many operators are lapsed-past-grace, i.e. how many would be /
+  // are blocked from taking new bookings. 'dry_run' = watch this number against real operators before
+  // flipping to 'enforce'. We DON'T mutate plan/status here; the entitlement view does the gating live.
+  const { data: cfg } = await admin.from("billing_config").select("enforcement_mode").single();
+  const enforcementMode = cfg?.enforcement_mode ?? "off";
+  let lapsed = 0;
+  if (enforcementMode !== "off") {
+    const { count } = await admin
+      .from("tenant_subscription_entitlement")
+      .select("tenant_id", { count: "exact", head: true })
+      .eq("is_lapsed", true);
+    lapsed = count ?? 0;
   }
 
   // 2. Reminder set: paid plans renewing within the window OR already past due.
@@ -83,5 +88,5 @@ export async function GET(request: Request) {
     reminders++;
   }
 
-  return Response.json({ ok: true, flagged, downgraded, reminders });
+  return Response.json({ ok: true, flagged, enforcementMode, lapsed, reminders });
 }

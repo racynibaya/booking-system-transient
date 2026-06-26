@@ -8,6 +8,7 @@ import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
 import { type PlanId } from "@/lib/plans";
 import {
+  getBookingsPaused,
   getCurrentTenant,
   getGatewayConnectionStatus,
   getPaymentMethods,
@@ -17,10 +18,11 @@ import {
 
 export default async function SettingsPage() {
   await requireUser();
-  const [methods, tenant, roomCount] = await Promise.all([
+  const [methods, tenant, roomCount, bookingsPaused] = await Promise.all([
     getPaymentMethods(),
     getCurrentTenant(),
     getRoomCount(),
+    getBookingsPaused(),
   ]);
   // Online payments are a Business-plan capability — only fetch/show the section for that tier.
   const gatewayStatus = tenant?.plan === "business" ? await getGatewayConnectionStatus() : null;
@@ -47,6 +49,7 @@ export default async function SettingsPage() {
           roomCount={roomCount}
           paidUntil={tenant?.paid_until ?? null}
           subscriptionStatus={tenant?.subscription_status ?? "trialing"}
+          bookingsPaused={bookingsPaused}
           checkoutEnabled={!!env.PAYMONGO_PLATFORM_SECRET_KEY}
           messengerUrl={env.NEXT_PUBLIC_UPGRADE_MESSENGER_URL}
         />
