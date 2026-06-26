@@ -8,6 +8,7 @@ import { PropertyForm } from "@/components/properties/property-form";
 import { PropertyTabs } from "@/components/properties/property-tabs";
 import { RoomTypesSection } from "@/components/properties/room-types-section";
 import { ShareLinkButton } from "@/components/properties/share-link-button";
+import { SpacePhotosUploader } from "@/components/properties/space-photos-uploader";
 import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/icon-chip";
@@ -116,24 +117,47 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           </div>
         }
         cover={
-          <section className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2.5">
-                <IconChip icon={ImageIcon} tone="accent" />
-                <h2 className="text-display-sm text-ink">Cover photo</h2>
+          <div className="flex flex-col gap-8">
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2.5">
+                  <IconChip icon={ImageIcon} tone="accent" />
+                  <h2 className="text-display-sm text-ink">Cover photo</h2>
+                </div>
+                <p className="text-body-sm text-muted">
+                  The full-bleed background guests see on your booking page.
+                </p>
               </div>
-              <p className="text-body-sm text-muted">
-                The full-bleed background guests see on your booking page.
-              </p>
-            </div>
-            <Card className="p-5 shadow-glow md:p-6">
-              <CoverImageUploader
-                propertyId={id}
-                tenantId={property.tenant_id}
-                currentPath={property.cover_image_path}
-              />
-            </Card>
-          </section>
+              <Card className="p-5 shadow-glow md:p-6">
+                <CoverImageUploader
+                  propertyId={id}
+                  tenantId={property.tenant_id}
+                  currentPath={property.cover_image_path}
+                />
+              </Card>
+            </section>
+
+            <section className="flex flex-col gap-3 border-t border-hairline pt-6">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-title-md text-ink">Photos of the space</h2>
+                <p className="text-body-sm text-muted">
+                  Show off shared areas — the kitchen, common room, view. Add a caption so guests
+                  know what they&apos;re looking at.
+                </p>
+              </div>
+              <Card className="p-5 shadow-glow md:p-6">
+                <SpacePhotosUploader
+                  propertyId={id}
+                  tenantId={property.tenant_id}
+                  currentPhotos={
+                    Array.isArray(property.photos)
+                      ? (property.photos as { path: string; caption: string }[])
+                      : []
+                  }
+                />
+              </Card>
+            </section>
+          </div>
         }
       />
     </div>

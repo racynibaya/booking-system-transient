@@ -12,7 +12,7 @@ type TabId = "rooms" | "details" | "cover";
 const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "rooms", label: "Rooms", icon: BedDouble },
   { id: "details", label: "Details", icon: SlidersHorizontal },
-  { id: "cover", label: "Cover", icon: ImageIcon },
+  { id: "cover", label: "Photos", icon: ImageIcon },
 ];
 
 function isTab(v: string | null): v is TabId {
