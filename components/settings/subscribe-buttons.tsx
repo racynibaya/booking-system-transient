@@ -10,8 +10,8 @@ import { annualMonthsFree, chargeFor, PLANS, type BillingInterval, type PlanId }
 // Self-serve subscription CTA. A monthly/annual toggle picks the billing period; each button then
 // starts a PayMongo checkout for that tier + period and hands the operator off to the hosted payment
 // page (GCash/card/Maya). The platform webhook flips the plan + advances paid_until on payment.
-// "Renew" when it's the current plan, "Get" when it's an upgrade. Annual is the default (the discount
-// nudge); monthly stays one tap away.
+// "Renew" when it's the current plan, "Get" when it's an upgrade. Monthly is the default; the annual
+// option (with its "2 months free" savings hint) stays one tap away.
 export function SubscribeButtons({
   offers,
   currentPlan,
@@ -19,7 +19,7 @@ export function SubscribeButtons({
   offers: PlanId[];
   currentPlan: PlanId;
 }) {
-  const [interval, setInterval] = useState<BillingInterval>("year");
+  const [interval, setInterval] = useState<BillingInterval>("month");
   const [pending, setPending] = useState<PlanId | null>(null);
 
   async function pay(planId: PlanId) {
@@ -38,13 +38,13 @@ export function SubscribeButtons({
   const monthsFree = offers.map(annualMonthsFree).find((m) => m > 0) ?? 0;
 
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+    <div className="flex flex-col items-stretch gap-3">
       <IntervalToggle
         value={interval}
         onChange={setInterval}
         annualHint={monthsFree > 0 ? `${monthsFree} months free` : undefined}
       />
-      <div className="flex flex-wrap gap-2 sm:justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {offers.map((id) => {
           const p = PLANS[id];
           const isCurrent = id === currentPlan;
@@ -57,6 +57,7 @@ export function SubscribeButtons({
               variant={isCurrent ? "primary" : "secondary"}
               disabled={pending !== null}
               onClick={() => pay(id)}
+              className="w-full sm:w-auto"
             >
               {pending === id
                 ? "Starting…"
@@ -81,8 +82,8 @@ function IntervalToggle({
   annualHint?: string;
 }) {
   const options: { id: BillingInterval; label: string }[] = [
-    { id: "year", label: "Yearly" },
     { id: "month", label: "Monthly" },
+    { id: "year", label: "Yearly" },
   ];
   return (
     <div className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface-soft p-1">
