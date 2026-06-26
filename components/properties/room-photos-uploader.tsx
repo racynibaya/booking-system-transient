@@ -107,7 +107,7 @@ export function RoomPhotosUploader({
                 disabled={busy}
                 onClick={() => onRemove(path)}
                 aria-label="Remove photo"
-                className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-ink/70 text-canvas opacity-0 transition-opacity group-hover:opacity-100 hover:bg-ink focus-visible:opacity-100"
+                className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-ink/70 text-canvas transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
               >
                 <Trash2 className="size-3.5" />
               </button>

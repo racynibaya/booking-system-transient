@@ -2,7 +2,7 @@
 
 import "react-day-picker/style.css";
 
-import { Check, ChevronDown, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, MoonStar, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
@@ -16,7 +16,7 @@ import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
 import { compressImage } from "@/lib/image";
-import { computeTotal, nights } from "@/lib/pricing";
+import { computeTotal, meetsMinStay, MIN_STAY_NIGHTS, nights } from "@/lib/pricing";
 
 export type PublicRoom = {
   id: string;
@@ -123,9 +123,13 @@ export function BookingCard({
     if (!room || !datesValid) return true;
     return isRangeBookable({ checkIn, checkOut }, room.quantity, stays, blockRanges);
   }, [room, checkIn, checkOut, datesValid, stays, blockRanges]);
-  const canContinue = datesValid && guestsValid && available;
 
   const stayNights = datesValid ? nights(checkIn, checkOut) : 0;
+  // Mirror the server-side 2-night minimum (lib/pricing) so the CTA explains itself rather
+  // than letting the guest reach the action only to be rejected. The schema is the real gate.
+  const minStayOk = !datesValid || meetsMinStay(checkIn, checkOut);
+  const canContinue = datesValid && guestsValid && available && minStayOk;
+
   const total = room ? computeTotal(room.base_price, stayNights) : 0;
 
   // Tick once a second, only while the deposit countdown is on screen.
@@ -557,8 +561,27 @@ export function BookingCard({
             <p className="text-body-sm text-error">Not available for those dates.</p>
           )}
 
+          {/* 2-night minimum: a valid-but-too-short range passes availability, so without this the
+              guest would see a price yet a dead Reserve button. Spell out exactly what to do. */}
+          {datesValid && available && !minStayOk && (
+            <div className="flex items-start gap-3 rounded-md border border-primary/25 bg-primary-disabled/40 p-4">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10">
+                <MoonStar className="size-4 text-primary" />
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-body-sm font-semibold text-ink">
+                  {MIN_STAY_NIGHTS}-night minimum stay
+                </span>
+                <span className="text-body-sm text-body">
+                  You&apos;ve picked {stayNights} {stayNights === 1 ? "night" : "nights"} — add{" "}
+                  {MIN_STAY_NIGHTS - stayNights} more to continue.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Pricing breakdown — only the lines our model actually has (no fabricated fees). */}
-          {datesValid && available && (
+          {datesValid && available && minStayOk && (
             <div className="flex flex-col gap-2 rounded-md border border-hairline bg-surface-soft p-4">
               <div className="flex items-center justify-between text-body-sm text-body">
                 <span>
