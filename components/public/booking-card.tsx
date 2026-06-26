@@ -213,8 +213,9 @@ export function BookingCard({
     else setError(res.error);
   }
 
-  // White reserve card on the light listing — soft layered shadow, ink text, hairline border.
-  const cardClass = "w-full rounded-md border border-hairline bg-canvas p-5 text-ink shadow-card";
+  // White reserve card on the light listing — the key conversion surface, so it floats on the
+  // high-elevation tier (sea-tinted depth + top-edge highlight), ink text, hairline border.
+  const cardClass = "w-full rounded-md border border-hairline bg-canvas p-5 text-ink shadow-e3";
 
   if (rooms.length === 0) {
     return (

@@ -73,7 +73,7 @@ function OrbitBackground() {
             style={{ transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` }}
           >
             <div
-              className="flex size-12 animate-float items-center justify-center rounded-full border border-hairline bg-canvas text-ink shadow-card"
+              className="flex size-12 animate-float items-center justify-center rounded-full border border-hairline bg-canvas text-ink shadow-e1"
               style={{ animationDelay: delay }}
             >
               <Icon className="size-5" />
@@ -87,7 +87,7 @@ function OrbitBackground() {
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden px-6 pt-20 pb-24">
+    <section className="surface-mesh grain relative overflow-hidden px-6 pt-20 pb-24">
       <OrbitBackground />
       {/* faint brand glow */}
       <div
@@ -95,8 +95,8 @@ export function Hero() {
         className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[480px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/10 blur-3xl"
       />
 
-      <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-        <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas px-4 py-1.5 text-caption text-muted shadow-card">
+      <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center text-center">
+        <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas/80 px-4 py-1.5 text-caption text-muted shadow-e1 backdrop-blur">
           <MapPin className="size-3.5 text-primary" />
           Built for San Juan, La Union
         </span>
@@ -122,7 +122,7 @@ export function Hero() {
           {CARDS.map(({ icon: Icon, title, sub, accent, delay }, i) => (
             <div
               key={i}
-              className="flex animate-float items-center gap-3 rounded-md border border-hairline bg-canvas p-4 text-left shadow-card"
+              className="flex animate-float items-center gap-3 rounded-md border border-hairline bg-canvas p-4 text-left shadow-e2"
               style={{ animationDelay: delay }}
             >
               <span
