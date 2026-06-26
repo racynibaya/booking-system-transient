@@ -296,6 +296,19 @@ export const getPaymentMethods = cache(async () => {
   return data;
 });
 
+// The current operator's payout destination (centralized aggregator) — where Tuloy disburses their
+// share. RLS-scoped; null if not set up yet. Rate columns are read for display only.
+export const getPayoutAccount = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tenant_payout_accounts")
+    .select("id, method, payout_name, account_number, bank_name, payout_bic, status, updated_at")
+    .maybeSingle();
+
+  if (error) return null;
+  return data;
+});
+
 // The current operator's gateway (PayMongo) connection status — NON-SECRET only. Calls the
 // self-scoped gateway_connection_status() RPC with the operator's own session, so it returns just
 // their own "connected?" metadata and never an sk_/whsk_. (The decrypting reader lives in

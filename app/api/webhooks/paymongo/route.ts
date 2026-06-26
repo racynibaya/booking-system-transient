@@ -5,13 +5,15 @@ import {
 } from "@/lib/paymongo/signature";
 import { handleVerifiedPaymongoEvent } from "@/lib/paymongo/webhook-handler";
 
-// PayMongo webhook (Phase 2a spike) — the flat, env-keyed endpoint. A paid Checkout Session lands
-// here, we authenticate it with the single env webhook secret, and hand the verified body to the
-// shared handler (lib/paymongo/webhook-handler.ts) → confirm_booking_gateway (architecture P7).
+// PayMongo webhook — the flat, env-keyed endpoint. In the centralized-aggregator model ALL guest
+// payments are collected into the ONE Tuloy platform account, so a single webhook (registered on that
+// account) verified with the single env webhook secret (PAYMONGO_WEBHOOK_SECRET = the platform
+// account's whsk_) handles every paid Checkout Session. The verified body goes to the shared handler
+// (lib/paymongo/webhook-handler.ts) → confirm_booking_gateway (architecture P7), which verifies the
+// settled amount against the booking's stamped gateway_charge_amount (the grossed-up charge).
 //
-// SPIKE SCOPE: one endpoint, env webhook secret. Phase 2b's /api/webhooks/paymongo/[token] verifies
-// with the per-tenant connection's own whsk_; this flat route stays (dormant) until that is proven,
-// then it can be retired. The post-verification logic is identical — both call the shared handler.
+// The dormant Model-A path (/api/webhooks/paymongo/[token], per-tenant whsk_) is unchanged and shares
+// this exact handler — same confirm contract, idempotency, and 200/4xx/5xx classification.
 
 export async function POST(request: Request) {
   if (!env.PAYMONGO_WEBHOOK_SECRET) {

@@ -59,3 +59,57 @@ export function computeDeposit(total: number, percent: number): number {
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+// --- Centralized-aggregator money model ---------------------------------------------------
+//
+// Tuloy collects the guest's deposit + a service fee into ONE platform PayMongo account, then
+// disburses the operator's share to their GCash/bank, keeping ~11% of the full stay (5% operator
+// commission + 6% guest service fee). Both fees are sized on the FULL STAY VALUE (S) but collected
+// through the DEPOSIT (D) transaction — no full-payment-online required.
+//
+//   guest pays:  G = (D + serviceFee + PAYMONGO_FIXED) / (1 - PAYMONGO_MDR)   [fee passed through]
+//   owner gets:  D - operatorCommission  (deposit payout; + collects S-D at check-in directly)
+//   Tuloy keeps: serviceFee + operatorCommission  (≈ 0.11·S)
+//
+// The PayMongo processing fee is grossed up into the guest's "service fee" line so the operator
+// nets their full share. MDR/fixed must be the WORST-CASE enabled method (the guest picks the method
+// at checkout, after the amount is fixed) so we never under-cover. The guest checkout enables card
+// (createPlatformCheckout), so the worst case is PayMongo's standard DOMESTIC CARD rate: 3.5% + ₱15.
+// ⚠️ Confirm against your PayMongo dashboard before go-live (negotiated rates may differ; INTERNATIONAL
+// cards are higher at ~4.5% — restrict the checkout to domestic/e-wallets if that exposure matters).
+export const PAYMONGO_MDR = 0.035; // 3.5% — PayMongo standard domestic card
+export const PAYMONGO_FIXED = 15; // ₱15 — PayMongo standard domestic card fixed fee
+
+export type BookingSplit = {
+  stayValue: number; // S
+  deposit: number; // D — base for the operator's deposit payout
+  serviceFee: number; // guest-borne Tuloy fee, 0.06·S
+  operatorCommission: number; // withheld from the deposit payout, 0.05·S
+  guestTotal: number; // G — what the guest is charged (deposit + serviceFee + grossed-up PayMongo fee)
+  ownerPayout: number; // D − operatorCommission — what Tuloy disburses from the deposit
+  tuloyRevenue: number; // serviceFee + operatorCommission ≈ 0.11·S
+};
+
+// Single source of truth for the split — used by the guest checkout (guestTotal) and the payout
+// ledger (operatorCommission / ownerPayout / serviceFee). `rates` are per-owner (early-adopter
+// discount). Caller should ensure deposit ≥ operatorCommission (true for normal deposits ≥ ~30%);
+// ownerPayout can go negative otherwise — guard at booking config, not here.
+export function computeBookingSplit(
+  stayValue: number,
+  deposit: number,
+  rates: { commissionRate: number; serviceFeeRate: number },
+): BookingSplit {
+  const serviceFee = round2(stayValue * rates.serviceFeeRate);
+  const operatorCommission = round2(stayValue * rates.commissionRate);
+  const base = round2(deposit + serviceFee);
+  const guestTotal = round2((base + PAYMONGO_FIXED) / (1 - PAYMONGO_MDR));
+  return {
+    stayValue,
+    deposit,
+    serviceFee,
+    operatorCommission,
+    guestTotal,
+    ownerPayout: round2(deposit - operatorCommission),
+    tuloyRevenue: round2(serviceFee + operatorCommission),
+  };
+}

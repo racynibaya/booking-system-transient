@@ -197,6 +197,70 @@ describe("confirm_booking_gateway (the webhook confirm seam, P7/P10)", () => {
     expect(b!.status).toBe("held");
   });
 
+  it("centralized: verifies against the stamped grossed-up charge, not the bare deposit", async () => {
+    const room = await makeRoomType(op.tenantId, { quantity: 1, capacity: 4 });
+    const held = await hold(room.roomTypeId, "2027-04-10", "2027-04-13");
+    const bookingId = held.data!.id as string;
+    const deposit = Number(held.data!.deposit_amount);
+    // createPlatformCheckout stamps the grossed-up total (deposit + service fee + absorbed fee).
+    const grossed = Math.round((deposit + 321) * 100) / 100;
+    await admin.from("bookings").update({ gateway_charge_amount: grossed }).eq("id", bookingId);
+
+    // The bare deposit now MISMATCHES — we charged the grossed-up amount.
+    const mismatch = await gatewayConfirm(bookingId, { ref: "pi_c1", amount: deposit });
+    expect(mismatch.error!.message).toContain("AMOUNT_MISMATCH");
+    expect((await payments(bookingId)).data).toHaveLength(0);
+
+    // Paying the grossed-up charge confirms and records exactly that amount.
+    const ok = await gatewayConfirm(bookingId, { ref: "pi_c2", amount: grossed });
+    expect(ok.error).toBeNull();
+    expect(ok.data!.status).toBe("confirmed");
+    const pays = await payments(bookingId);
+    expect(pays.data).toHaveLength(1);
+    expect(Number(pays.data![0].amount)).toBe(grossed);
+  });
+
+  it("centralized: accrues the payout split into payout_ledger on confirm", async () => {
+    // The operator needs a payout account — it carries the per-owner rates (default 5% / 6%).
+    await admin.from("tenant_payout_accounts").insert({
+      tenant_id: op.tenantId,
+      method: "gcash",
+      payout_name: "Juan Dela Cruz",
+      account_number: "09171234567",
+    });
+
+    const room = await makeRoomType(op.tenantId, { quantity: 1, capacity: 4 });
+    const held = await hold(room.roomTypeId, "2027-06-10", "2027-06-13");
+    const bookingId = held.data!.id as string;
+    const S = Number(held.data!.total_amount);
+    const D = Number(held.data!.deposit_amount);
+    const serviceFee = Math.round(S * 0.06 * 100) / 100;
+    const commission = Math.round(S * 0.05 * 100) / 100;
+    const grossed = Math.round(((D + serviceFee) / (1 - 0.035)) * 100) / 100;
+    await admin.from("bookings").update({ gateway_charge_amount: grossed }).eq("id", bookingId);
+
+    const res = await gatewayConfirm(bookingId, { ref: "pi_ledger", amount: grossed });
+    expect(res.error).toBeNull();
+
+    const { data: ledger } = await admin
+      .from("payout_ledger")
+      .select(
+        "status, operator_commission, guest_service_fee, paymongo_fee, owner_payout, stay_value",
+      )
+      .eq("booking_id", bookingId)
+      .single();
+    expect(ledger).not.toBeNull();
+    expect(ledger!.status).toBe("clearing");
+    expect(Number(ledger!.operator_commission)).toBe(commission);
+    expect(Number(ledger!.guest_service_fee)).toBe(serviceFee);
+    expect(Number(ledger!.owner_payout)).toBe(Math.round((D - commission) * 100) / 100);
+    expect(Number(ledger!.paymongo_fee)).toBe(Math.round((grossed - D - serviceFee) * 100) / 100);
+    // Reconcile: owner payout + Tuloy cut + PayMongo fee == what the guest actually paid.
+    const reconciled =
+      Number(ledger!.owner_payout) + commission + serviceFee + Number(ledger!.paymongo_fee);
+    expect(reconciled).toBeCloseTo(grossed, 2);
+  });
+
   it("also confirms from awaiting_confirmation (proof-then-gateway edge)", async () => {
     const room = await makeRoomType(op.tenantId, { quantity: 1, capacity: 4 });
     const held = await hold(room.roomTypeId, "2027-04-10", "2027-04-13");

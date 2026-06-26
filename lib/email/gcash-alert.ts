@@ -49,3 +49,37 @@ export async function notifyAdminsPayoutChanged(opts: {
     console.error("[gcash-alert] failed", err);
   }
 }
+
+// Email admins when an async disbursement comes back failed, so a human can reach the operator and
+// help them fix their payout details. The operator's destination is auto-flagged 'failed' by the
+// reconcile RPC; this is the human ping. Best-effort; never throws.
+export async function notifyAdminsPayoutFailed(opts: {
+  payoutId: string;
+  reason: string | null;
+}): Promise<void> {
+  try {
+    let recipients = (env.ADMIN_ALERT_EMAIL ?? "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (recipients.length === 0) {
+      const admin = createServiceClient();
+      const { data } = await admin.rpc("admin_notification_recipients");
+      recipients = (data ?? [])
+        .map((r) => r.email)
+        .filter((e): e is string => typeof e === "string" && e.length > 0);
+    }
+    if (recipients.length === 0) return;
+
+    const subject = `Payout failed — ${opts.payoutId}`;
+    const html = shell(
+      "A payout failed",
+      "A disbursement to an operator came back failed. Their payout destination has been flagged, so it won't be retried until they re-save valid details — reach out to help them fix it.",
+      row("Payout", escapeHtml(opts.payoutId)) + row("Reason", escapeHtml(opts.reason ?? "—")),
+      `Review in <a href="https://tuloysanjuan.com/admin/operators" style="color:#2c7a6b">Admin → Operators</a>.`,
+    );
+    await Promise.all(recipients.map((to) => sendEmail({ to, subject, html })));
+  } catch (err) {
+    console.error("[payout-failed-alert] failed", err);
+  }
+}

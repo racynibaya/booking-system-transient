@@ -13,6 +13,7 @@ import { RoomsSection, type RoomCard } from "@/components/public/rooms-section";
 import { SelectedRoomProvider } from "@/components/public/selected-room-context";
 import { SocialLinks } from "@/components/public/social-links";
 import { SpaceGallery, type SpacePhoto } from "@/components/public/space-gallery";
+import { env } from "@/env";
 import { formatTime } from "@/lib/dates";
 import { createAnonClient, createClient } from "@/lib/supabase/server";
 
@@ -62,6 +63,13 @@ async function getListing(slug: string): Promise<{
     if (!listing?.property) return null;
     preview = true;
   }
+
+  // Online deposit needs BOTH the platform PayMongo account configured (global env gate) and the
+  // host's active payout destination (per-tenant, already folded into get_public_listing's
+  // accepts_online_payment). Apply the env gate once here so every render site inherits it — and so
+  // the feature stays dark wherever the platform key isn't set.
+  listing.accepts_online_payment =
+    listing.accepts_online_payment && !!env.PAYMONGO_PLATFORM_SECRET_KEY;
 
   const publicUrl = (path: string) =>
     supabase.storage.from("property-images").getPublicUrl(path).data.publicUrl;
