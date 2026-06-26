@@ -12,6 +12,7 @@ import { MobileBookingBar } from "@/components/public/mobile-booking-bar";
 import { RoomsSection, type RoomCard } from "@/components/public/rooms-section";
 import { SelectedRoomProvider } from "@/components/public/selected-room-context";
 import { SocialLinks } from "@/components/public/social-links";
+import { SpaceGallery, type SpacePhoto } from "@/components/public/space-gallery";
 import { formatTime } from "@/lib/dates";
 import { createAnonClient, createClient } from "@/lib/supabase/server";
 
@@ -31,6 +32,7 @@ type Listing = {
     check_in_time: string | null;
     check_out_time: string | null;
     cover_image_path: string | null;
+    photos: { path: string; caption: string }[] | null;
   };
   accepts_online_payment: boolean;
   room_types: PublicRoom[];
@@ -41,6 +43,7 @@ async function getListing(slug: string): Promise<{
   coverUrl: string | null;
   ogImageUrl: string | null;
   rooms: RoomCard[];
+  spacePhotos: SpacePhoto[];
   preview: boolean;
 } | null> {
   const supabase = createAnonClient();
@@ -86,7 +89,12 @@ async function getListing(slug: string): Promise<{
     photoUrls: (r.photos ?? []).map(publicUrl),
   }));
 
-  return { listing, coverUrl, ogImageUrl, rooms, preview };
+  // Property "space" gallery (kitchen, common areas, view): resolve each captioned path to a URL.
+  const spacePhotos: SpacePhoto[] = (listing.property.photos ?? [])
+    .filter((p) => typeof p?.path === "string" && p.path.length > 0)
+    .map((p) => ({ url: publicUrl(p.path), caption: p.caption ?? "" }));
+
+  return { listing, coverUrl, ogImageUrl, rooms, spacePhotos, preview };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -135,7 +143,7 @@ export default async function PublicBookingPage({
   const { slug } = await params;
   const result = await getListing(slug);
   if (!result) notFound();
-  const { listing, coverUrl, rooms, preview } = result;
+  const { listing, coverUrl, rooms, spacePhotos, preview } = result;
   const { property } = listing;
 
   // Attribution tag from the inbound link (?src=tuloy). Carried into the booking so the operator
@@ -308,6 +316,8 @@ export default async function PublicBookingPage({
 
           <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
             <RoomsSection rooms={rooms} />
+
+            <SpaceGallery photos={spacePhotos} />
 
             <AmenitiesSection amenities={property.amenities} />
 

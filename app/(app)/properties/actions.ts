@@ -178,6 +178,36 @@ export async function setCoverImage(id: string, path: string): Promise<ActionRes
   return { ok: true };
 }
 
+// Property "space" gallery: captioned photos of shared areas (kitchen, common room, view) —
+// distinct from the per-room photos. The uploads happen browser-side (RLS scopes the storage
+// path to the operator's tenant); this persists the resulting array on the property.
+const MAX_SPACE_PHOTOS = 12;
+
+export async function setPropertyPhotos(
+  id: string,
+  photos: { path: string; caption: string }[],
+): Promise<ActionResult> {
+  const t = await authedTenant();
+  if (!t.ok) return t;
+
+  // Defensive shape clean-up: drop entries without a real path, trim captions to 80 chars, and
+  // cap the list. Operator-controlled input behind RLS, but we never store garbage.
+  const clean = (Array.isArray(photos) ? photos : [])
+    .filter((p) => typeof p?.path === "string" && p.path.length > 0)
+    .slice(0, MAX_SPACE_PHOTOS)
+    .map((p) => ({
+      path: p.path,
+      caption: (typeof p.caption === "string" ? p.caption : "").trim().slice(0, 80),
+    }));
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("properties").update({ photos: clean }).eq("id", id); // RLS scopes to the operator's own row
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/properties/${id}`);
+  return { ok: true };
+}
+
 export async function deleteProperty(id: string): Promise<ActionResult> {
   const t = await authedTenant();
   if (!t.ok) return t;
