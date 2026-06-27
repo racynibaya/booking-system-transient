@@ -20,7 +20,6 @@ export type ConfirmationBooking = {
 };
 
 // Brand tokens — Sea Glass, matching app/globals.css and the auth emails (NOT Airbnb coral).
-const PRIMARY = "#2c7a6b"; // sea-green — links / accents
 const INK = "#1d2a2c"; // deep slate-teal — headings, values
 const MUTED = "#5e6c6e"; // teal-steel — body, labels
 const MUTED_SOFT = "#8b9794"; // footer / disabled
@@ -187,35 +186,6 @@ export function guestCancelledEmail(
       `The stay below has been cancelled and those dates released.${note} If this is unexpected, just reply to this email to reach your host.`,
       rows,
       "Still want to come? You're welcome to book again anytime.",
-    ),
-  };
-}
-
-// Operator-facing: subscription renewal nudge (Phase A). Sent by the billing cron when a plan is
-// about to lapse or has gone past due — the automated reminder that replaces "us remembering".
-export function renewalReminderEmail(input: {
-  planLabel: string;
-  price: string;
-  renewsOn: string | null;
-  pastDue: boolean;
-  settingsUrl: string;
-}): { subject: string; html: string } {
-  const rows =
-    row("Plan", input.planLabel) +
-    row("Price", `${input.price} / month`) +
-    row(input.pastDue ? "Lapsed" : "Renews", input.renewsOn ?? "—");
-
-  return {
-    subject: input.pastDue
-      ? `Your ${input.planLabel} plan is past due`
-      : `Your ${input.planLabel} plan renews soon`,
-    html: shell(
-      input.pastDue ? "Time to renew" : "Your plan renews soon",
-      input.pastDue
-        ? "Your plan has lapsed. Renew now to keep your booking page and tools running without interruption."
-        : "Just a heads-up that your plan renews soon. Renew anytime — it only takes a tap.",
-      rows,
-      `Renew from your <a href="${input.settingsUrl}" style="color:${PRIMARY};">plan settings</a>. Questions? Just reply to this email.`,
     ),
   };
 }

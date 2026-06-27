@@ -53,8 +53,8 @@ export default async function MarketplaceHome() {
                 Stay in San Juan, La Union
               </h1>
               <p className="mt-4 max-w-xl text-body-md text-body">
-                Browse verified local stays with live availability. Reserve straight with the host —
-                no booking fees, no middlemen.
+                Every San Juan stay in one place — verified hosts, live availability, and a secure
+                booking that beats chasing a dozen Messenger threads.
               </p>
             </Reveal>
           </div>

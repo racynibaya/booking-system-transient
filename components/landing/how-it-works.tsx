@@ -1,4 +1,4 @@
-import { CheckCheck, LayoutDashboard, Share2, type LucideIcon } from "lucide-react";
+import { CheckCheck, LayoutDashboard, Store, type LucideIcon } from "lucide-react";
 
 import { Reveal } from "./reveal";
 
@@ -6,20 +6,20 @@ const STEPS: { n: string; icon: LucideIcon; title: string; body: string }[] = [
   {
     n: "1",
     icon: LayoutDashboard,
-    title: "Set up your rooms & calendar",
-    body: "Add your rooms, photos, and prices once. Block the dates you're not available.",
+    title: "List your rooms",
+    body: "Add your rooms, photos, and prices, plus the GCash or bank number where you'll get paid.",
   },
   {
     n: "2",
-    icon: Share2,
-    title: "Share your Tuloy link",
-    body: "Drop your booking link in your Facebook page, bio, and every reply.",
+    icon: Store,
+    title: "Get discovered",
+    body: "Your stay goes live on the San Juan marketplace — and you get a shareable page for your own Facebook traffic.",
   },
   {
     n: "3",
     icon: CheckCheck,
-    title: "Guests book & pay the deposit",
-    body: "They pick dates, pay a GCash deposit, and you just tap confirm.",
+    title: "Guests book & you get paid",
+    body: "Guests pick dates and pay on Tuloy. You confirm, host them, and keep your share.",
   },
 ];
 
@@ -30,8 +30,8 @@ export function HowItWorks() {
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-display-lg text-balance text-ink">Live in an afternoon</h2>
           <p className="mt-4 text-body-md text-body">
-            No website to build, no app for your guests to download. Three steps and your Facebook
-            page takes real bookings.
+            No website to build, no app for guests to download. Three steps and you&rsquo;re taking
+            bookings from across San Juan.
           </p>
         </Reveal>
 

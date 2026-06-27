@@ -102,13 +102,13 @@ export function Hero() {
         </span>
 
         <h1 className="font-display text-hero text-balance text-ink">
-          Take bookings even while you sleep
+          Fill your rooms from San Juan&rsquo;s own marketplace
         </h1>
 
         <p className="mt-6 max-w-xl text-body-md text-body">
-          Tuloy turns your Facebook page into a live, bookable calendar — guests reserve and pay a
-          deposit on their own, with no double-bookings and no answering &ldquo;available ba?&rdquo;
-          all day.
+          List with Tuloy and get found by tourists searching one trusted place to book San Juan —
+          real-time availability, no double-bookings, and far less than the big OTAs charge.
+          We&rsquo;re onboarding pilot operators now.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">

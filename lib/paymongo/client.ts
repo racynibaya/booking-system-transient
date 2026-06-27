@@ -8,7 +8,7 @@ import "server-only";
 // SPIKE SCOPE: the secret key is passed in by the caller (env sandbox key for now). Phase 2b
 // passes the operator's own decrypted key here unchanged — this module never reads env itself.
 
-export { toCentavos, verifyWebhookSignature, parsePaymongoSignature } from "./signature";
+export { toCentavos } from "./signature";
 
 const API_BASE = "https://api.paymongo.com/v1";
 
@@ -80,63 +80,6 @@ export async function createCheckoutSession(
     data: { id: string; attributes: { checkout_url: string } };
   };
   return { id: json.data.id, checkoutUrl: json.data.attributes.checkout_url };
-}
-
-// --- Webhook management (Phase 2b / M2) --------------------------------------------------
-//
-// The operator connect flow registers a webhook ON THE OPERATOR'S OWN PayMongo account so paid
-// checkouts route back to us. As everywhere in this module, the caller passes the operator's
-// secretKey; we never read env. The webhook's signing secret (whsk_) is returned by PayMongo ONLY
-// at creation time — that's the whole reason we auto-register instead of asking operators to copy it.
-
-const WEBHOOK_EVENTS = ["checkout_session.payment.paid"] as const;
-
-export type PaymongoWebhook = { id: string; url: string; status: string };
-
-// GET /v1/webhooks — lists the account's webhooks. Doubles as the key-validation call: an invalid
-// secret key returns 401, which we surface to the operator as "key not accepted".
-export async function listWebhooks(secretKey: string): Promise<PaymongoWebhook[]> {
-  const res = await fetch(`${API_BASE}/webhooks`, {
-    headers: { Authorization: basicAuth(secretKey) },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`PayMongo webhooks list ${res.status}: ${body}`);
-  }
-  const json = (await res.json()) as {
-    data: { id: string; attributes: { url: string; status: string } }[];
-  };
-  return (json.data ?? []).map((w) => ({
-    id: w.id,
-    url: w.attributes.url,
-    status: w.attributes.status,
-  }));
-}
-
-export type RegisterWebhookResult = { id: string; secretKey: string };
-
-// POST /v1/webhooks — registers our token-routed endpoint and returns the webhook id + its signing
-// secret (whsk_). The returned secretKey IS the whsk_ used to verify inbound events (M3).
-export async function registerWebhook(
-  secretKey: string,
-  url: string,
-): Promise<RegisterWebhookResult> {
-  const res = await fetch(`${API_BASE}/webhooks`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: basicAuth(secretKey),
-    },
-    body: JSON.stringify({ data: { attributes: { url, events: WEBHOOK_EVENTS } } }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`PayMongo webhook create ${res.status}: ${body}`);
-  }
-  const json = (await res.json()) as {
-    data: { id: string; attributes: { secret_key: string } };
-  };
-  return { id: json.data.id, secretKey: json.data.attributes.secret_key };
 }
 
 // --- Disbursements (centralized aggregator — money OUT) ----------------------------------
@@ -255,15 +198,82 @@ export async function getTransfer(secretKey: string, transferId: string): Promis
   };
 }
 
-// DELETE /v1/webhooks/{id} — remove a webhook (reconnect cleanup + disconnect). Best-effort: the
-// caller decides whether a failure here blocks the operation.
-export async function deleteWebhook(secretKey: string, webhookId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/webhooks/${webhookId}`, {
-    method: "DELETE",
+// --- Refunds (centralized aggregator — money OUT, the refund path) -----------------------
+//
+// A refund is addressed to a PAYMENT (pay_…), not the payment_intent (pi_…) we persist on the deposit
+// payment row. The intent carries its captured payments in attributes.payments[], so we resolve the
+// pay_ from the stored pi_ with one GET, then POST /v1/refunds. Amount is in CENTAVOS, ≤ the payment
+// (partial supported). reason is a fixed PayMongo enum. Uses the platform secret key (single wallet).
+
+export const REFUND_REASONS = [
+  "duplicate",
+  "fraudulent",
+  "requested_by_customer",
+  "others",
+] as const;
+export type RefundReason = (typeof REFUND_REASONS)[number];
+
+// GET /v1/payment_intents/{id} → the id of the captured payment (pay_…) to refund. The stored
+// provider_ref is the pi_; a checkout-session fallback (cs_…) isn't refundable via this path.
+export async function resolvePaymentId(
+  secretKey: string,
+  paymentIntentId: string,
+): Promise<string> {
+  if (!paymentIntentId.startsWith("pi_")) {
+    throw new Error(`unrefundable reference ${paymentIntentId} (expected a payment_intent pi_)`);
+  }
+  const res = await fetch(`${API_BASE}/payment_intents/${paymentIntentId}`, {
     headers: { Authorization: basicAuth(secretKey) },
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`PayMongo webhook delete ${res.status}: ${body}`);
+    throw new Error(`PayMongo payment_intent fetch ${res.status}: ${body}`);
   }
+  const json = (await res.json()) as {
+    data: { attributes: { payments?: { id: string }[] } };
+  };
+  const paymentId = json.data.attributes.payments?.[0]?.id;
+  if (!paymentId) throw new Error(`no captured payment on ${paymentIntentId}`);
+  return paymentId;
+}
+
+export type CreateRefundInput = {
+  secretKey: string;
+  paymentId: string; // pay_… from resolvePaymentId
+  amountCentavos: number; // ≤ the payment amount (partial allowed)
+  reason: RefundReason;
+  notes?: string; // ≤ 255 chars
+  metadata?: Record<string, string>;
+};
+
+export type RefundResult = { id: string; status: string };
+
+// POST /v1/refunds — submit a refund. Throws on non-2xx (the caller aborts the reservation). A refund
+// may resolve async (status 'pending'); we record it on a 2xx and rely on the same human-in-the-loop
+// follow-up as disbursement (a failure-callback webhook is a deferred follow-up, like Slice 5b).
+export async function createRefund(input: CreateRefundInput): Promise<RefundResult> {
+  const res = await fetch(`${API_BASE}/refunds`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: basicAuth(input.secretKey),
+    },
+    body: JSON.stringify({
+      data: {
+        attributes: {
+          amount: input.amountCentavos,
+          payment_id: input.paymentId,
+          reason: input.reason,
+          notes: input.notes,
+          metadata: input.metadata,
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`PayMongo refunds ${res.status}: ${body}`);
+  }
+  const json = (await res.json()) as { data: { id: string; attributes: { status: string } } };
+  return { id: json.data.id, status: json.data.attributes.status };
 }

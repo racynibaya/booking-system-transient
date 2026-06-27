@@ -6,7 +6,7 @@ import { cache } from "react";
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
 import { addDays, todayStr } from "@/lib/dates";
-import { bookedRoomNights, daysInRange, monthRange, occupancyPct, weekRange } from "@/lib/reports";
+import { monthRange, weekRange } from "@/lib/reports";
 
 import { createClient } from "./server";
 
@@ -42,65 +42,12 @@ export const getCurrentTenant = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tenants")
-    .select(
-      "id, name, plan, subscription_status, paid_until, verification_status, is_admin, verification_note, gcash_changed_at",
-    )
+    .select("id, name, verification_status, is_admin, verification_note, gcash_changed_at")
     .eq("user_id", user.id)
     .single();
 
   if (error) return null;
   return data;
-});
-
-// The current operator's total room count = sum of room_types.quantity (RLS-scoped). This is the
-// tier-cap proxy (B7/D7): a hotel is one property with many rooms, so rooms — not properties —
-// track plan size. 0 if none yet.
-export const getRoomCount = cache(async (): Promise<number> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("room_types").select("quantity");
-  if (error || !data) return 0;
-  return data.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
-});
-
-// Basic operator report for the current month (P3.3). Revenue is summed from the payments record
-// (the money source of truth), occupancy from confirmed/completed stays clipped to the month. All
-// reads are RLS-scoped to the operator's own rows.
-export type OperatorReport = {
-  monthRevenue: number;
-  confirmedThisMonth: number;
-  occupancyPct: number;
-};
-export const getOperatorReport = cache(async (): Promise<OperatorReport> => {
-  const { start, end } = monthRange(todayStr());
-  const supabase = await createClient();
-
-  const [paymentsRes, staysRes, rooms] = await Promise.all([
-    // Money collected this month: confirmed payments, by their record timestamp.
-    supabase
-      .from("payments")
-      .select("amount")
-      .eq("status", "confirmed")
-      .gte("created_at", start)
-      .lt("created_at", end),
-    // Stays that sold inventory and overlap the month (half-open overlap: in < end, out > start).
-    supabase
-      .from("bookings")
-      .select("check_in, check_out")
-      .in("status", ["confirmed", "completed"])
-      .lt("check_in", end)
-      .gt("check_out", start),
-    getRoomCount(),
-  ]);
-
-  const monthRevenue = (paymentsRes.data ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const stays = staysRes.data ?? [];
-  const occupancy = occupancyPct(
-    bookedRoomNights(stays, start, end),
-    rooms,
-    daysInRange(start, end),
-  );
-
-  return { monthRevenue, confirmedThisMonth: stays.length, occupancyPct: occupancy };
 });
 
 // ---------------------------------------------------------------------------
@@ -309,41 +256,6 @@ export const getPayoutAccount = cache(async () => {
   return data;
 });
 
-// The current operator's gateway (PayMongo) connection status — NON-SECRET only. Calls the
-// self-scoped gateway_connection_status() RPC with the operator's own session, so it returns just
-// their own "connected?" metadata and never an sk_/whsk_. (The decrypting reader lives in
-// gateway-dal.ts and is service-role only.)
-export type GatewayConnectionStatus = {
-  connected: boolean;
-  provider: string | null;
-  status: string | null;
-  updatedAt: string | null;
-};
-
-export const getGatewayConnectionStatus = cache(async (): Promise<GatewayConnectionStatus> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("gateway_connection_status");
-  const row = Array.isArray(data) ? data[0] : data;
-  if (error || !row) return { connected: false, provider: null, status: null, updatedAt: null };
-  return {
-    connected: row.connected,
-    provider: row.provider,
-    status: row.status,
-    updatedAt: row.updated_at,
-  };
-});
-
-// Whether the current operator can take new bookings, from the single entitlement authority
-// (tenant_subscription_entitlement via current_tenant_can_accept_bookings). false = their plan lapsed
-// and enforcement is on, so their public page + manual entry are paused until they renew. Defaults to
-// "can book" on any read error so a transient failure never shows a false "paused" notice.
-export const getBookingsPaused = cache(async (): Promise<boolean> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("current_tenant_can_accept_bookings");
-  if (error || data === null || data === undefined) return false;
-  return data === false;
-});
-
 // The current operator's properties (RLS-scoped — no explicit tenant filter
 // needed) with a room_type count for the list view.
 export const getProperties = cache(async () => {
@@ -368,35 +280,6 @@ export const getProperty = cache(async (id: string) => {
 
   if (error) return null;
   return data;
-});
-
-// Bookings awaiting the operator's confirmation (F1.4/F1.5), RLS-scoped — newest
-// first. Each carries a short-lived signed URL for the guest's payment proof so the
-// operator can eyeball it before confirming (operator can read own-tenant proofs).
-export const getPendingConfirmations = cache(async () => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(
-      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, deposit_amount, total_amount, proof_url, properties(name), room_types(name)",
-    )
-    .eq("status", "awaiting_confirmation")
-    .order("created_at", { ascending: false });
-
-  if (error || !data) return [];
-
-  return Promise.all(
-    data.map(async (b) => {
-      let proofUrl: string | null = null;
-      if (b.proof_url) {
-        const { data: signed } = await supabase.storage
-          .from("payment-proofs")
-          .createSignedUrl(b.proof_url, 60 * 10); // 10 min
-        proofUrl = signed?.signedUrl ?? null;
-      }
-      return { ...b, proofUrl };
-    }),
-  );
 });
 
 // Bookings for the current operator (RLS-scoped — no explicit tenant filter needed),

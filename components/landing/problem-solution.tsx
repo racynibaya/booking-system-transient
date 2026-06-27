@@ -1,22 +1,22 @@
-import { CalendarCheck, Moon, MessagesSquare, type LucideIcon } from "lucide-react";
+import { CalendarCheck, PhilippinePeso, Search, type LucideIcon } from "lucide-react";
 
 import { Reveal } from "./reveal";
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: Moon,
-    title: "Bookings while you sleep",
-    body: "Guests reserve 24/7 from one link — no missed inquiries at 2am, no bookings lost to a slow reply.",
+    icon: Search,
+    title: "Tourists actually find you",
+    body: "Your rooms show up when travelers search one trusted place to book San Juan — not buried three Facebook groups deep.",
+  },
+  {
+    icon: PhilippinePeso,
+    title: "Cheaper than the big OTAs",
+    body: "List for free and pay only when you get a booking — a fraction of the 15–25% Agoda and Booking.com take.",
   },
   {
     icon: CalendarCheck,
     title: "Never double-book again",
     body: "One live calendar across every room. The moment a date is taken, it's blocked everywhere — automatically.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "Stop answering “available ba?”",
-    body: "Your page shows real-time availability and prices, so you stop replying to the same question all day.",
   },
 ];
 
@@ -26,11 +26,12 @@ export function ProblemSolution() {
       <div className="mx-auto max-w-5xl">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-display-lg text-balance text-ink">
-            Everything you lose to Facebook DMs — fixed
+            A real marketplace, not another Facebook group
           </h2>
           <p className="mt-4 text-body-md text-body">
-            Today your bookings live in Messenger threads, a notebook, and someone&rsquo;s memory.
-            Tuloy puts them in one place that never sleeps and never double-books.
+            Today San Juan&rsquo;s bookings are scattered across Messenger threads and GCash
+            screenshots. Tuloy puts your rooms in one searchable place tourists trust — and keeps
+            your calendar honest.
           </p>
         </Reveal>
 

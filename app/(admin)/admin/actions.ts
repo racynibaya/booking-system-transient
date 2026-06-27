@@ -1,7 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
+import { env } from "@/env";
+import { notifyAdminsClawback } from "@/lib/email/gcash-alert";
+import {
+  createRefund,
+  REFUND_REASONS,
+  resolvePaymentId,
+  toCentavos,
+  type RefundReason,
+} from "@/lib/paymongo/client";
 import { getCurrentTenant } from "@/lib/supabase/dal";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
@@ -177,6 +187,111 @@ export async function requestChanges(tenantId: string, note: string): Promise<Ad
     p_note: trimmed,
   });
   if (error) return { ok: false, error: "Couldn't send — please try again." };
+
+  revalidatePath("/admin/operators");
+  return { ok: true };
+}
+
+// Admin refunds a guest's centralized deposit from the platform wallet (Slice 6). The money-correctness
+// shape mirrors the disbursement cron: the PayMongo call sits BETWEEN two atomic, status-guarded ledger
+// steps (claim_refund → finish/abort_refund), so a booking is refunded at most once and a paid-out
+// operator share is always recorded as a clawback. MONEY-ONLY — this does not cancel the booking or
+// free inventory; the operator cancels separately. Admin-only (cross-tenant, platform-wallet debit).
+//
+// `amountPesos` omitted = full refund of the captured guest charge; a partial must be ≤ that charge.
+const refundInput = z.object({
+  bookingId: z.uuid(),
+  reason: z.enum(REFUND_REASONS),
+  amountPesos: z.number().positive().optional(),
+});
+
+export async function refundBooking(input: {
+  bookingId: string;
+  reason: RefundReason;
+  amountPesos?: number;
+}): Promise<AdminResult> {
+  const me = await getCurrentTenant();
+  if (!me?.is_admin) return { ok: false, error: "Not authorized." };
+
+  const parsed = refundInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Check the refund details." };
+  const { bookingId, reason, amountPesos } = parsed.data;
+
+  const sk = env.PAYMONGO_PLATFORM_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Refunds aren't available on this deployment." };
+
+  const admin = createServiceClient();
+
+  // Reserve the accrual into 'refunding'. An empty result = no centralized accrual, or it's already
+  // refunding/refunded/clawed_back/failed — nothing to do, and we haven't touched money.
+  const { data: claims, error: claimErr } = await admin.rpc("claim_refund", {
+    p_booking_id: bookingId,
+  });
+  if (claimErr) return { ok: false, error: "Couldn't start the refund. Please try again." };
+  const claim = claims?.[0];
+  if (!claim) return { ok: false, error: "This booking has no refundable payment." };
+
+  const priorStatus = claim.prior_status;
+  const captured = claim.paid_amount == null ? null : Number(claim.paid_amount);
+
+  // Restore the reservation and bail — used whenever we can't complete the PayMongo refund.
+  const abort = async (msg: string): Promise<AdminResult> => {
+    await admin.rpc("abort_refund", { p_booking_id: bookingId, p_restore_status: priorStatus });
+    return { ok: false, error: msg };
+  };
+
+  if (!claim.provider_ref) return abort("No online payment reference on this booking to refund.");
+  if (captured == null || captured <= 0) return abort("No captured amount to refund.");
+
+  // Default to a full refund of the captured charge; a partial may not exceed it.
+  const refundPesos = amountPesos ?? captured;
+  if (refundPesos > captured) return abort("Refund can't exceed what the guest paid.");
+
+  let refundRef: string;
+  try {
+    const paymentId = await resolvePaymentId(sk, claim.provider_ref);
+    const refund = await createRefund({
+      secretKey: sk,
+      paymentId,
+      amountCentavos: toCentavos(refundPesos),
+      reason,
+      notes: `Tuloy refund (booking ${bookingId})`,
+      metadata: { booking_id: bookingId, tenant_id: claim.tenant_id },
+    });
+    refundRef = refund.id;
+  } catch (e) {
+    return abort(e instanceof Error ? e.message.slice(0, 300) : "Refund failed at PayMongo.");
+  }
+
+  // 'payable' is the in-flight transient between claim_due_payouts and mark_payout_paid (F3) — treat
+  // it like 'paid': the disbursement may already be out, so record a clawback rather than eat it.
+  const clawback = priorStatus === "paid" || priorStatus === "payable";
+  await admin.rpc("finish_refund", {
+    p_booking_id: bookingId,
+    p_refund_ref: refundRef,
+    p_amount: refundPesos,
+    p_clawback: clawback,
+  });
+
+  if (clawback) {
+    // Recover the operator's already-paid share by hand (v1) — ping admins with the figure.
+    const { data: row } = await admin
+      .from("payout_ledger")
+      .select("owner_payout")
+      .eq("booking_id", bookingId)
+      .single();
+    const { data: prop } = await admin
+      .from("properties")
+      .select("name")
+      .eq("tenant_id", claim.tenant_id)
+      .limit(1)
+      .maybeSingle();
+    await notifyAdminsClawback({
+      bookingId,
+      operatorName: prop?.name ?? null,
+      owedAmount: row?.owner_payout == null ? 0 : Number(row.owner_payout),
+    });
+  }
 
   revalidatePath("/admin/operators");
   return { ok: true };

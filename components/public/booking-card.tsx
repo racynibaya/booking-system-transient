@@ -242,8 +242,10 @@ export function BookingCard({
 
         {countdown ? (
           <p className="mt-3 text-body-sm text-body">
-            Slot held for <span className="font-semibold text-ink">{countdown}</span> — send the
-            deposit now, then upload your screenshot.
+            Slot held for <span className="font-semibold text-ink">{countdown}</span>
+            {acceptsOnlinePayment
+              ? " — pay online now to confirm instantly."
+              : " — send the deposit now, then upload your screenshot."}
           </p>
         ) : (
           <div className="mt-3 flex items-start gap-2 rounded-sm border border-error/20 bg-error/10 p-3 text-body-sm text-error">
@@ -265,7 +267,12 @@ export function BookingCard({
           </p>
         )}
 
-        {acceptsOnlinePayment && (
+        {acceptsOnlinePayment ? (
+          // Online-only (host has an active payout account): the centralized platform-wallet path is
+          // the ONLY deposit option, so Tuloy's service fee + commission can't be bypassed (Slice 7).
+          // No GCash+proof fallback here — that legacy path stays only for hosts without a payout
+          // account (the else branch). Refund framing differs: online deposits sit in the Tuloy
+          // wallet, not the host's GCash, so the "handled directly by the host" copy doesn't apply.
           <div className="mt-4 flex flex-col gap-2">
             <button type="button" disabled={payingOnline} onClick={payOnline} className={ctaClass}>
               {payingOnline ? "Opening secure checkout…" : "Pay online"}
@@ -274,104 +281,108 @@ export function BookingCard({
               Instant confirmation — you&apos;ll see your deposit and a small convenience fee on a
               secure PayMongo page, and your booking is confirmed the moment it goes through.
             </p>
-            <div className="mt-2 flex items-center gap-3 text-caption-sm text-muted-soft">
-              <span className="h-px flex-1 bg-hairline" />
-              or send it manually
-              <span className="h-px flex-1 bg-hairline" />
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">
-          <p className="text-display-sm text-ink">
-            ₱{deposit ?? "—"}
-            <span className="text-body-sm font-normal text-muted"> deposit</span>
-          </p>
-          {methods.length > 0 ? (
-            (() => {
-              const m = methods[payMethodIdx] ?? methods[0];
-              return (
-                <div className="mt-3 flex flex-col gap-3">
-                  {/* One method at a time. With several, a single selector picks which to pay with —
-                      no scrolling past a wall of QR codes. With one, the picker is hidden. */}
-                  {methods.length > 1 && (
-                    <label className="flex flex-col gap-1">
-                      <span className="text-caption font-medium text-muted">Pay with</span>
-                      <div className="relative">
-                        <select
-                          value={payMethodIdx}
-                          onChange={(e) => setPayMethodIdx(Number(e.target.value))}
-                          className={`${fieldClass} appearance-none pr-10 font-medium`}
-                        >
-                          {methods.map((opt, i) => (
-                            <option key={i} value={i} className="text-ink">
-                              {opt.label}
-                              {opt.accountNumber ? ` · ${opt.accountNumber}` : ""}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
-                      </div>
-                    </label>
-                  )}
-
-                  <div className="flex flex-col gap-0.5 text-body-sm text-body">
-                    {methods.length === 1 && (
-                      <span className="text-caption font-medium text-muted">{m.label}</span>
-                    )}
-                    {m.accountNumber && (
-                      <span>
-                        {m.bankName ? `${m.bankName}: ` : ""}
-                        <span className="font-semibold text-ink">{m.accountNumber}</span>
-                      </span>
-                    )}
-                    {m.accountName && <span className="text-muted">{m.accountName}</span>}
-                    {m.qrUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
-                      <img
-                        src={m.qrUrl}
-                        alt={`${m.label} QR code`}
-                        className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            <p className="mt-3 text-body-sm text-muted">
-              The host hasn&apos;t added payment details yet — please contact them to pay.
+            {error && <p className="mt-1 text-body-sm text-error">{error}</p>}
+            <p className="mt-2 text-caption text-muted">
+              Your deposit secures the booking. Cancellations &amp; refunds follow the host&apos;s
+              policy.
             </p>
-          )}
-        </div>
+          </div>
+        ) : (
+          // Manual GCash + proof — the legacy path, unchanged. Used only when the host has no active
+          // payout account, so there's nowhere to collect the deposit online yet.
+          <>
+            <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">
+              <p className="text-display-sm text-ink">
+                ₱{deposit ?? "—"}
+                <span className="text-body-sm font-normal text-muted"> deposit</span>
+              </p>
+              {methods.length > 0 ? (
+                (() => {
+                  const m = methods[payMethodIdx] ?? methods[0];
+                  return (
+                    <div className="mt-3 flex flex-col gap-3">
+                      {/* One method at a time. With several, a single selector picks which to pay
+                          with — no scrolling past a wall of QR codes. With one, the picker is hidden. */}
+                      {methods.length > 1 && (
+                        <label className="flex flex-col gap-1">
+                          <span className="text-caption font-medium text-muted">Pay with</span>
+                          <div className="relative">
+                            <select
+                              value={payMethodIdx}
+                              onChange={(e) => setPayMethodIdx(Number(e.target.value))}
+                              className={`${fieldClass} appearance-none pr-10 font-medium`}
+                            >
+                              {methods.map((opt, i) => (
+                                <option key={i} value={i} className="text-ink">
+                                  {opt.label}
+                                  {opt.accountNumber ? ` · ${opt.accountNumber}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
+                          </div>
+                        </label>
+                      )}
 
-        {/* Refund frame (B): honest, no Tuloy guarantee. We record money, never hold it — the
-            deposit goes straight to the host, so refunds are the host's to handle, not ours. */}
-        <p className="mt-3 text-caption text-muted">
-          Your deposit secures the booking. Cancellations &amp; refunds are handled directly by the
-          host per their policy.
-        </p>
+                      <div className="flex flex-col gap-0.5 text-body-sm text-body">
+                        {methods.length === 1 && (
+                          <span className="text-caption font-medium text-muted">{m.label}</span>
+                        )}
+                        {m.accountNumber && (
+                          <span>
+                            {m.bankName ? `${m.bankName}: ` : ""}
+                            <span className="font-semibold text-ink">{m.accountNumber}</span>
+                          </span>
+                        )}
+                        {m.accountName && <span className="text-muted">{m.accountName}</span>}
+                        {m.qrUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
+                          <img
+                            src={m.qrUrl}
+                            alt={`${m.label} QR code`}
+                            className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="mt-3 text-body-sm text-muted">
+                  The host hasn&apos;t added payment details yet — please contact them to pay.
+                </p>
+              )}
+            </div>
 
-        <label className="mt-4 flex flex-col gap-1">
-          <span className={labelClass}>Upload your payment receipt</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-            className="text-body-sm text-muted file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-3 file:py-2 file:text-button-sm file:text-canvas"
-          />
-        </label>
+            {/* Refund frame (B): honest, no Tuloy guarantee. The deposit goes straight to the host's
+                own GCash, so refunds are the host's to handle, not ours. */}
+            <p className="mt-3 text-caption text-muted">
+              Your deposit secures the booking. Cancellations &amp; refunds are handled directly by
+              the host per their policy.
+            </p>
 
-        {error && <p className="mt-3 text-body-sm text-error">{error}</p>}
+            <label className="mt-4 flex flex-col gap-1">
+              <span className={labelClass}>Upload your payment receipt</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                className="text-body-sm text-muted file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-3 file:py-2 file:text-button-sm file:text-canvas"
+              />
+            </label>
 
-        <button
-          type="button"
-          disabled={pending || !proofFile}
-          onClick={sendProof}
-          className={`mt-4 ${ctaClass}`}
-        >
-          {pending ? "Submitting…" : "I've paid — submit proof"}
-        </button>
+            {error && <p className="mt-3 text-body-sm text-error">{error}</p>}
+
+            <button
+              type="button"
+              disabled={pending || !proofFile}
+              onClick={sendProof}
+              className={`mt-4 ${ctaClass}`}
+            >
+              {pending ? "Submitting…" : "I've paid — submit proof"}
+            </button>
+          </>
+        )}
       </div>
     );
   }

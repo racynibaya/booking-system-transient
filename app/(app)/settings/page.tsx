@@ -1,34 +1,23 @@
-import { Banknote, Sparkles, Wallet, Zap } from "lucide-react";
+import { Banknote, Wallet } from "lucide-react";
 
-import { env } from "@/env";
-import { GatewaySection } from "@/components/settings/gateway-section";
 import { PaymentMethodsSection } from "@/components/settings/payment-methods-section";
 import { PayoutAccountSection } from "@/components/settings/payout-account-section";
-import { PlanSection } from "@/components/settings/plan-section";
 import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
-import { type PlanId } from "@/lib/plans";
 import {
-  getBookingsPaused,
   getCurrentTenant,
-  getGatewayConnectionStatus,
   getPaymentMethods,
   getPayoutAccount,
-  getRoomCount,
   requireUser,
 } from "@/lib/supabase/dal";
 
 export default async function SettingsPage() {
   await requireUser();
-  const [methods, tenant, roomCount, bookingsPaused, payoutAccount] = await Promise.all([
+  const [methods, tenant, payoutAccount] = await Promise.all([
     getPaymentMethods(),
     getCurrentTenant(),
-    getRoomCount(),
-    getBookingsPaused(),
     getPayoutAccount(),
   ]);
-  // Online payments are a Business-plan capability — only fetch/show the section for that tier.
-  const gatewayStatus = tenant?.plan === "business" ? await getGatewayConnectionStatus() : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -36,27 +25,6 @@ export default async function SettingsPage() {
         title="Settings"
         description="Your payout methods — guests see these when paying their deposit."
       />
-
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2.5">
-            <IconChip icon={Sparkles} tone="accent" />
-            <h2 className="text-display-sm text-ink">Your plan</h2>
-          </div>
-          <p className="text-body-sm text-muted">
-            Your subscription tier and room usage. No per-booking commission, ever.
-          </p>
-        </div>
-        <PlanSection
-          plan={(tenant?.plan as PlanId) ?? "free"}
-          roomCount={roomCount}
-          paidUntil={tenant?.paid_until ?? null}
-          subscriptionStatus={tenant?.subscription_status ?? "trialing"}
-          bookingsPaused={bookingsPaused}
-          checkoutEnabled={!!env.PAYMONGO_PLATFORM_SECRET_KEY}
-          messengerUrl={env.NEXT_PUBLIC_UPGRADE_MESSENGER_URL}
-        />
-      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
@@ -85,22 +53,6 @@ export default async function SettingsPage() {
         </div>
         <PayoutAccountSection account={payoutAccount} />
       </section>
-
-      {gatewayStatus && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2.5">
-              <IconChip icon={Zap} tone="primary" />
-              <h2 className="text-display-sm text-ink">Online payments</h2>
-            </div>
-            <p className="text-body-sm text-muted">
-              Connect your PayMongo account to let guests pay their deposit by card or e-wallet and
-              confirm the booking instantly.
-            </p>
-          </div>
-          <GatewaySection status={gatewayStatus} />
-        </section>
-      )}
     </div>
   );
 }

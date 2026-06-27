@@ -5,9 +5,6 @@ import { cache } from "react";
 
 import { getCurrentTenant } from "./dal";
 import { createClient } from "./server";
-import type { Database } from "./database.types";
-
-type BookingStatus = Database["public"]["Enums"]["booking_status"];
 
 // Admin Data Access Layer. Cross-tenant, platform-scoped reads live here — separate from the
 // operator-scoped lib/supabase/dal.ts. The privileged surface stays in one module so the trust
@@ -20,34 +17,6 @@ export const requireAdmin = cache(async () => {
   const tenant = await getCurrentTenant();
   if (!tenant?.is_admin) notFound();
   return tenant;
-});
-
-export type AdminPlatformStats = {
-  operators: {
-    total: number;
-    pending: number;
-    approved: number;
-    suspended: number;
-    changes_requested: number;
-    gcash_flagged: number;
-    trialing: number;
-    active: number;
-  };
-  bookings: {
-    confirmed: number;
-    awaiting: number;
-    gmv: number;
-    deposits: number;
-    upcoming: number;
-  };
-};
-
-// Platform-wide counts for the admin overview, via the self-guarded admin_platform_stats RPC.
-export const getPlatformStats = cache(async (): Promise<AdminPlatformStats | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_platform_stats");
-  if (error || !data) return null;
-  return data as unknown as AdminPlatformStats;
 });
 
 export type AdminPaymentMethod = {
@@ -84,8 +53,6 @@ export type DashboardOverview = {
     suspended: number;
     changes_requested: number;
     gcash_flagged: number;
-    trialing: number;
-    active: number;
   };
   bookings: {
     total: number;
@@ -117,49 +84,4 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverview | 
   const { data, error } = await supabase.rpc("admin_dashboard_overview");
   if (error || !data) return null;
   return data as unknown as DashboardOverview;
-});
-
-export type BillingHealth = {
-  paying: number;
-  due_soon: number;
-  past_due: number;
-  overdue_list: { name: string | null; plan: string; paid_until: string | null }[];
-};
-
-// Subscription billing health for the admin dashboard — who pays, who renews soon, who lapsed.
-export const getBillingHealth = cache(async (): Promise<BillingHealth | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_billing_health");
-  if (error || !data) return null;
-  return data as unknown as BillingHealth;
-});
-
-export type AdminRecentBooking = {
-  booking_id: string;
-  operator_name: string | null;
-  guest_name: string;
-  total_amount: number | null;
-  status: BookingStatus;
-  created_at: string;
-};
-
-// Latest bookings across every operator — the dashboard transactions table.
-export const getRecentBookings = cache(async (): Promise<AdminRecentBooking[]> => {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_recent_bookings");
-  return (data ?? []) as unknown as AdminRecentBooking[];
-});
-
-export type AdminActivity = {
-  kind: "operator_signup" | "booking_confirmed";
-  title: string;
-  subtitle: string;
-  at: string;
-};
-
-// Interleaved platform activity (signups + confirmations) — the dashboard activity feed.
-export const getRecentActivity = cache(async (): Promise<AdminActivity[]> => {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_recent_activity");
-  return (data ?? []) as unknown as AdminActivity[];
 });

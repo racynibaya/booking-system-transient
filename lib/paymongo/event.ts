@@ -47,35 +47,3 @@ export function parseCheckoutPaid(event: CheckoutPaidEvent): ParsedCheckoutPaid 
     paidPesos: typeof centavos === "number" ? centavos / 100 : undefined,
   };
 }
-
-// Subscription-billing variant — same paid-checkout event, but on the PLATFORM account. It maps to a
-// tenant + tier (not a booking) via metadata, and the checkout session id (cs_…) is the idempotency
-// key for record_subscription_payment.
-export type ParsedSubscriptionCheckoutPaid = {
-  kind: string | null; // metadata.kind — "subscription" for this rail
-  tenantId: string | null;
-  plan: string | null;
-  interval: string | null; // metadata.interval — "month" | "year"; null/absent → monthly
-  checkoutId: string | null; // cs_… — idempotency key + audit ref
-  providerRef: string | null;
-  // Settled amount in PESOS (the event carries centavos); undefined when absent.
-  paidPesos: number | undefined;
-};
-
-export function parseSubscriptionCheckoutPaid(
-  event: CheckoutPaidEvent,
-): ParsedSubscriptionCheckoutPaid {
-  const resource = event.data?.attributes?.data;
-  const attrs = resource?.attributes;
-  const intent = attrs?.payment_intent;
-  const centavos = intent?.attributes?.amount;
-  return {
-    kind: attrs?.metadata?.kind ?? null,
-    tenantId: attrs?.metadata?.tenant_id ?? null,
-    plan: attrs?.metadata?.plan ?? null,
-    interval: attrs?.metadata?.interval ?? null,
-    checkoutId: resource?.id ?? null,
-    providerRef: intent?.id ?? null,
-    paidPesos: typeof centavos === "number" ? centavos / 100 : undefined,
-  };
-}
