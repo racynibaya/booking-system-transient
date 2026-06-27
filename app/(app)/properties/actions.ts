@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { isOverRoomCap, PLANS, wouldExceedRoomCap, type PlanId } from "@/lib/plans";
 import { slugify, suffixSlug } from "@/lib/slug";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -16,39 +15,17 @@ import {
   type RoomTypeInput,
 } from "@/lib/validation";
 
-// `notice` is a non-blocking nudge surfaced on success (e.g. an over-cap upgrade prompt on EDITS).
-// It is never an error — the write succeeded; the UI just shows the message alongside the success
-// toast. `upgrade: true` on a failure marks a plan-limit block so the UI can show an upgrade link.
-export type ActionResult =
-  | { ok: true; notice?: string }
-  | { ok: false; error: string; upgrade?: boolean };
+export type ActionResult = { ok: true } | { ok: false; error: string };
 
 // Resolve the current tenant. Returns a discriminated result: on failure it IS an
 // ActionResult, so callers can `if (!t.ok) return t;`.
 async function authedTenant(): Promise<
-  { ok: true; tenantId: string; plan: PlanId } | { ok: false; error: string }
+  { ok: true; tenantId: string } | { ok: false; error: string }
 > {
   await requireUser();
   const tenant = await getCurrentTenant();
   if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
-  return { ok: true, tenantId: tenant.id as string, plan: tenant.plan as PlanId };
-}
-
-// Soft tier guard for room EDITS: NEVER blocks the write. After an edit changes a room count, if
-// the tenant's total rooms (sum of room_types.quantity) exceed their plan's cap, return an upgrade
-// nudge — grace, not a wall, so an operator can't get stuck unable to fix an existing room.
-// (Room CREATION beyond the cap is hard-blocked in createRoomType — reverses D7's soft grace,
-// 2026-06-23.)
-async function roomCapNotice(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  tenantId: string,
-  plan: PlanId,
-): Promise<string | undefined> {
-  const { data } = await supabase.from("room_types").select("quantity").eq("tenant_id", tenantId);
-  if (!data) return undefined;
-  const total = data.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
-  if (!isOverRoomCap(plan, total)) return undefined;
-  return `You now have ${total} rooms — the ${PLANS[plan].label} plan covers up to ${PLANS[plan].roomCap}. Upgrade your plan to keep growing.`;
+  return { ok: true, tenantId: tenant.id as string };
 }
 
 export async function createProperty(input: PropertyInput): Promise<ActionResult> {
@@ -236,26 +213,6 @@ export async function createRoomType(
 
   const supabase = await createClient();
 
-  // Hard cap (reverses D7's soft grace, 2026-06-23): block creating a room type that would push
-  // the tenant's total rooms past their plan's cap. Existing rooms and edits are untouched; only
-  // new creation beyond the cap is blocked. Business/unlimited (null cap) never blocks.
-  const { data: existing } = await supabase
-    .from("room_types")
-    .select("quantity")
-    .eq("tenant_id", t.tenantId);
-  const currentTotal = (existing ?? []).reduce((sum, r) => sum + (r.quantity ?? 0), 0);
-  if (wouldExceedRoomCap(t.plan, currentTotal, parsed.data.quantity)) {
-    const cap = PLANS[t.plan].roomCap;
-    // Body copy only — no CTA sentence here; the upgrade modal's primary button carries the action.
-    return {
-      ok: false,
-      error: `Your ${PLANS[t.plan].label} plan covers up to ${cap} room${
-        cap === 1 ? "" : "s"
-      } and you already have ${currentTotal}.`,
-      upgrade: true,
-    };
-  }
-
   // tenant_id + property_id; the composite FK rejects a property the operator
   // doesn't own, and RLS with-check rejects a foreign tenant_id.
   const { error } = await supabase.from("room_types").insert({
@@ -267,7 +224,6 @@ export async function createRoomType(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/properties/${propertyId}`);
-  // A successful create can never be over cap (blocked above), so no soft notice here.
   return { ok: true };
 }
 
@@ -290,7 +246,7 @@ export async function updateRoomType(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/properties/${propertyId}`);
-  return { ok: true, notice: await roomCapNotice(supabase, t.tenantId, t.plan) };
+  return { ok: true };
 }
 
 // The photo uploads themselves happen browser-side (RLS scopes the storage path to the

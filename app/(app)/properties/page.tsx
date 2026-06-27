@@ -5,25 +5,12 @@ import { PropertyCard, type PageStatus } from "@/components/properties/property-
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import {
-  getBookingsPaused,
-  getCurrentTenant,
-  getProperties,
-  requireUser,
-} from "@/lib/supabase/dal";
+import { getCurrentTenant, getProperties, requireUser } from "@/lib/supabase/dal";
 
 export default async function PropertiesPage() {
   await requireUser();
-  const [properties, tenant, bookingsPaused] = await Promise.all([
-    getProperties(),
-    getCurrentTenant(),
-    getBookingsPaused(),
-  ]);
-  const pageStatus: PageStatus = bookingsPaused
-    ? "paused"
-    : tenant?.verification_status === "approved"
-      ? "live"
-      : "review";
+  const [properties, tenant] = await Promise.all([getProperties(), getCurrentTenant()]);
+  const pageStatus: PageStatus = tenant?.verification_status === "approved" ? "live" : "review";
 
   return (
     <div className="flex flex-col gap-6">

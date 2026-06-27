@@ -1,7 +1,6 @@
 import { ArrowRight, CalendarCheck, Coins, Hourglass, Receipt } from "lucide-react";
 import Link from "next/link";
 
-import { BillingPanel } from "@/components/admin/billing-panel";
 import { DashboardGreeting } from "@/components/admin/dashboard-greeting";
 import { FunnelPanel } from "@/components/admin/funnel-panel";
 import { KpiCard } from "@/components/admin/kpi-card";
@@ -9,7 +8,7 @@ import { RevenueHero } from "@/components/admin/revenue-hero";
 import { SupplyPanel } from "@/components/admin/supply-panel";
 import { TrendBars } from "@/components/admin/trend-bars";
 import { UpcomingPanel } from "@/components/admin/upcoming-panel";
-import { getBillingHealth, getDashboardOverview, requireAdmin } from "@/lib/supabase/admin-dal";
+import { getDashboardOverview, requireAdmin } from "@/lib/supabase/admin-dal";
 
 const peso = (n: number) =>
   new Intl.NumberFormat("en-PH", {
@@ -41,7 +40,7 @@ function ReviewRow({ label, value, hint }: { label: string; value: number; hint:
 
 export default async function AdminOverviewPage() {
   const tenant = await requireAdmin();
-  const [overview, billing] = await Promise.all([getDashboardOverview(), getBillingHealth()]);
+  const overview = await getDashboardOverview();
 
   if (!overview) {
     return (
@@ -101,13 +100,6 @@ export default async function AdminOverviewPage() {
         <FunnelPanel bookings={bookings} />
         <SupplyPanel supply={supply} />
       </div>
-
-      {/* Subscription billing health — who pays, who lapsed. */}
-      {billing && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <BillingPanel billing={billing} />
-        </div>
-      )}
 
       {/* Action center — the verification queue. */}
       <section className="flex flex-col gap-3">

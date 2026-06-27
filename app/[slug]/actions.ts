@@ -8,7 +8,6 @@ import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
 import { computeBookingSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
-import { getGatewayConnection } from "@/lib/supabase/gateway-dal";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 
@@ -139,7 +138,7 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
   // non-Pro tenant) never affects the booking the guest just made. Awaited (not fire-and-forget) so it
   // actually completes before this serverless invocation ends.
   if (d.guestEmail) {
-    await sendRequestAck(booking.tenant_id, d, booking.total_amount, booking.deposit_amount);
+    await sendRequestAck(d, booking.total_amount, booking.deposit_amount);
   }
 
   // Payout methods are delivered WITH the hold (never via the public listing — anti-scrape). anon
@@ -156,20 +155,15 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
   };
 }
 
-// Pro/Business auto-acknowledge. Reads the tenant's plan (anon has no grant → service role) and only
-// emails for plan in ('pro','business'). Never throws: any failure here is swallowed so it can't roll
-// back the guest's hold (sendEmail itself is already best-effort and dry-runs without RESEND_API_KEY).
+// Auto-acknowledge every inquiry (now standard for all hosts — tier gating removed at the commission
+// cutover). Never throws: any failure here is swallowed so it can't roll back the guest's hold
+// (sendEmail itself is already best-effort and dry-runs without RESEND_API_KEY).
 async function sendRequestAck(
-  tenantId: string,
   input: PublicBookingInput,
   totalAmount: number | null,
   depositAmount: number | null,
 ): Promise<void> {
   try {
-    const admin = createServiceClient();
-    const { data: tenant } = await admin.from("tenants").select("plan").eq("id", tenantId).single();
-    if (tenant?.plan !== "pro" && tenant?.plan !== "business") return;
-
     const { subject, html } = guestRequestReceivedEmail(
       {
         guestName: input.guestName,
@@ -210,112 +204,11 @@ async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymen
   }));
 }
 
-// --- Gateway checkout (Phase 2a spike — PayMongo, Business tier) --------------------------
-//
-// The instant-confirmation alternative to GCash+proof: create a hosted PayMongo Checkout
-// Session for the booking's deposit and return its URL for the guest to pay on. Confirmation
-// happens out-of-band via the webhook (app/api/webhooks/paymongo) → confirm_booking_gateway —
-// the redirect back is best-effort UX, never the source of truth (architecture P10).
-//
-// Operator-as-merchant (B8): the deposit is charged on the HOST's own PayMongo account via their
-// per-tenant connection (M1 Vault store), looked up here by tenant. We NEVER fall back to a platform
-// env key — that would route a guest's money to the wrong merchant. The booking hold, the metadata
-// contract, and the webhook are identical to the 2a path; only the key source is per-tenant.
+// --- Guest deposit checkout (PayMongo, centralized aggregator) ---------------------------
+// Shared result type for the hosted-checkout action below.
 export type GatewayCheckoutResult =
   | { ok: true; checkoutUrl: string }
   | { ok: false; error: string };
-
-export async function createGatewayCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
-  if (!z.uuid().safeParse(bookingId).success) {
-    return { ok: false, error: "Something went wrong. Please try again." };
-  }
-
-  // Service-role: anon can't read bookings. The booking id is the guest's capability; we only
-  // start a checkout for a live hold awaiting payment.
-  const admin = createServiceClient();
-  const { data: booking } = await admin
-    .from("bookings")
-    .select(
-      "tenant_id, status, deposit_amount, gateway_checkout_url, guest_name, guest_email, property:properties(slug, name)",
-    )
-    .eq("id", bookingId)
-    .single();
-
-  if (!booking) return { ok: false, error: "We couldn't find that booking." };
-  if (booking.status !== "held") {
-    return { ok: false, error: "This booking is no longer awaiting payment." };
-  }
-  if (!booking.deposit_amount || booking.deposit_amount <= 0) {
-    return { ok: false, error: "This booking has no deposit to collect." };
-  }
-
-  // Double-charge guard: if we already opened a session for this held booking, hand back the SAME
-  // single-use URL. A PayMongo checkout session can only be paid once, so reusing it makes a
-  // double-click / refresh / two-tab double-charge impossible.
-  if (booking.gateway_checkout_url) {
-    return { ok: true, checkoutUrl: booking.gateway_checkout_url };
-  }
-
-  // The host's own PayMongo connection (operator-as-merchant). No active connection → online payment
-  // isn't available for this host; never fall back to a platform key (B8). A connection only exists
-  // once the operator connects in Settings, which is itself gated on plan='business' (M2).
-  const connection = await getGatewayConnection(booking.tenant_id);
-  if (!connection || connection.status !== "active") {
-    return { ok: false, error: "Online payment isn't available for this host yet." };
-  }
-
-  const property = booking.property as { slug: string; name: string } | null;
-  const slug = property?.slug ?? "";
-
-  // Build absolute return URLs from the inbound request origin (no site-URL env needed for the
-  // spike). The webhook is the truth; ?b is only so the return page can show a friendly status.
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const origin = `${proto}://${host}`;
-
-  try {
-    const { checkoutUrl } = await createCheckoutSession({
-      secretKey: connection.sk,
-      lineItems: [
-        {
-          name: `Deposit — ${property?.name ?? "booking"}`,
-          amount: toCentavos(Number(booking.deposit_amount)),
-          quantity: 1,
-        },
-      ],
-      description: `Booking deposit (${bookingId})`,
-      successUrl: `${origin}/${slug}/pay/return?b=${bookingId}`,
-      cancelUrl: `${origin}/${slug}`,
-      // The webhook maps the payment back to this booking/tenant via these.
-      metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
-    });
-
-    // Persist the session so any repeat call reuses it (above). Claim atomically — only the call
-    // that finds the column still null "wins". If two calls created sessions concurrently, the
-    // loser's session is left unused and BOTH callers redirect to the single stored URL, so the
-    // guest still sees one payment page.
-    const { data: claimed } = await admin
-      .from("bookings")
-      .update({ gateway_checkout_url: checkoutUrl })
-      .eq("id", bookingId)
-      .is("gateway_checkout_url", null)
-      .select("gateway_checkout_url")
-      .maybeSingle();
-    if (claimed?.gateway_checkout_url) {
-      return { ok: true, checkoutUrl: claimed.gateway_checkout_url };
-    }
-    // Lost the race — another concurrent call already stored a session; reuse theirs.
-    const { data: existing } = await admin
-      .from("bookings")
-      .select("gateway_checkout_url")
-      .eq("id", bookingId)
-      .single();
-    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? checkoutUrl };
-  } catch {
-    return { ok: false, error: "Couldn't start the payment. Please try again." };
-  }
-}
 
 // --- Platform checkout (centralized aggregator) ------------------------------------------
 //
@@ -323,11 +216,8 @@ export async function createGatewayCheckout(bookingId: string): Promise<GatewayC
 // not the operator's. The guest is charged the deposit + a bundled service fee (their 6% + the
 // grossed-up PayMongo fee — see computeBookingSplit); the operator's 5% is withheld later at payout
 // (the ledger, not here). The operator needs no PayMongo account — just an active payout destination
-// (tenant_payout_accounts), which also carries their per-owner rates. Confirmation is identical to
-// Model A: the webhook → confirm_booking_gateway is the source of truth; the redirect is UX only.
-//
-// This runs ALONGSIDE the dormant Model-A createGatewayCheckout above (kept for reversibility); the
-// guest UI is switched to this path in a follow-up slice.
+// (tenant_payout_accounts), which also carries their per-owner rates. Confirmation: the webhook →
+// confirm_booking_gateway is the source of truth; the redirect is UX only.
 export async function createPlatformCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };

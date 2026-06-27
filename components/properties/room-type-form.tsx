@@ -38,8 +38,7 @@ export function RoomTypeForm({
       onSubmit={handleSubmit(async (values) => {
         setFormError(null);
         const res = await onSubmit(values);
-        // Over-cap blocks (upgrade) surface as a modal from the parent, not as inline text.
-        if (!res.ok && !res.upgrade) setFormError(res.error);
+        if (!res.ok) setFormError(res.error);
       })}
       className="flex flex-col gap-4 rounded-md border border-hairline p-4"
     >

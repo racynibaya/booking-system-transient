@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, ShieldCheck } from "lucide-react";
+import { LayoutGrid, RotateCcw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: LayoutGrid },
   { href: "/admin/operators", label: "Operators", icon: ShieldCheck },
+  { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
 ] as const;
 
 // /admin must match exactly so it doesn't stay active on /admin/operators.

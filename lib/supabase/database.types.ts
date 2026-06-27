@@ -68,41 +68,10 @@ export type Database = {
             foreignKeyName: "availability_blocks_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "availability_blocks_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
         ];
-      };
-      billing_config: {
-        Row: {
-          enforcement_mode: string;
-          grace_days: number;
-          id: boolean;
-          require_activation: boolean;
-          updated_at: string;
-        };
-        Insert: {
-          enforcement_mode?: string;
-          grace_days?: number;
-          id?: boolean;
-          require_activation?: boolean;
-          updated_at?: string;
-        };
-        Update: {
-          enforcement_mode?: string;
-          grace_days?: number;
-          id?: boolean;
-          require_activation?: boolean;
-          updated_at?: string;
-        };
-        Relationships: [];
       };
       bookings: {
         Row: {
@@ -193,13 +162,6 @@ export type Database = {
             foreignKeyName: "bookings_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "bookings_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -257,13 +219,6 @@ export type Database = {
             foreignKeyName: "payments_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "payments_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -283,6 +238,8 @@ export type Database = {
           paymongo_fee: number;
           payout_id: string | null;
           payout_ref: string | null;
+          refund_amount: number | null;
+          refund_ref: string | null;
           status: Database["public"]["Enums"]["payout_ledger_status"];
           stay_value: number;
           tenant_id: string;
@@ -301,6 +258,8 @@ export type Database = {
           paymongo_fee: number;
           payout_id?: string | null;
           payout_ref?: string | null;
+          refund_amount?: number | null;
+          refund_ref?: string | null;
           status?: Database["public"]["Enums"]["payout_ledger_status"];
           stay_value: number;
           tenant_id: string;
@@ -319,6 +278,8 @@ export type Database = {
           paymongo_fee?: number;
           payout_id?: string | null;
           payout_ref?: string | null;
+          refund_amount?: number | null;
+          refund_ref?: string | null;
           status?: Database["public"]["Enums"]["payout_ledger_status"];
           stay_value?: number;
           tenant_id?: string;
@@ -331,13 +292,6 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: "bookings";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "payout_ledger_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
           },
           {
             foreignKeyName: "payout_ledger_tenant_id_fkey";
@@ -420,13 +374,6 @@ export type Database = {
             foreignKeyName: "properties_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "properties_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -481,130 +428,6 @@ export type Database = {
             foreignKeyName: "room_types_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "room_types_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      subscription_payments: {
-        Row: {
-          amount: number;
-          created_at: string;
-          currency: string;
-          id: string;
-          method: string | null;
-          paid_at: string;
-          paymongo_checkout_id: string;
-          period_end: string;
-          period_start: string;
-          plan: Database["public"]["Enums"]["tenant_plan"];
-          provider_ref: string | null;
-          raw: Json | null;
-          tenant_id: string;
-        };
-        Insert: {
-          amount: number;
-          created_at?: string;
-          currency?: string;
-          id?: string;
-          method?: string | null;
-          paid_at?: string;
-          paymongo_checkout_id: string;
-          period_end: string;
-          period_start: string;
-          plan: Database["public"]["Enums"]["tenant_plan"];
-          provider_ref?: string | null;
-          raw?: Json | null;
-          tenant_id: string;
-        };
-        Update: {
-          amount?: number;
-          created_at?: string;
-          currency?: string;
-          id?: string;
-          method?: string | null;
-          paid_at?: string;
-          paymongo_checkout_id?: string;
-          period_end?: string;
-          period_start?: string;
-          plan?: Database["public"]["Enums"]["tenant_plan"];
-          provider_ref?: string | null;
-          raw?: Json | null;
-          tenant_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "subscription_payments_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "subscription_payments_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      tenant_gateway_connections: {
-        Row: {
-          created_at: string;
-          id: string;
-          provider: string;
-          sk_secret_id: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          webhook_id: string | null;
-          webhook_token: string;
-          whsk_secret_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          provider?: string;
-          sk_secret_id: string;
-          status?: string;
-          tenant_id: string;
-          updated_at?: string;
-          webhook_id?: string | null;
-          webhook_token: string;
-          whsk_secret_id: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          provider?: string;
-          sk_secret_id?: string;
-          status?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          webhook_id?: string | null;
-          webhook_token?: string;
-          whsk_secret_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "tenant_gateway_connections_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "tenant_gateway_connections_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -648,13 +471,6 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "tenant_payment_methods_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
           {
             foreignKeyName: "tenant_payment_methods_tenant_id_fkey";
             columns: ["tenant_id"];
@@ -712,13 +528,6 @@ export type Database = {
             foreignKeyName: "tenant_payout_accounts_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: true;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "tenant_payout_accounts_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -734,10 +543,6 @@ export type Database = {
           id: string;
           is_admin: boolean;
           name: string | null;
-          paid_until: string | null;
-          plan: Database["public"]["Enums"]["tenant_plan"];
-          subscription_status: string;
-          trial_ends_at: string | null;
           user_id: string;
           verification_note: string | null;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
@@ -751,10 +556,6 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
-          paid_until?: string | null;
-          plan?: Database["public"]["Enums"]["tenant_plan"];
-          subscription_status?: string;
-          trial_ends_at?: string | null;
           user_id: string;
           verification_note?: string | null;
           verification_status?: Database["public"]["Enums"]["tenant_verification"];
@@ -768,10 +569,6 @@ export type Database = {
           id?: string;
           is_admin?: boolean;
           name?: string | null;
-          paid_until?: string | null;
-          plan?: Database["public"]["Enums"]["tenant_plan"];
-          subscription_status?: string;
-          trial_ends_at?: string | null;
           user_id?: string;
           verification_note?: string | null;
           verification_status?: Database["public"]["Enums"]["tenant_verification"];
@@ -805,13 +602,6 @@ export type Database = {
             foreignKeyName: "verification_documents_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
-            referencedRelation: "tenant_subscription_entitlement";
-            referencedColumns: ["tenant_id"];
-          },
-          {
-            foreignKeyName: "verification_documents_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -819,24 +609,17 @@ export type Database = {
       };
     };
     Views: {
-      tenant_subscription_entitlement: {
-        Row: {
-          can_accept_bookings: boolean | null;
-          counts_as_paid: boolean | null;
-          enforcement_mode: string | null;
-          is_lapsed: boolean | null;
-          is_unactivated: boolean | null;
-          tenant_id: string | null;
-        };
-        Relationships: [];
-      };
+      [_ in never]: never;
     };
     Functions: {
+      abort_refund: {
+        Args: { p_booking_id: string; p_restore_status: string };
+        Returns: number;
+      };
       add_banking_days: {
         Args: { p_days: number; p_from: string };
         Returns: string;
       };
-      admin_billing_health: { Args: never; Returns: Json };
       admin_dashboard_overview: { Args: never; Returns: Json };
       admin_list_operators: {
         Args: never;
@@ -851,62 +634,23 @@ export type Database = {
           verification_status: Database["public"]["Enums"]["tenant_verification"];
         }[];
       };
-      admin_mark_subscription_paid: {
-        Args: {
-          p_paid_until: string;
-          p_plan?: Database["public"]["Enums"]["tenant_plan"];
-          p_tenant_id: string;
-        };
-        Returns: {
-          created_at: string;
-          gcash_changed_at: string | null;
-          gcash_name: string | null;
-          gcash_number: string | null;
-          gcash_qr_path: string | null;
-          id: string;
-          is_admin: boolean;
-          name: string | null;
-          paid_until: string | null;
-          plan: Database["public"]["Enums"]["tenant_plan"];
-          subscription_status: string;
-          trial_ends_at: string | null;
-          user_id: string;
-          verification_note: string | null;
-          verification_status: Database["public"]["Enums"]["tenant_verification"];
-        };
-        SetofOptions: {
-          from: "*";
-          to: "tenants";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
       admin_notification_recipients: {
         Args: never;
         Returns: {
           email: string;
         }[];
       };
-      admin_platform_stats: { Args: never; Returns: Json };
       admin_preview_listing: { Args: { p_slug: string }; Returns: Json };
-      admin_recent_activity: {
-        Args: never;
-        Returns: {
-          at: string;
-          kind: string;
-          subtitle: string;
-          title: string;
-        }[];
-      };
-      admin_recent_bookings: {
+      admin_recent_payouts: {
         Args: never;
         Returns: {
           booking_id: string;
           created_at: string;
+          deposit_amount: number;
           guest_name: string;
           operator_name: string;
-          status: Database["public"]["Enums"]["booking_status"];
-          total_amount: number;
+          property_name: string;
+          status: string;
         }[];
       };
       claim_due_payouts: {
@@ -919,6 +663,15 @@ export type Database = {
           payout_name: string;
           tenant_id: string;
           total: number;
+        }[];
+      };
+      claim_refund: {
+        Args: { p_booking_id: string };
+        Returns: {
+          paid_amount: number;
+          prior_status: string;
+          provider_ref: string;
+          tenant_id: string;
         }[];
       };
       confirm_booking: {
@@ -1036,12 +789,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      current_tenant_can_accept_bookings: { Args: never; Returns: boolean };
       current_tenant_id: { Args: never; Returns: string };
-      downgrade_lapsed_subscriptions: {
-        Args: { p_grace_days?: number };
-        Returns: number;
-      };
       due_deposit_reminders: {
         Args: never;
         Returns: {
@@ -1055,69 +803,14 @@ export type Database = {
           total_amount: number;
         }[];
       };
-      flag_past_due_subscriptions: { Args: never; Returns: number };
-      gateway_connection_status: {
-        Args: never;
-        Returns: {
-          connected: boolean;
-          provider: string;
-          status: string;
-          updated_at: string;
-        }[];
-      };
-      gateway_delete_connection: {
-        Args: { p_tenant_id: string };
-        Returns: string;
-      };
-      gateway_get_connection: {
-        Args: { p_tenant_id: string };
-        Returns: {
-          provider: string;
-          sk: string;
-          status: string;
-          webhook_id: string;
-          webhook_token: string;
-          whsk: string;
-        }[];
-      };
-      gateway_get_connection_by_token: {
-        Args: { p_token: string };
-        Returns: {
-          provider: string;
-          sk: string;
-          status: string;
-          tenant_id: string;
-          webhook_id: string;
-          webhook_token: string;
-          whsk: string;
-        }[];
-      };
-      gateway_store_connection: {
+      finish_refund: {
         Args: {
-          p_sk: string;
-          p_tenant_id: string;
-          p_webhook_id?: string;
-          p_webhook_token: string;
-          p_whsk: string;
+          p_amount: number;
+          p_booking_id: string;
+          p_clawback: boolean;
+          p_refund_ref: string;
         };
-        Returns: {
-          created_at: string;
-          id: string;
-          provider: string;
-          sk_secret_id: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          webhook_id: string | null;
-          webhook_token: string;
-          whsk_secret_id: string;
-        };
-        SetofOptions: {
-          from: "*";
-          to: "tenant_gateway_connections";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
+        Returns: number;
       };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
@@ -1133,40 +826,6 @@ export type Database = {
       reconcile_disbursement: {
         Args: { p_payout_id: string; p_reason?: string; p_succeeded: boolean };
         Returns: number;
-      };
-      record_subscription_payment: {
-        Args: {
-          p_amount: number;
-          p_checkout_id: string;
-          p_currency?: string;
-          p_method?: string;
-          p_months?: number;
-          p_plan: Database["public"]["Enums"]["tenant_plan"];
-          p_provider_ref?: string;
-          p_raw?: Json;
-          p_tenant_id: string;
-        };
-        Returns: {
-          amount: number;
-          created_at: string;
-          currency: string;
-          id: string;
-          method: string | null;
-          paid_at: string;
-          paymongo_checkout_id: string;
-          period_end: string;
-          period_start: string;
-          plan: Database["public"]["Enums"]["tenant_plan"];
-          provider_ref: string | null;
-          raw: Json | null;
-          tenant_id: string;
-        };
-        SetofOptions: {
-          from: "*";
-          to: "subscription_payments";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
       };
       resubmit_verification: { Args: never; Returns: undefined };
       set_tenant_verification: {
@@ -1222,9 +881,15 @@ export type Database = {
         | "no_show";
       payment_kind: "deposit" | "balance";
       payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
-      payout_ledger_status: "clearing" | "payable" | "paid" | "failed" | "refunded" | "clawed_back";
+      payout_ledger_status:
+        | "clearing"
+        | "payable"
+        | "paid"
+        | "failed"
+        | "refunded"
+        | "clawed_back"
+        | "refunding";
       payout_method: "gcash" | "bank";
-      tenant_plan: "free" | "business" | "solo" | "pro";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
     };
     CompositeTypes: {
@@ -1366,9 +1031,16 @@ export const Constants = {
       ],
       payment_kind: ["deposit", "balance"],
       payment_method_type: ["gcash", "maya", "bank", "grabpay"],
-      payout_ledger_status: ["clearing", "payable", "paid", "failed", "refunded", "clawed_back"],
+      payout_ledger_status: [
+        "clearing",
+        "payable",
+        "paid",
+        "failed",
+        "refunded",
+        "clawed_back",
+        "refunding",
+      ],
       payout_method: ["gcash", "bank"],
-      tenant_plan: ["free", "business", "solo", "pro"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
     },
   },

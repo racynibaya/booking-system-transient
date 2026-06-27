@@ -75,9 +75,10 @@ function round2(n: number): number {
 // nets their full share. MDR/fixed must be the WORST-CASE enabled method (the guest picks the method
 // at checkout, after the amount is fixed) so we never under-cover. The guest checkout enables card
 // (createPlatformCheckout), so the worst case is PayMongo's standard DOMESTIC CARD rate: 3.5% + ₱15.
-// ⚠️ Confirm against your PayMongo dashboard before go-live (negotiated rates may differ; INTERNATIONAL
-// cards are higher at ~4.5% — restrict the checkout to domestic/e-wallets if that exposure matters).
-export const PAYMONGO_MDR = 0.035; // 3.5% — PayMongo standard domestic card
+// ⚠️ GO-LIVE TODO: confirm against your PayMongo dashboard before charging real money — set this to the
+// worst-case ENABLED method's real rate (negotiated rates may differ; INTERNATIONAL cards are higher at
+// ~4.5% — restrict the checkout to domestic/e-wallets if that exposure matters). Kept at 3.5% for now.
+export const PAYMONGO_MDR = 0.035; // 3.5% — PayMongo standard domestic card (placeholder until go-live)
 export const PAYMONGO_FIXED = 15; // ₱15 — PayMongo standard domestic card fixed fee
 
 export type BookingSplit = {

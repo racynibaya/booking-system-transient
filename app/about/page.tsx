@@ -3,7 +3,7 @@ import { Hero } from "@/components/landing/hero";
 import { LocalProof } from "@/components/landing/local-proof";
 import { ProblemSolution } from "@/components/landing/problem-solution";
 import { HowItWorks } from "@/components/landing/how-it-works";
-import { PricingTeaser } from "@/components/landing/pricing-teaser";
+import { CommissionPricing } from "@/components/landing/commission-pricing";
 import { FinalCta } from "@/components/landing/final-cta";
 import { SiteFooter } from "@/components/landing/site-footer";
 
@@ -16,7 +16,7 @@ export default function AboutPage() {
         <LocalProof />
         <ProblemSolution />
         <HowItWorks />
-        <PricingTeaser />
+        <CommissionPricing />
         <FinalCta />
       </main>
       <SiteFooter />

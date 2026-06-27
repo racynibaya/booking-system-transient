@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/landing/site-footer";
 import { type ListingCardData } from "@/components/marketplace/listing-card";
 import { MarketplaceBrowser } from "@/components/marketplace/marketplace-browser";
 import { MarketplaceHeader } from "@/components/marketplace/marketplace-header";
-import { Reveal } from "@/components/motion";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { createAnonClient } from "@/lib/supabase/server";
 
 type RpcRow = {
@@ -39,24 +39,31 @@ export default async function MarketplaceHome() {
     <>
       <MarketplaceHeader />
       <main className="flex-1">
-        {/* Hero band: a sea-glass depth wash + film grain so the headline sits on atmosphere
-            instead of flat canvas, dissolving back into the page below. */}
+        {/* Hero band: a sea-glass depth wash + drifting aurora + film grain so the headline sits
+            on living atmosphere instead of flat canvas, dissolving back into the page below. */}
         <section className="grain relative isolate overflow-hidden">
           <div className="surface-mesh absolute inset-0 -z-10" />
+          <div aria-hidden className="hero-aurora -z-10 animate-aurora-drift" />
           <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-linear-to-b from-transparent to-canvas" />
           <div className="mx-auto max-w-6xl px-6 pt-12 pb-10 sm:pt-16">
-            <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas/80 px-4 py-1.5 text-caption text-muted shadow-e1 backdrop-blur">
-                <ShieldCheck className="size-3.5 text-primary" /> Every host verified by Tuloy
-              </span>
-              <h1 className="mt-5 max-w-2xl font-display text-hero text-balance text-ink">
-                Stay in San Juan, La Union
-              </h1>
-              <p className="mt-4 max-w-xl text-body-md text-body">
-                Browse verified local stays with live availability. Reserve straight with the host —
-                no booking fees, no middlemen.
-              </p>
-            </Reveal>
+            <Stagger>
+              <StaggerItem>
+                <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas/80 px-4 py-1.5 text-caption text-muted shadow-e1 backdrop-blur">
+                  <ShieldCheck className="size-3.5 text-primary" /> Every host verified by Tuloy
+                </span>
+              </StaggerItem>
+              <StaggerItem>
+                <h1 className="mt-5 max-w-2xl font-display text-hero text-balance text-ink">
+                  Stay in San Juan, La Union
+                </h1>
+              </StaggerItem>
+              <StaggerItem>
+                <p className="mt-4 max-w-xl text-body-md text-body">
+                  Every San Juan stay in one place — verified hosts, live availability, and a secure
+                  booking that beats chasing a dozen Messenger threads.
+                </p>
+              </StaggerItem>
+            </Stagger>
           </div>
         </section>
 

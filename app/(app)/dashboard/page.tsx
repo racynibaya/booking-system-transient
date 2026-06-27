@@ -17,9 +17,7 @@ import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/icon-chip";
 import {
-  getBookingsPaused,
   getCurrentTenant,
-  getGatewayConnectionStatus,
   getNeedsActionCounts,
   getOccupancySnapshot,
   getPaymentMethods,
@@ -31,27 +29,20 @@ import type { PageStatus } from "@/components/properties/property-card";
 
 export default async function DashboardPage() {
   await requireUser();
-  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction, bookingsPaused] =
-    await Promise.all([
-      getCurrentTenant(),
-      getProperties(),
-      getPaymentMethods(),
-      getRevenueSummary(),
-      getOccupancySnapshot(),
-      getNeedsActionCounts(),
-      getBookingsPaused(),
-    ]);
+  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction] = await Promise.all([
+    getCurrentTenant(),
+    getProperties(),
+    getPaymentMethods(),
+    getRevenueSummary(),
+    getOccupancySnapshot(),
+    getNeedsActionCounts(),
+  ]);
 
   const roomCount = properties.reduce((n, p) => n + (p.room_types?.[0]?.count ?? 0), 0);
   const hasProperty = properties.length > 0;
   const isVerified = tenant?.verification_status === "approved";
-  const isBusiness = tenant?.plan === "business";
-  // The booking page's REAL public state: closed when lapsed+enforced, else live once approved.
-  const pageStatus: PageStatus = bookingsPaused ? "paused" : isVerified ? "live" : "review";
-
-  // Online-payments gateway only matters on Business — fetch it only there (extra round-trip
-  // for those operators only) so it can appear as its own checklist line.
-  const gateway = isBusiness ? await getGatewayConnectionStatus() : null;
+  // The booking page's REAL public state: live once approved, else under review.
+  const pageStatus: PageStatus = isVerified ? "live" : "review";
 
   // Time-of-day greeting + matching coastal icon (sunrise → sun → moon), in Manila time so it
   // reads right for San Juan operators regardless of where the server renders.
@@ -77,9 +68,6 @@ export default async function DashboardPage() {
     { label: "Add your property", done: hasProperty, href: firstPropertyHref },
     { label: "Add a room type", done: roomCount > 0, href: firstPropertyHref },
     { label: "Add a GCash payout", done: (paymentMethods?.length ?? 0) > 0, href: "/settings" },
-    ...(isBusiness
-      ? [{ label: "Connect online payments", done: !!gateway?.connected, href: "/settings" }]
-      : []),
     { label: "Get verified", done: isVerified, href: "/verification" },
   ];
   const setupComplete = steps.every((s) => s.done);

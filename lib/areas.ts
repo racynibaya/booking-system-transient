@@ -43,5 +43,3 @@ export const SAN_JUAN_AREAS = [
   "Talogtog",
   "Urbiztondo",
 ] as const;
-
-export type SanJuanArea = (typeof SAN_JUAN_AREAS)[number];
