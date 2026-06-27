@@ -215,6 +215,10 @@
   /* Slow ken-burns drift on large hero photos — gentle zoom + pan so a static cover
      breathes instead of sitting flat. Subtle on purpose; killed under reduced-motion. */
   --animate-kenburns: kenburns 18s ease-in-out infinite alternate;
+  /* Ambient hero glow drift — the public hero's one "living" element (see .hero-aurora). */
+  --animate-aurora-drift: aurora-drift 22s ease-in-out infinite;
+  /* Barangay coverage marquee on the operator landing — slow, continuous, hover-pausable. */
+  --animate-marquee: marquee 50s linear infinite;
 
   /* Shared easing token — the brand's signature ease-out spring, reused across
      CSS transitions and motion/react springs so all motion shares one rhythm. */
@@ -269,6 +273,32 @@
   }
   100% {
     transform: scale(1.1) translateY(-1.2%);
+  }
+}
+
+/* Ambient hero life: a very slow drift + breathe of the brand glow layer, so the hero reads
+   as living atmosphere instead of a frozen wash. Transform-only (GPU), long + gentle on
+   purpose; killed entirely under reduced-motion. */
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-1.5%, -1%, 0) scale(1.04);
+  }
+  50% {
+    transform: translate3d(2%, 1.5%, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(-1.5%, -1%, 0) scale(1.04);
+  }
+}
+
+/* Marquee: seamless horizontal scroll. The track holds the content duplicated twice, so a
+   -50% shift loops with no seam. Linear + reduced-motion-safe. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 
@@ -334,6 +364,29 @@ body {
   background-repeat: no-repeat;
 }
 
+/* Ambient drifting glow for the public hero — layered over the static .surface-mesh to give
+   the band perceptible life. Two brand blooms (light sea + surf-teal accent) a touch stronger
+   than the mesh so the slow drift registers. Oversized inset so the transform never reveals an
+   edge; the parent must clip (overflow-hidden) and be positioned. Pair with .animate-aurora-drift. */
+.hero-aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(
+      40% 38% at 28% 30%,
+      color-mix(in srgb, var(--color-sunset-1) 32%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      42% 40% at 74% 16%,
+      color-mix(in srgb, var(--color-accent) 18%, transparent) 0%,
+      transparent 60%
+    );
+  will-change: transform;
+}
+
 /* Film grain: a tiled SVG fractal-noise overlay at very low opacity, soft-light blended so
    it sits as texture over both color washes and photos (stops big fills from looking like
    flat vinyl). pointer-events:none so it never intercepts taps; needs a positioned parent. */
@@ -368,7 +421,9 @@ body {
   .animate-room-swap,
   .animate-shimmer,
   .animate-card-rise,
-  .animate-kenburns {
+  .animate-kenburns,
+  .animate-aurora-drift,
+  .animate-marquee {
     animation: none;
   }
 }

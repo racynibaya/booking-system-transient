@@ -19,6 +19,32 @@ export const requireAdmin = cache(async () => {
   return tenant;
 });
 
+export type AdminOnlinePayout = {
+  bookingId: string;
+  guestName: string | null;
+  propertyName: string | null;
+  operatorName: string | null;
+  depositAmount: number;
+  status: string; // payout_ledger status
+  createdAt: string;
+};
+
+// Recent online (centralized) payouts across all operators — the admin refund list. Self-guarded RPC,
+// so a non-admin gets nothing. Powers the per-row Refund buttons (no UUID typing).
+export const getRecentOnlinePayouts = cache(async (): Promise<AdminOnlinePayout[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_recent_payouts");
+  return (data ?? []).map((r) => ({
+    bookingId: r.booking_id,
+    guestName: r.guest_name,
+    propertyName: r.property_name,
+    operatorName: r.operator_name,
+    depositAmount: Number(r.deposit_amount ?? 0),
+    status: r.status,
+    createdAt: r.created_at,
+  }));
+});
+
 export type AdminPaymentMethod = {
   type: "gcash" | "maya" | "bank" | "grabpay";
   account_name: string | null;

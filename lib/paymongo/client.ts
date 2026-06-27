@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { RefundReason } from "./refund-reasons";
+
 // Thin PayMongo network client for the Phase 2a gateway spike (operator-as-merchant). Only the
 // one call the deposit flow needs: create a hosted Checkout Session. No SDK dependency —
 // PayMongo is a plain REST + Basic-auth API. Pure helpers (signature verify, toCentavos) live in
@@ -62,6 +64,9 @@ export async function createCheckoutSession(
             "grab_pay",
             "card",
           ],
+          // Enforce 3D Secure on card payments (vs "automatic" = card's default). Ignored by the
+          // non-card e-wallet methods. PayMongo's hosted checkout runs the challenge.
+          payment_method_options: { card: { request_three_d_secure: "any" } },
           description: input.description,
           success_url: input.successUrl,
           cancel_url: input.cancelUrl,
@@ -205,13 +210,9 @@ export async function getTransfer(secretKey: string, transferId: string): Promis
 // pay_ from the stored pi_ with one GET, then POST /v1/refunds. Amount is in CENTAVOS, ≤ the payment
 // (partial supported). reason is a fixed PayMongo enum. Uses the platform secret key (single wallet).
 
-export const REFUND_REASONS = [
-  "duplicate",
-  "fraudulent",
-  "requested_by_customer",
-  "others",
-] as const;
-export type RefundReason = (typeof REFUND_REASONS)[number];
+// Re-exported from the shared (non server-only) module so server callers can keep importing these
+// from the client; the client-side refund UI imports them from refund-reasons directly.
+export { REFUND_REASONS, type RefundReason } from "./refund-reasons";
 
 // GET /v1/payment_intents/{id} → the id of the captured payment (pay_…) to refund. The stored
 // provider_ref is the pi_; a checkout-session fallback (cs_…) isn't refundable via this path.

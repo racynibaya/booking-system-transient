@@ -37,17 +37,20 @@ export function HowItWorks() {
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {STEPS.map(({ n, icon: Icon, title, body }, i) => (
-            <Reveal
-              key={n}
-              delay={i * 0.08}
-              className="relative rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-shadow duration-200 hover:shadow-e3"
-            >
-              <span className="absolute top-6 right-6 text-display-md text-hairline">{n}</span>
-              <span className="flex size-11 items-center justify-center rounded-full bg-ink text-canvas">
-                <Icon className="size-5" />
-              </span>
-              <h3 className="mt-5 text-title-md text-ink">{title}</h3>
-              <p className="mt-2 text-body-sm text-body">{body}</p>
+            <Reveal key={n} delay={i * 0.08} className="h-full">
+              <div className="h-full rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:border-border-strong hover:shadow-e3">
+                {/* Step number as editorial structure (this is a true 1→3 sequence). */}
+                <div className="flex items-center justify-between">
+                  <span className="flex size-11 items-center justify-center rounded-full bg-ink text-canvas">
+                    <Icon className="size-5" />
+                  </span>
+                  <span className="font-display text-display-md leading-none text-primary/30 tabular-nums">
+                    0{n}
+                  </span>
+                </div>
+                <h3 className="mt-5 text-title-md text-ink">{title}</h3>
+                <p className="mt-2 text-body-sm text-body">{body}</p>
+              </div>
             </Reveal>
           ))}
         </div>

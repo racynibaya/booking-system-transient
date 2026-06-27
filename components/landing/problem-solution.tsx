@@ -37,16 +37,14 @@ export function ProblemSolution() {
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, body }, i) => (
-            <Reveal
-              key={title}
-              delay={i * 0.08}
-              className="rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-shadow duration-200 hover:shadow-e3"
-            >
-              <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Icon className="size-5" />
-              </span>
-              <h3 className="mt-5 text-title-md text-ink">{title}</h3>
-              <p className="mt-2 text-body-sm text-body">{body}</p>
+            <Reveal key={title} delay={i * 0.08} className="h-full">
+              <div className="h-full rounded-md border border-hairline bg-canvas p-6 shadow-e1 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:border-border-strong hover:shadow-e3">
+                <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Icon className="size-5" />
+                </span>
+                <h3 className="mt-5 text-title-md text-ink">{title}</h3>
+                <p className="mt-2 text-body-sm text-body">{body}</p>
+              </div>
             </Reveal>
           ))}
         </div>

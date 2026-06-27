@@ -641,6 +641,18 @@ export type Database = {
         }[];
       };
       admin_preview_listing: { Args: { p_slug: string }; Returns: Json };
+      admin_recent_payouts: {
+        Args: never;
+        Returns: {
+          booking_id: string;
+          created_at: string;
+          deposit_amount: number;
+          guest_name: string;
+          operator_name: string;
+          property_name: string;
+          status: string;
+        }[];
+      };
       claim_due_payouts: {
         Args: never;
         Returns: {

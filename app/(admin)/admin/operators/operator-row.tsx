@@ -4,6 +4,7 @@ import { BadgeCheck, Ban, Check, Eye, Home, Info, Loader2, Undo2 } from "lucide-
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { RateEditor } from "@/components/admin/rate-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -196,6 +197,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             <Home className="size-4" />
             <span>{showListing ? "Hide" : "View"} listing</span>
           </Button>
+          <RateEditor tenantId={op.tenant_id} />
           {gcashFlagged && (
             <Button size="sm" disabled={pending} onClick={confirmGcash} aria-label="Confirm GCash">
               <BadgeCheck className="size-4" />

@@ -27,9 +27,15 @@ export function BookingsLive({ tenantId }: { tenantId: string }) {
     };
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
     // Pass the operator JWT to Realtime so RLS applies, then subscribe.
+    // The build is deferred until setAuth() resolves; if the effect is torn down
+    // before then (Strict Mode double-invoke, fast navigation), bail — otherwise a
+    // second mount reuses the same deduped channel topic and calls .on() after
+    // subscribe(), which throws.
     void supabase.realtime.setAuth().then(() => {
+      if (cancelled) return;
       channel = supabase
         .channel(`bookings:${tenantId}`)
         .on(
@@ -60,6 +66,7 @@ export function BookingsLive({ tenantId }: { tenantId: string }) {
     });
 
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
       if (channel) void supabase.removeChannel(channel);
     };
