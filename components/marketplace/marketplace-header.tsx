@@ -5,7 +5,7 @@ import { CtaButton } from "@/components/landing/cta-button";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 
 // Guest-facing header for the marketplace homepage. Keeps the operator funnel alive via a clear
-// "List your property" path to /about; "Sign in" returns operators to their dashboard.
+// "Start hosting free" path to /about; "Sign in" returns operators to their dashboard.
 export function MarketplaceHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur">
@@ -30,11 +30,11 @@ export function MarketplaceHeader() {
             >
               Sign in
             </Link>
-            <CtaButton href="/about">List your property</CtaButton>
+            <CtaButton href="/about">Start hosting free</CtaButton>
           </div>
           <MobileMenu
             links={[{ label: "Sign in", href: "/login" }]}
-            cta={{ label: "List your property", href: "/about" }}
+            cta={{ label: "Start hosting free", href: "/about" }}
           />
         </div>
       </div>

@@ -44,10 +44,10 @@ export function CommissionPricing() {
             Founding-operator pricing
           </span>
 
-          {/* Signature moment: the 0% set huge in Fraunces, "commission" anchored to its baseline. */}
+          {/* Signature moment: the 0% set huge, "commission" anchored to its baseline. */}
           <div className="mt-5 flex items-end justify-center gap-3">
-            <span className="font-display text-[clamp(3.5rem,10vw+1rem,6rem)] leading-[0.85] tracking-tight text-ink">
-              0%
+            <span className="font-sans text-[clamp(3.5rem,10vw+1rem,6rem)] leading-[0.85] tracking-tight text-ink">
+              0<span className="align-top text-[0.5em] font-semibold">%</span>
             </span>
             <span className="pb-2 text-body-md text-muted sm:pb-3">commission</span>
           </div>

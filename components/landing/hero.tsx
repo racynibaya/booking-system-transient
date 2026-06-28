@@ -109,7 +109,7 @@ export function Hero() {
           </StaggerItem>
 
           <StaggerItem>
-            <h1 className="mt-6 font-display text-hero text-balance text-ink">
+            <h1 className="mt-6 font-sans text-hero text-balance text-ink">
               Fill your rooms from San Juan&rsquo;s own marketplace
             </h1>
           </StaggerItem>
