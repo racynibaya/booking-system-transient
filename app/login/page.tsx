@@ -1,10 +1,12 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { passwordAuth, requestPasswordReset } from "@/app/auth/actions";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -60,27 +62,36 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6">
-      {/* soft on-brand glow (pale Rausch), like the landing hero */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(60%_60%_at_50%_0%,var(--color-primary-disabled),transparent)] opacity-60"
-      />
+    // Same hero treatment as the marketplace home: a sea-glass depth wash + drifting aurora + film
+    // grain, so the auth card sits on the app's living atmosphere instead of flat canvas.
+    <main className="grain relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-12">
+      <div className="surface-mesh absolute inset-0 -z-10" />
+      <div aria-hidden className="hero-aurora -z-10 animate-aurora-drift" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-linear-to-b from-transparent to-canvas" />
 
       <div className="relative w-full max-w-sm">
-        <Link href="/" className="inline-flex items-center">
-          <Image
-            src="/logo/tuloy-logo.svg"
-            alt="Tuloy"
-            width={59}
-            height={32}
-            priority
-            className="h-8 w-auto"
-          />
-        </Link>
+        <Stagger className="flex flex-col items-center text-center">
+          <StaggerItem>
+            <Link href="/" className="inline-flex">
+              <Image
+                src="/logo/tuloy-logo.svg"
+                alt="Tuloy"
+                width={59}
+                height={32}
+                priority
+                className="h-8 w-auto"
+              />
+            </Link>
+          </StaggerItem>
+          <StaggerItem>
+            <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas/80 px-4 py-1.5 text-caption text-muted shadow-e1 backdrop-blur">
+              <ShieldCheck className="size-3.5 text-primary" /> Every host verified by Tuloy
+            </span>
+          </StaggerItem>
+        </Stagger>
 
-        <Card elevated className="mt-5 p-6">
-          <h1 className="text-display-lg text-ink">{COPY[mode].title}</h1>
+        <Card elevation={2} className="mt-6 p-6">
+          <h1 className="font-display text-display-xl text-ink">{COPY[mode].title}</h1>
           <p className="mt-2 text-body-md text-muted">{COPY[mode].sub}</p>
 
           <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
