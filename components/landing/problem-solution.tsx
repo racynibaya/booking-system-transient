@@ -10,8 +10,8 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   },
   {
     icon: PhilippinePeso,
-    title: "Cheaper than the big OTAs",
-    body: "List for free and pay only when you get a booking — a fraction of the 15–25% Agoda and Booking.com take.",
+    title: "0% commission to launch",
+    body: "Founding operators list free and pay 0% commission — while Agoda and Booking.com take 15–25% of every booking.",
   },
   {
     icon: CalendarCheck,
@@ -24,8 +24,11 @@ export function ProblemSolution() {
   return (
     <section id="features" className="px-6 py-24">
       <div className="mx-auto max-w-5xl">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-display-lg text-balance text-ink">
+        <Reveal className="mx-auto flex max-w-2xl flex-col items-center text-center">
+          <span className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
+            Why Tuloy
+          </span>
+          <h2 className="mt-4 text-display-lg text-balance text-ink">
             A real marketplace, not another Facebook group
           </h2>
           <p className="mt-4 text-body-md text-body">

@@ -117,8 +117,8 @@ export function Hero() {
           <StaggerItem>
             <p className="mt-6 max-w-xl text-body-md text-pretty text-body">
               List with Tuloy and get found by tourists searching one trusted place to book San Juan
-              — real-time availability, no double-bookings, and far less than the big OTAs charge.
-              We&rsquo;re onboarding pilot operators now.
+              — real-time availability, no double-bookings, and 0% commission while we onboard our
+              founding operators. We&rsquo;re taking pilot operators now.
             </p>
           </StaggerItem>
 

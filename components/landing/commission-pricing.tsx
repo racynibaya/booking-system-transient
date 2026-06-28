@@ -1,66 +1,76 @@
 import { Check } from "lucide-react";
 
-import { CtaButton } from "./cta-button";
 import { Reveal } from "./reveal";
 
-// What an operator gets for listing — kept to what's true today (no live-payout-timing promise:
-// the aggregator disbursement rail is built but dormant until PayMongo Money Movement clears).
+// What an operator gets for listing — every item maps to a shipped feature. Kept honest: no
+// live-payout-timing promise (the aggregator disbursement rail is built but dormant until PayMongo
+// Money Movement clears), so this lists what's collected/managed, not when funds land.
 const INCLUDED = [
   "Your listing on the San Juan marketplace",
   "A live booking page with real-time availability",
   "No double-booking across your rooms",
+  "Secure guest deposits collected online",
+  "Set your own prices and availability",
+  "A photo gallery of your rooms and shared spaces",
+  "A shareable booking link for your Facebook page",
+  "Instant booking alerts by email",
+  "Bookings and earnings in one dashboard",
   "Verified-host badge and profile",
 ];
 
-// Commission pricing (D10): the active revenue model is a per-booking commission, not a
-// subscription. Static by design — the real per-owner rates live in `tenant_payout_accounts`;
-// the figures here are the public headline (2.5% early-adopter, 5% standard). The subscription
-// `PricingTeaser` is kept dormant in-tree as the reversibility hedge — do not wire it back here.
+// Pricing (founding-operator 0%): a launch offer — 0% commission while we onboard San Juan's first
+// operators, NOT a permanent promise (deliberately no "ever"/"forever"; the 2.5% commission is the
+// planned rate to switch on once there's traction). Operators still bear only the standard online
+// payment-processing fee (not named here, not Tuloy revenue).
+//
+// Refined pricing card (premium, not the old heavy bordered + ribbon SaaS card): a single elevated
+// surface with a soft sea-glass wash behind the "0%" signature, the included features de-listed in
+// two columns under a hairline, and the OTA comparison as the closing kicker. No CTA here on
+// purpose — the FinalCta section directly below carries the single "Get started free".
+// The subscription `PricingTeaser` is kept dormant in-tree as the reversibility hedge — do not wire
+// it back here.
 export function CommissionPricing() {
   return (
     <section id="pricing" className="px-6 py-24">
-      <div className="mx-auto max-w-3xl">
-        <Reveal className="text-center">
-          <h2 className="text-display-lg text-balance text-ink">Pay only when you get a booking</h2>
-          <p className="mx-auto mt-4 max-w-md text-body-md text-body">
-            No monthly fee, no setup cost. Tuloy earns a small commission on each booking — and
-            nothing when you&rsquo;re empty.
-          </p>
-        </Reveal>
+      <div className="mx-auto max-w-2xl">
+        <Reveal className="relative isolate overflow-hidden rounded-xl border border-hairline bg-canvas px-8 pt-12 pb-10 text-center shadow-e3 sm:px-12">
+          {/* Soft sea-glass glow behind the headline number — depth without a hard box edge. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-64 bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--color-primary)_14%,transparent),transparent)]"
+          />
 
-        <Reveal
-          delay={0.08}
-          className="relative mt-12 rounded-xl border-2 border-primary bg-canvas p-8 shadow-e3 sm:p-10"
-        >
-          <span className="absolute -top-3 left-8 inline-flex rounded-full bg-primary px-3 py-1 text-caption-sm font-medium text-canvas">
-            Early-adopter rate
+          <span className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
+            Founding-operator pricing
           </span>
 
-          <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-display-xl text-ink">2.5%</span>
-                <span className="text-body-md text-muted">per booking</span>
-              </div>
-              <p className="mt-1 text-body-sm text-muted">
-                for pilot operators — <span className="text-ink">5%</span> after. Free to list.
-              </p>
-            </div>
-            <CtaButton href="/login">Get started free</CtaButton>
+          {/* Signature moment: the 0% set huge in Fraunces, "commission" anchored to its baseline. */}
+          <div className="mt-5 flex items-end justify-center gap-3">
+            <span className="font-display text-[clamp(3.5rem,10vw+1rem,6rem)] leading-[0.85] tracking-tight text-ink">
+              0%
+            </span>
+            <span className="pb-2 text-body-md text-muted sm:pb-3">commission</span>
           </div>
 
-          <ul className="mt-8 grid gap-3 border-t border-hairline pt-8 sm:grid-cols-2">
+          <p className="mx-auto mt-5 max-w-md text-body-md text-pretty text-body">
+            Free to list for San Juan&rsquo;s <span className="text-ink">founding operators</span> —
+            no monthly fee, no setup cost. Get in while we launch.
+          </p>
+
+          <ul className="mt-10 grid gap-x-8 gap-y-3.5 border-t border-hairline pt-10 text-left sm:grid-cols-2">
             {INCLUDED.map((f) => (
               <li key={f} className="flex items-start gap-3">
-                <Check className="mt-0.5 size-5 shrink-0 text-primary" />
+                <Check className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={2.25} />
                 <span className="text-body-sm text-ink">{f}</span>
               </li>
             ))}
           </ul>
         </Reveal>
 
-        <p className="mt-8 text-center text-caption-sm text-muted">
-          For comparison, Agoda and Booking.com charge 15–25% per booking.
+        <p className="mx-auto mt-8 max-w-md text-center text-body-sm text-muted">
+          Agoda and Booking.com take <span className="font-medium text-ink">15&ndash;25%</span> of
+          every booking. Right now, our operators pay{" "}
+          <span className="font-medium text-ink">0%</span>.
         </p>
       </div>
     </section>
