@@ -41,11 +41,17 @@ export function AdminTopNav() {
   );
 }
 
-// Thumb-reachable tab bar fixed to the bottom (mobile only). Active tab in Rausch.
+// Thumb-reachable tab bar fixed to the bottom (mobile only). Three evenly-distributed tabs;
+// the active tab's icon sits in a sea-tinted orb so the current section is unmistakable on a
+// glance. Matches the operator BottomNav pattern (components/app/operator-nav) for consistency:
+// 11px labels with min-w-0/truncate, fixed-size active orb, safe-area padding for the home bar.
 export function AdminBottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 border-t border-hairline bg-canvas/95 backdrop-blur md:hidden">
+    <nav
+      aria-label="Admin"
+      className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 border-t border-hairline bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+    >
       {ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
         const Icon = it.icon;
@@ -53,12 +59,19 @@ export function AdminBottomNav() {
           <Link
             key={it.href}
             href={it.href}
-            className={`flex flex-col items-center gap-1 py-2.5 text-caption-sm transition-colors ${
+            aria-current={active ? "page" : undefined}
+            className={`flex min-w-0 flex-col items-center gap-1 px-0.5 pt-2 pb-2.5 text-[11px] leading-none transition-colors ${
               active ? "text-primary" : "text-muted"
             }`}
           >
-            <Icon className="size-5" />
-            {it.label}
+            <span
+              className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${
+                active ? "bg-primary/12" : ""
+              }`}
+            >
+              <Icon className="size-5" />
+            </span>
+            <span className="w-full truncate text-center">{it.label}</span>
           </Link>
         );
       })}
