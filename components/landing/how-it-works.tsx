@@ -19,7 +19,7 @@ const STEPS: { n: string; icon: LucideIcon; title: string; body: string }[] = [
     n: "3",
     icon: CheckCheck,
     title: "Guests book & you get paid",
-    body: "Guests pick dates and pay on Tuloy. You confirm, host them, and keep your share.",
+    body: "Guests pick dates and pay on Tuloy. You confirm, host them, and get paid your rate.",
   },
 ];
 
@@ -27,8 +27,11 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-surface-soft/60 px-6 py-24">
       <div className="mx-auto max-w-5xl">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-display-lg text-balance text-ink">Live in an afternoon</h2>
+        <Reveal className="mx-auto flex max-w-2xl flex-col items-center text-center">
+          <span className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
+            Getting started
+          </span>
+          <h2 className="mt-4 text-display-lg text-balance text-ink">Live in an afternoon</h2>
           <p className="mt-4 text-body-md text-body">
             No website to build, no app for guests to download. Three steps and you&rsquo;re taking
             bookings from across San Juan.
