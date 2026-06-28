@@ -42,12 +42,17 @@ export function TopNav() {
   );
 }
 
-// Thumb-reachable tab bar fixed to the bottom (mobile only). The active tab's icon sits
-// in a sea-tinted orb so the current section is unmistakable on a glance.
+// Thumb-reachable tab bar fixed to the bottom (mobile only). Five evenly-distributed tabs;
+// the active tab's icon sits in a sea-tinted orb so the current section is unmistakable on a
+// glance. Labels drop to 11px (tab-bar convention) so all five sit on one line from small
+// phones up through Pro Max widths; truncate is a safety net against overflow.
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-hairline bg-canvas/90 backdrop-blur-md md:hidden">
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-hairline bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+    >
       {ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
         const Icon = it.icon;
@@ -55,18 +60,19 @@ export function BottomNav() {
           <Link
             key={it.href}
             href={it.href}
-            className={`flex flex-col items-center gap-1 pt-2 pb-2.5 text-caption-sm transition-colors ${
+            aria-current={active ? "page" : undefined}
+            className={`flex min-w-0 flex-col items-center gap-1 px-0.5 pt-2 pb-2.5 text-[11px] leading-none transition-colors ${
               active ? "text-primary" : "text-muted"
             }`}
           >
             <span
-              className={`flex items-center justify-center rounded-full px-4 py-1 transition-colors ${
+              className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${
                 active ? "bg-primary/12" : ""
               }`}
             >
               <Icon className="size-5" />
             </span>
-            {it.label}
+            <span className="w-full truncate text-center">{it.label}</span>
           </Link>
         );
       })}
