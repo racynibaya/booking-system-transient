@@ -141,97 +141,6 @@ export const getRevenueSummary = cache(async (): Promise<RevenueSummary> => {
 });
 
 // ---------------------------------------------------------------------------
-// Earnings / payouts. The operator's window into the commission rail: each centralized (online-paid)
-// booking accrues one payout_ledger row (clearing → payable → paid), so this is where a host sees
-// money in flight now that payouts are ~T+2 platform transfers, not instant GCash. RLS-scoped to the
-// operator's own rows (payout_ledger_select_own); read-only.
-// ---------------------------------------------------------------------------
-export type PayoutStatus =
-  | "clearing"
-  | "payable"
-  | "paid"
-  | "failed"
-  | "refunded"
-  | "clawed_back"
-  | "refunding";
-
-export type PayoutRow = {
-  id: string;
-  bookingId: string;
-  status: PayoutStatus;
-  ownerPayout: number;
-  operatorCommission: number;
-  guestServiceFee: number;
-  stayValue: number;
-  depositAmount: number;
-  clearEta: string | null;
-  payoutRef: string | null;
-  refundAmount: number | null;
-  createdAt: string;
-  guestName: string | null;
-  checkIn: string | null;
-  checkOut: string | null;
-  propertyName: string | null;
-};
-
-export type EarningsSummary = {
-  clearing: number; // owner_payout still in the clearing window
-  payable: number; // cleared, awaiting the next payout run
-  paid: number; // total disbursed to date
-  onHold: number; // refunded + clawed_back + refunding (money the host won't net)
-  rows: PayoutRow[];
-};
-
-export const getEarnings = cache(async (): Promise<EarningsSummary> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("payout_ledger")
-    .select(
-      "id, booking_id, status, stay_value, deposit_amount, operator_commission, guest_service_fee, owner_payout, clear_eta, payout_ref, refund_amount, created_at, bookings(guest_name, check_in, check_out, properties(name))",
-    )
-    .order("created_at", { ascending: false });
-
-  if (error || !data) return { clearing: 0, payable: 0, paid: 0, onHold: 0, rows: [] };
-
-  const rows: PayoutRow[] = data.map((r) => {
-    const booking = r.bookings as {
-      guest_name: string | null;
-      check_in: string | null;
-      check_out: string | null;
-      properties: { name: string | null } | null;
-    } | null;
-    return {
-      id: r.id,
-      bookingId: r.booking_id,
-      status: r.status as PayoutStatus,
-      ownerPayout: Number(r.owner_payout ?? 0),
-      operatorCommission: Number(r.operator_commission ?? 0),
-      guestServiceFee: Number(r.guest_service_fee ?? 0),
-      stayValue: Number(r.stay_value ?? 0),
-      depositAmount: Number(r.deposit_amount ?? 0),
-      clearEta: r.clear_eta,
-      payoutRef: r.payout_ref,
-      refundAmount: r.refund_amount == null ? null : Number(r.refund_amount),
-      createdAt: r.created_at,
-      guestName: booking?.guest_name ?? null,
-      checkIn: booking?.check_in ?? null,
-      checkOut: booking?.check_out ?? null,
-      propertyName: booking?.properties?.name ?? null,
-    };
-  });
-
-  const sumWhere = (pred: (s: PayoutStatus) => boolean) =>
-    rows.filter((r) => pred(r.status)).reduce((s, r) => s + r.ownerPayout, 0);
-
-  return {
-    clearing: sumWhere((s) => s === "clearing"),
-    payable: sumWhere((s) => s === "payable"),
-    paid: sumWhere((s) => s === "paid"),
-    onHold: sumWhere((s) => s === "refunded" || s === "clawed_back" || s === "refunding"),
-    rows,
-  };
-});
-
 export type OccupancyNight = { date: string; open: number; total: number };
 export type OccupancySnapshot = {
   tonightOpen: number;
@@ -335,13 +244,16 @@ export const getPaymentMethods = cache(async () => {
   return data;
 });
 
-// The current operator's payout destination (centralized aggregator) — where Tuloy disburses their
-// share. RLS-scoped; null if not set up yet. Rate columns are read for display only.
-export const getPayoutAccount = cache(async () => {
+// The current operator's Xendit sub-account binding (the commission rail). RLS-scoped, select-only;
+// null until they start onboarding. kyc_status='LIVE' is what lets them accept online payments — the
+// webhook (lib/xendit/webhook-handler.ts) is the only writer of that column.
+export const getXenditAccount = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("tenant_payout_accounts")
-    .select("id, method, payout_name, account_number, bank_name, payout_bic, status, updated_at")
+    .from("tenant_xendit_accounts")
+    .select(
+      "id, sub_account_id, type, kyc_status, commission_rate, kyc_submitted_at, payout_channel_code, payout_account_number, payout_account_name, updated_at",
+    )
     .maybeSingle();
 
   if (error) return null;
