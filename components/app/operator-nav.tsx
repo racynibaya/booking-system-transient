@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarCheck, LayoutGrid, Settings, Wallet } from "lucide-react";
+import { Building2, CalendarCheck, LayoutGrid, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,7 +8,6 @@ const ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/properties", label: "Properties", icon: Building2 },
   { href: "/bookings", label: "Bookings", icon: CalendarCheck },
-  { href: "/earnings", label: "Earnings", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

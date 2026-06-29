@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, RotateCcw, ShieldCheck } from "lucide-react";
+import { LayoutGrid, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,7 +9,6 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: LayoutGrid },
   { href: "/admin/operators", label: "Operators", icon: ShieldCheck },
-  { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
 ] as const;
 
 // /admin must match exactly so it doesn't stay active on /admin/operators.
@@ -41,7 +40,7 @@ export function AdminTopNav() {
   );
 }
 
-// Thumb-reachable tab bar fixed to the bottom (mobile only). Three evenly-distributed tabs;
+// Thumb-reachable tab bar fixed to the bottom (mobile only). Two evenly-distributed tabs;
 // the active tab's icon sits in a sea-tinted orb so the current section is unmistakable on a
 // glance. Matches the operator BottomNav pattern (components/app/operator-nav) for consistency:
 // 11px labels with min-w-0/truncate, fixed-size active orb, safe-area padding for the home bar.
@@ -50,7 +49,7 @@ export function AdminBottomNav() {
   return (
     <nav
       aria-label="Admin"
-      className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 border-t border-hairline bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 border-t border-hairline bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
       {ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
