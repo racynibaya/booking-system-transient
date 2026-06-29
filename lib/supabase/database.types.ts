@@ -533,6 +533,62 @@ export type Database = {
           },
         ];
       };
+      tenant_xendit_accounts: {
+        Row: {
+          account_holder_id: string | null;
+          commission_rate: number;
+          created_at: string;
+          id: string;
+          kyc_status: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at: string | null;
+          payout_account_name: string | null;
+          payout_account_number: string | null;
+          payout_channel_code: string | null;
+          sub_account_id: string;
+          tenant_id: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_holder_id?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          kyc_status?: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at?: string | null;
+          payout_account_name?: string | null;
+          payout_account_number?: string | null;
+          payout_channel_code?: string | null;
+          sub_account_id: string;
+          tenant_id: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_holder_id?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          kyc_status?: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at?: string | null;
+          payout_account_name?: string | null;
+          payout_account_number?: string | null;
+          payout_channel_code?: string | null;
+          sub_account_id?: string;
+          tenant_id?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_xendit_accounts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           created_at: string;
@@ -632,6 +688,7 @@ export type Database = {
           tenant_id: string;
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
+          xendit_kyc_status: Database["public"]["Enums"]["xendit_account_status"] | null;
         }[];
       };
       admin_notification_recipients: {
@@ -891,6 +948,13 @@ export type Database = {
         | "refunding";
       payout_method: "gcash" | "bank";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
+      xendit_account_status:
+        | "INVITED"
+        | "REGISTERED"
+        | "AWAITING_DOCS"
+        | "PENDING_VERIFICATION"
+        | "LIVE"
+        | "SUSPENDED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1042,6 +1106,14 @@ export const Constants = {
       ],
       payout_method: ["gcash", "bank"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
+      xendit_account_status: [
+        "INVITED",
+        "REGISTERED",
+        "AWAITING_DOCS",
+        "PENDING_VERIFICATION",
+        "LIVE",
+        "SUSPENDED",
+      ],
     },
   },
 } as const;
