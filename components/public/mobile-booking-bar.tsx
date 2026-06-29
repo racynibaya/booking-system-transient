@@ -77,14 +77,12 @@ export function MobileBookingBar({
   rooms,
   propertyName,
   area,
-  acceptsOnlinePayment,
   minStayNights,
   source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
-  acceptsOnlinePayment: boolean;
   minStayNights: number;
   source?: string;
 }) {
@@ -115,7 +113,6 @@ export function MobileBookingBar({
             rooms={rooms}
             propertyName={propertyName}
             area={area}
-            acceptsOnlinePayment={acceptsOnlinePayment}
             minStayNights={minStayNights}
             source={source}
           />

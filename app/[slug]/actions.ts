@@ -6,10 +6,10 @@ import { z } from "zod";
 import { env } from "@/env";
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
-import { createCheckoutSession, toCentavos } from "@/lib/paymongo/client";
-import { computeBookingSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
+import { computeXenditSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
+import { createPaymentSession, createSplitRule } from "@/lib/xendit/client";
 
 // Public booking input (P5: validated at the trust boundary). The guest is anonymous.
 const publicBookingInput = z
@@ -204,25 +204,25 @@ async function getPaymentMethodsForGuest(tenantId: string): Promise<PublicPaymen
   }));
 }
 
-// --- Guest deposit checkout (PayMongo, centralized aggregator) ---------------------------
-// Shared result type for the hosted-checkout action below.
+// Shared result type for the hosted-checkout action below (Xendit).
 export type GatewayCheckoutResult =
   | { ok: true; checkoutUrl: string }
   | { ok: false; error: string };
 
-// --- Platform checkout (centralized aggregator) ------------------------------------------
+// --- Xendit checkout (xenPlatform commission rail — Slice 2) ------------------------------
 //
-// The new model: ALL guest payments are collected into ONE Tuloy PayMongo account (env platform key),
-// not the operator's. The guest is charged the deposit + a bundled service fee (their 6% + the
-// grossed-up PayMongo fee — see computeBookingSplit); the operator's 5% is withheld later at payout
-// (the ledger, not here). The operator needs no PayMongo account — just an active payout destination
-// (tenant_payout_accounts), which also carries their per-owner rates. Confirmation: the webhook →
-// confirm_booking_gateway is the source of truth; the redirect is UX only.
-export async function createPlatformCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
+// The custody-clean checkout (replaces the retired aggregator platform checkout): the guest charge is a Payment Session
+// created ON the operator's LIVE sub-account (for-user-id), with a flat-commission Split Rule routing
+// Tuloy's 2.5% to the Master at capture — funds never touch a Tuloy balance, and the operator's share
+// settles to their own sub-account (they self-withdraw). Dormant until XENDIT_SECRET_KEY +
+// XENDIT_MASTER_ACCOUNT_ID are set AND the operator's kyc_status is LIVE. Confirmation is the Session
+// webhook → confirm_booking_gateway (Slice 2c); the redirect is UX only. NOT yet wired to the pay
+// button (the caller still uses the aggregator path) and UNVERIFIED end-to-end — needs a LIVE operator.
+export async function createXenditCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };
   }
-  if (!env.PAYMONGO_PLATFORM_SECRET_KEY) {
+  if (!env.XENDIT_SECRET_KEY || !env.XENDIT_MASTER_ACCOUNT_ID) {
     return { ok: false, error: "Online payment isn't available right now." };
   }
 
@@ -246,25 +246,26 @@ export async function createPlatformCheckout(bookingId: string): Promise<Gateway
     return { ok: false, error: "This booking has no total to charge." };
   }
 
-  // Reuse the single-use session on any repeat call (double-charge guard — same as Model A).
+  // Reuse the single-use session on any repeat call (double-charge guard).
   if (booking.gateway_checkout_url) {
     return { ok: true, checkoutUrl: booking.gateway_checkout_url };
   }
 
-  // The operator must have an active payout destination; it also carries their per-owner rates.
-  const { data: payout } = await admin
-    .from("tenant_payout_accounts")
-    .select("commission_rate, service_fee_rate, status")
+  // The operator must have a LIVE Xendit sub-account; it carries their per-owner commission rate.
+  const { data: xa } = await admin
+    .from("tenant_xendit_accounts")
+    .select("sub_account_id, kyc_status, commission_rate")
     .eq("tenant_id", booking.tenant_id)
     .maybeSingle();
-  if (!payout || payout.status !== "active") {
+  if (!xa || xa.kyc_status !== "LIVE") {
     return { ok: false, error: "Online payment isn't available for this host yet." };
   }
 
-  const split = computeBookingSplit(Number(booking.total_amount), Number(booking.deposit_amount), {
-    commissionRate: Number(payout.commission_rate),
-    serviceFeeRate: Number(payout.service_fee_rate),
-  });
+  const split = computeXenditSplit(
+    Number(booking.total_amount),
+    Number(booking.deposit_amount),
+    Number(xa.commission_rate),
+  );
 
   const property = booking.property as { slug: string; name: string } | null;
   const slug = property?.slug ?? "";
@@ -274,32 +275,38 @@ export async function createPlatformCheckout(bookingId: string): Promise<Gateway
   const proto = h.get("x-forwarded-proto") ?? "https";
   const origin = `${proto}://${host}`;
 
-  // Two guest-facing lines that sum to split.guestTotal: the deposit, and a softly-named fee line
-  // that bundles the guest's service fee + the grossed-up PayMongo fee. Centavo math so the two lines
-  // reconcile exactly to the grossed-up total.
-  const depositCentavos = toCentavos(split.deposit);
-  const feeCentavos = toCentavos(split.guestTotal) - depositCentavos;
-
   try {
-    const { checkoutUrl } = await createCheckoutSession({
-      secretKey: env.PAYMONGO_PLATFORM_SECRET_KEY,
-      lineItems: [
-        { name: `Deposit — ${property?.name ?? "booking"}`, amount: depositCentavos, quantity: 1 },
-        { name: "Convenience fee", amount: feeCentavos, quantity: 1 },
+    // One flat-commission split rule per booking (commission is a per-stay peso amount), routing
+    // Tuloy's cut to the Master. Then a Payment Session on the operator's sub-account with it attached.
+    const rule = await createSplitRule({
+      secretKey: env.XENDIT_SECRET_KEY,
+      name: `Tuloy commission ${bookingId}`,
+      routes: [
+        {
+          flatAmount: split.commission,
+          destinationAccountId: env.XENDIT_MASTER_ACCOUNT_ID,
+          referenceId: `commission-${bookingId}`,
+        },
       ],
-      description: `Booking deposit (${bookingId})`,
-      successUrl: `${origin}/${slug}/pay/return?b=${bookingId}`,
-      cancelUrl: `${origin}/${slug}`,
+    });
+
+    const session = await createPaymentSession({
+      secretKey: env.XENDIT_SECRET_KEY,
+      forUserId: xa.sub_account_id,
+      splitRuleId: rule.id,
+      referenceId: bookingId,
+      amount: split.guestTotal,
+      description: `Booking deposit — ${property?.name ?? "booking"}`,
+      successReturnUrl: `${origin}/${slug}/pay/return?b=${bookingId}`,
+      cancelReturnUrl: `${origin}/${slug}`,
       metadata: { booking_id: bookingId, tenant_id: booking.tenant_id },
     });
 
-    // Claim the session URL atomically — only the call that finds the column still null wins; any
-    // concurrent caller reuses the stored URL, so the guest always sees one payment page. We also
-    // stamp the grossed-up charge so the webhook's confirm can verify the settled amount against it
-    // (confirm_booking_gateway → coalesce(gateway_charge_amount, deposit_amount)).
+    // Claim the session URL atomically (double-charge guard) + stamp the grossed-up charge so the
+    // webhook's confirm verifies the settled amount against it.
     const { data: claimed } = await admin
       .from("bookings")
-      .update({ gateway_checkout_url: checkoutUrl, gateway_charge_amount: split.guestTotal })
+      .update({ gateway_checkout_url: session.sessionUrl, gateway_charge_amount: split.guestTotal })
       .eq("id", bookingId)
       .is("gateway_checkout_url", null)
       .select("gateway_checkout_url")
@@ -312,7 +319,7 @@ export async function createPlatformCheckout(bookingId: string): Promise<Gateway
       .select("gateway_checkout_url")
       .eq("id", bookingId)
       .single();
-    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? checkoutUrl };
+    return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? session.sessionUrl };
   } catch {
     return { ok: false, error: "Couldn't start the payment. Please try again." };
   }

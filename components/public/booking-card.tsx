@@ -3,15 +3,10 @@
 import "react-day-picker/style.css";
 
 import { Check, ChevronDown, MoonStar, TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
-import {
-  createPlatformCheckout,
-  createPublicBooking,
-  submitProof,
-  type PublicPaymentMethod,
-} from "@/app/[slug]/actions";
+import { createPublicBooking, submitProof, type PublicPaymentMethod } from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
@@ -41,14 +36,12 @@ export function BookingCard({
   rooms,
   propertyName,
   area,
-  acceptsOnlinePayment,
   minStayNights = MIN_STAY_NIGHTS,
   source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
-  acceptsOnlinePayment: boolean;
   // Per-property guest-facing minimum stay. Defaults to MIN_STAY_NIGHTS as a safety net.
   minStayNights?: number;
   source?: string;
@@ -75,10 +68,6 @@ export function BookingCard({
   const [deposit, setDeposit] = useState<number | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
-  const [payingOnline, setPayingOnline] = useState(false);
-  // Read synchronously by the beforeunload guard so it can tell an INTENTIONAL pay-online redirect
-  // apart from an accidental tab close (state would be stale inside that listener's closure).
-  const payingOnlineRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
 
   const room = useMemo(() => rooms.find((r) => r.id === roomId), [rooms, roomId]);
@@ -148,9 +137,8 @@ export function BookingCard({
   useEffect(() => {
     if (step !== "payment") return;
     const warn = (e: BeforeUnloadEvent) => {
-      // Paying online navigates away on purpose — don't fight it. The hold lives in the DB, not the
-      // tab, so it isn't lost; the guard is only for an accidental refresh/close mid-deposit.
-      if (payingOnlineRef.current) return;
+      // Guard against an accidental refresh/close mid-deposit. The hold lives in the DB, not the tab,
+      // so it isn't lost — this just keeps the guest from dropping the page before uploading proof.
       e.preventDefault();
       e.returnValue = "";
     };
@@ -185,24 +173,6 @@ export function BookingCard({
       setHoldExpiresAt(res.holdExpiresAt);
       setStep("payment");
     } else setError(res.error);
-  }
-
-  // Online deposit: hand off to the host's hosted PayMongo page. The webhook confirms the booking;
-  // the guest comes back to /{slug}/pay/return. We don't flip step here — the redirect leaves the
-  // page, and the beforeunload guard is fine to ignore since the hold is being paid, not abandoned.
-  async function payOnline() {
-    if (!bookingId) return;
-    setError(null);
-    setPayingOnline(true);
-    payingOnlineRef.current = true; // suppress the leave-tab guard for this intentional redirect
-    const res = await createPlatformCheckout(bookingId);
-    if (res.ok) {
-      window.location.href = res.checkoutUrl;
-    } else {
-      setPayingOnline(false);
-      payingOnlineRef.current = false;
-      setError(res.error);
-    }
   }
 
   async function sendProof() {
@@ -243,9 +213,7 @@ export function BookingCard({
         {countdown ? (
           <p className="mt-3 text-body-sm text-body">
             Slot held for <span className="font-semibold text-ink">{countdown}</span>
-            {acceptsOnlinePayment
-              ? " — pay online now to confirm instantly."
-              : " — send the deposit now, then upload your screenshot."}
+            {" — send the deposit now, then upload your screenshot."}
           </p>
         ) : (
           <div className="mt-3 flex items-start gap-2 rounded-sm border border-error/20 bg-error/10 p-3 text-body-sm text-error">
@@ -267,122 +235,100 @@ export function BookingCard({
           </p>
         )}
 
-        {acceptsOnlinePayment ? (
-          // Online-only (host has an active payout account): the centralized platform-wallet path is
-          // the ONLY deposit option, so Tuloy's service fee + commission can't be bypassed (Slice 7).
-          // No GCash+proof fallback here — that legacy path stays only for hosts without a payout
-          // account (the else branch). Refund framing differs: online deposits sit in the Tuloy
-          // wallet, not the host's GCash, so the "handled directly by the host" copy doesn't apply.
-          <div className="mt-4 flex flex-col gap-2">
-            <button type="button" disabled={payingOnline} onClick={payOnline} className={ctaClass}>
-              {payingOnline ? "Opening secure checkout…" : "Pay online"}
-            </button>
-            <p className="text-center text-caption text-muted">
-              Instant confirmation — you&apos;ll see your deposit and a small convenience fee on a
-              secure PayMongo page, and your booking is confirmed the moment it goes through.
+        {/* Manual GCash + proof: the guest sends the deposit to the host's account, then uploads a
+            receipt for the host to confirm. */}
+        <>
+          <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">
+            <p className="text-display-sm text-ink">
+              ₱{deposit ?? "—"}
+              <span className="text-body-sm font-normal text-muted"> deposit</span>
             </p>
-            {error && <p className="mt-1 text-body-sm text-error">{error}</p>}
-            <p className="mt-2 text-caption text-muted">
-              Your deposit secures the booking. Cancellations &amp; refunds follow the host&apos;s
-              policy.
-            </p>
-          </div>
-        ) : (
-          // Manual GCash + proof — the legacy path, unchanged. Used only when the host has no active
-          // payout account, so there's nowhere to collect the deposit online yet.
-          <>
-            <div className="mt-4 rounded-sm border border-hairline bg-surface-soft p-4">
-              <p className="text-display-sm text-ink">
-                ₱{deposit ?? "—"}
-                <span className="text-body-sm font-normal text-muted"> deposit</span>
-              </p>
-              {methods.length > 0 ? (
-                (() => {
-                  const m = methods[payMethodIdx] ?? methods[0];
-                  return (
-                    <div className="mt-3 flex flex-col gap-3">
-                      {/* One method at a time. With several, a single selector picks which to pay
+            {methods.length > 0 ? (
+              (() => {
+                const m = methods[payMethodIdx] ?? methods[0];
+                return (
+                  <div className="mt-3 flex flex-col gap-3">
+                    {/* One method at a time. With several, a single selector picks which to pay
                           with — no scrolling past a wall of QR codes. With one, the picker is hidden. */}
-                      {methods.length > 1 && (
-                        <label className="flex flex-col gap-1">
-                          <span className="text-caption font-medium text-muted">Pay with</span>
-                          <div className="relative">
-                            <select
-                              value={payMethodIdx}
-                              onChange={(e) => setPayMethodIdx(Number(e.target.value))}
-                              className={`${fieldClass} appearance-none pr-10 font-medium`}
-                            >
-                              {methods.map((opt, i) => (
-                                <option key={i} value={i} className="text-ink">
-                                  {opt.label}
-                                  {opt.accountNumber ? ` · ${opt.accountNumber}` : ""}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
-                          </div>
-                        </label>
+                    {methods.length > 1 && (
+                      <label className="flex flex-col gap-1">
+                        <span className="text-caption font-medium text-muted">Pay with</span>
+                        <div className="relative">
+                          <select
+                            value={payMethodIdx}
+                            onChange={(e) => setPayMethodIdx(Number(e.target.value))}
+                            className={`${fieldClass} appearance-none pr-10 font-medium`}
+                          >
+                            {methods.map((opt, i) => (
+                              <option key={i} value={i} className="text-ink">
+                                {opt.label}
+                                {opt.accountNumber ? ` · ${opt.accountNumber}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
+                        </div>
+                      </label>
+                    )}
+
+                    <div className="flex flex-col gap-0.5 text-body-sm text-body">
+                      {methods.length === 1 && (
+                        <span className="text-caption font-medium text-muted">{m.label}</span>
                       )}
-
-                      <div className="flex flex-col gap-0.5 text-body-sm text-body">
-                        {methods.length === 1 && (
-                          <span className="text-caption font-medium text-muted">{m.label}</span>
-                        )}
-                        {m.accountNumber && (
-                          <span>
-                            {m.bankName ? `${m.bankName}: ` : ""}
-                            <span className="font-semibold text-ink">{m.accountNumber}</span>
-                          </span>
-                        )}
-                        {m.accountName && <span className="text-muted">{m.accountName}</span>}
-                        {m.qrUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
-                          <img
-                            src={m.qrUrl}
-                            alt={`${m.label} QR code`}
-                            className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
-                          />
-                        )}
-                      </div>
+                      {m.accountNumber && (
+                        <span>
+                          {m.bankName ? `${m.bankName}: ` : ""}
+                          <span className="font-semibold text-ink">{m.accountNumber}</span>
+                        </span>
+                      )}
+                      {m.accountName && <span className="text-muted">{m.accountName}</span>}
+                      {m.qrUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element -- remote QR, matches the cover-image pattern
+                        <img
+                          src={m.qrUrl}
+                          alt={`${m.label} QR code`}
+                          className="mt-2 size-40 rounded-sm border border-hairline bg-white object-contain p-1"
+                        />
+                      )}
                     </div>
-                  );
-                })()
-              ) : (
-                <p className="mt-3 text-body-sm text-muted">
-                  The host hasn&apos;t added payment details yet — please contact them to pay.
-                </p>
-              )}
-            </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="mt-3 text-body-sm text-muted">
+                The host hasn&apos;t added payment details yet — please contact them to pay.
+              </p>
+            )}
+          </div>
 
-            {/* Refund frame (B): honest, no Tuloy guarantee. The deposit goes straight to the host's
+          {/* Refund frame (B): honest, no Tuloy guarantee. The deposit goes straight to the host's
                 own GCash, so refunds are the host's to handle, not ours. */}
-            <p className="mt-3 text-caption text-muted">
-              Your deposit secures the booking. Cancellations &amp; refunds are handled directly by
-              the host per their policy.
-            </p>
+          <p className="mt-3 text-caption text-muted">
+            Your deposit secures the booking. Cancellations &amp; refunds are handled directly by
+            the host per their policy.
+          </p>
 
-            <label className="mt-4 flex flex-col gap-1">
-              <span className={labelClass}>Upload your payment receipt</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-                className="text-body-sm text-muted file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-3 file:py-2 file:text-button-sm file:text-canvas"
-              />
-            </label>
+          <label className="mt-4 flex flex-col gap-1">
+            <span className={labelClass}>Upload your payment receipt</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+              className="text-body-sm text-muted file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-3 file:py-2 file:text-button-sm file:text-canvas"
+            />
+          </label>
 
-            {error && <p className="mt-3 text-body-sm text-error">{error}</p>}
+          {error && <p className="mt-3 text-body-sm text-error">{error}</p>}
 
-            <button
-              type="button"
-              disabled={pending || !proofFile}
-              onClick={sendProof}
-              className={`mt-4 ${ctaClass}`}
-            >
-              {pending ? "Submitting…" : "I've paid — submit proof"}
-            </button>
-          </>
-        )}
+          <button
+            type="button"
+            disabled={pending || !proofFile}
+            onClick={sendProof}
+            className={`mt-4 ${ctaClass}`}
+          >
+            {pending ? "Submitting…" : "I've paid — submit proof"}
+          </button>
+        </>
       </div>
     );
   }
