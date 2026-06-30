@@ -9,6 +9,7 @@ import {
 } from "@/components/dashboard/onboarding-progress";
 import { OccupancyCard } from "@/components/dashboard/occupancy-card";
 import { OwesList } from "@/components/dashboard/owes-list";
+import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { TodayConsole } from "@/components/dashboard/today-console";
 import { PropertyCard } from "@/components/properties/property-card";
 import { ShareLinkButton } from "@/components/properties/share-link-button";
@@ -45,6 +46,18 @@ export default async function DashboardPage() {
   // M1 — Today console: the day's operating view, re-composed from the bookings already loaded.
   const todayDate = todayStr();
   const board = todayBoard(bookings, todayDate);
+
+  // M6 — recent activity: the latest booking events, newest first (derived, no events table).
+  const recentActivity = [...bookings]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 6)
+    .map((b) => ({
+      id: b.id,
+      guest_name: b.guest_name,
+      status: b.status,
+      room: b.room_types?.name ?? null,
+      createdAt: b.created_at,
+    }));
 
   const roomCount = properties.reduce((n, p) => n + (p.room_types?.[0]?.count ?? 0), 0);
   const hasProperty = properties.length > 0;
@@ -134,6 +147,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-col gap-4">
           <OccupancyCard snapshot={occupancy} />
+          <RecentActivity items={recentActivity} />
         </div>
       </div>
 
