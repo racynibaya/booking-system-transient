@@ -273,6 +273,18 @@ export const getProperties = cache(async () => {
   return data;
 });
 
+// All properties + their room types (id, name, quantity) for the top-level availability calendar
+// (M3). RLS-scoped. quantity drives the per-day units-available math in RoomCalendar.
+export const getCalendarProperties = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, name, room_types(id, name, quantity)")
+    .order("name", { ascending: true });
+  if (error || !data) return [];
+  return data;
+});
+
 // One property + its room_types, RLS-scoped. null if not the operator's.
 export const getProperty = cache(async (id: string) => {
   const supabase = await createClient();
