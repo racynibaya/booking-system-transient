@@ -546,3 +546,29 @@ export const getEarnings = cache(async () => {
     outstanding: sum("balance"),
   };
 });
+
+// S3 — operator's saved reply templates + auto-reply config (RLS-scoped to the operator's tenant).
+export const getInquiryTemplates = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_templates")
+    .select("id, title, body, sort_order")
+    .order("sort_order", { ascending: true });
+  if (error || !data) return [];
+  return data;
+});
+
+export const getInquiryAutoReply = cache(async () => {
+  const user = await getUser();
+  if (!user) return { enabled: true, text: "" };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tenants")
+    .select("inquiry_auto_reply_enabled, inquiry_auto_reply")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return {
+    enabled: data?.inquiry_auto_reply_enabled ?? true,
+    text: data?.inquiry_auto_reply ?? "",
+  };
+});

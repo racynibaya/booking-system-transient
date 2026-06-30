@@ -46,17 +46,23 @@ export default async function GuestThreadPage({ params }: { params: Promise<{ to
         <Card elevation={1} className="flex flex-col gap-3 p-5">
           {messages.map((m) => {
             const mine = m.sender === "guest";
+            const auto = m.sender === "auto";
             return (
               <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
                 <div
                   className={`max-w-[85%] rounded-md px-4 py-2.5 text-body-md ${
-                    mine ? "bg-primary text-on-primary" : "bg-surface-soft text-ink"
+                    mine
+                      ? "bg-primary text-on-primary"
+                      : auto
+                        ? "bg-surface-strong text-ink"
+                        : "bg-surface-soft text-ink"
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{m.body}</p>
                 </div>
                 <span className="mt-1 text-caption-sm text-muted">
-                  {mine ? "You" : propertyName} · {formatDateShort(m.created_at.slice(0, 10))}
+                  {mine ? "You" : auto ? "Automatic reply" : propertyName} ·{" "}
+                  {formatDateShort(m.created_at.slice(0, 10))}
                 </span>
               </div>
             );

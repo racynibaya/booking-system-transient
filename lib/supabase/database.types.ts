@@ -199,6 +199,41 @@ export type Database = {
           },
         ];
       };
+      inquiry_templates: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          sort_order: number;
+          tenant_id: string;
+          title: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          sort_order?: number;
+          tenant_id: string;
+          title: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          sort_order?: number;
+          tenant_id?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_templates_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       inquiry_threads: {
         Row: {
           awaiting_operator: boolean;
@@ -683,6 +718,8 @@ export type Database = {
           gcash_number: string | null;
           gcash_qr_path: string | null;
           id: string;
+          inquiry_auto_reply: string | null;
+          inquiry_auto_reply_enabled: boolean;
           is_admin: boolean;
           name: string | null;
           user_id: string;
@@ -696,6 +733,8 @@ export type Database = {
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          inquiry_auto_reply?: string | null;
+          inquiry_auto_reply_enabled?: boolean;
           is_admin?: boolean;
           name?: string | null;
           user_id: string;
@@ -709,6 +748,8 @@ export type Database = {
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          inquiry_auto_reply?: string | null;
+          inquiry_auto_reply_enabled?: boolean;
           is_admin?: boolean;
           name?: string | null;
           user_id?: string;

@@ -4,7 +4,11 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { env } from "@/env";
-import { notifyOperatorNewInquiry } from "@/lib/email/inquiry";
+import {
+  DEFAULT_AUTO_REPLY,
+  notifyGuestInquiryReceived,
+  notifyOperatorNewInquiry,
+} from "@/lib/email/inquiry";
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { computeXenditSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
@@ -414,7 +418,7 @@ export async function createInquiry(
   const admin = createServiceClient();
   const { data: prop } = await admin
     .from("properties")
-    .select("id, tenant_id, name")
+    .select("id, tenant_id, name, tenants(inquiry_auto_reply_enabled, inquiry_auto_reply)")
     .eq("slug", slug)
     .maybeSingle();
   if (!prop) return { ok: false, error: "We couldn't find that listing." };
@@ -428,7 +432,7 @@ export async function createInquiry(
       guest_email: guestEmail,
       guest_phone: guestPhone || null,
     })
-    .select("id")
+    .select("id, token")
     .single();
   if (tErr || !thread)
     return { ok: false, error: "Couldn't send your question. Please try again." };
@@ -445,6 +449,22 @@ export async function createInquiry(
     guestName,
     body: message,
   });
+
+  // S3 auto-acknowledge (on by default): post a system 'auto' message so the guest is never left
+  // silent — the 'auto' sender does NOT clear the thread's "needs reply" (a human still must answer)
+  // — and email the guest their tokenized thread link right away.
+  if (prop.tenants?.inquiry_auto_reply_enabled) {
+    const autoBody = prop.tenants.inquiry_auto_reply?.trim() || DEFAULT_AUTO_REPLY;
+    await admin
+      .from("inquiry_messages")
+      .insert({ thread_id: thread.id, sender: "auto", body: autoBody });
+    await notifyGuestInquiryReceived({
+      guestEmail,
+      propertyName: prop.name,
+      token: thread.token,
+      autoReplyBody: autoBody,
+    });
+  }
 
   return { ok: true };
 }

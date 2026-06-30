@@ -1,5 +1,6 @@
-import { CreditCard, Wallet } from "lucide-react";
+import { CreditCard, MessageCircle, Wallet } from "lucide-react";
 
+import { InquirySettingsSection } from "@/components/settings/inquiry-settings-section";
 import { PaymentMethodsSection } from "@/components/settings/payment-methods-section";
 import { XenditOnboardingSection } from "@/components/settings/xendit-onboarding-section";
 import { IconChip } from "@/components/ui/icon-chip";
@@ -7,6 +8,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { env } from "@/env";
 import {
   getCurrentTenant,
+  getInquiryAutoReply,
+  getInquiryTemplates,
   getPaymentMethods,
   getXenditAccount,
   requireUser,
@@ -17,10 +20,12 @@ export default async function SettingsPage() {
   // The Xendit commission rail is dormant until the platform key is set — only fetch + show the
   // online-payments section on a deployment where it's configured (same gate as the webhook/actions).
   const xenditEnabled = !!env.XENDIT_SECRET_KEY;
-  const [methods, tenant, xenditAccount] = await Promise.all([
+  const [methods, tenant, xenditAccount, autoReply, templates] = await Promise.all([
     getPaymentMethods(),
     getCurrentTenant(),
     xenditEnabled ? getXenditAccount() : Promise.resolve(null),
+    getInquiryAutoReply(),
+    getInquiryTemplates(),
   ]);
   const xenditDefaults = {
     legal_name: tenant?.name ?? "",
@@ -64,6 +69,20 @@ export default async function SettingsPage() {
           <XenditOnboardingSection account={xenditAccount} defaults={xenditDefaults} />
         </section>
       )}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2.5">
+            <IconChip icon={MessageCircle} tone="sea" />
+            <h2 className="text-display-sm text-ink">Guest replies</h2>
+          </div>
+          <p className="text-body-sm text-muted">
+            Acknowledge questions instantly and keep canned answers ready — so no guest waits and
+            you reply in a couple of taps.
+          </p>
+        </div>
+        <InquirySettingsSection autoReply={autoReply} templates={templates} />
+      </section>
     </div>
   );
 }

@@ -333,3 +333,57 @@ export async function withdrawXenditBalance(): Promise<ActionResult> {
   revalidatePath("/settings");
   return { ok: true };
 }
+
+// S3 — auto-reply config + saved reply templates. All RLS-scoped to the operator's own tenant (the
+// column allowlist grant covers the two tenants columns; the template policies scope the rows).
+export async function setAutoReply(enabled: boolean, text: string): Promise<ActionResult> {
+  await requireUser();
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
+  const trimmed = text.trim();
+  if (trimmed.length > 1000)
+    return { ok: false, error: "That auto-reply is a bit long — trim it down." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tenants")
+    .update({ inquiry_auto_reply_enabled: enabled, inquiry_auto_reply: trimmed || null })
+    .eq("id", tenant.id);
+  if (error) return { ok: false, error: "Couldn't save. Please try again." };
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function upsertTemplate(input: {
+  id?: string;
+  title: string;
+  body: string;
+}): Promise<ActionResult> {
+  await requireUser();
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
+  const title = input.title.trim();
+  const body = input.body.trim();
+  if (!title || !body) return { ok: false, error: "Add a title and a message." };
+  if (title.length > 80 || body.length > 2000)
+    return { ok: false, error: "That's a bit long — trim it down." };
+
+  const supabase = await createClient();
+  const { error } = input.id
+    ? await supabase.from("inquiry_templates").update({ title, body }).eq("id", input.id)
+    : await supabase.from("inquiry_templates").insert({ tenant_id: tenant.id, title, body });
+  if (error) return { ok: false, error: "Couldn't save that reply. Please try again." };
+  revalidatePath("/settings");
+  revalidatePath("/inbox", "layout");
+  return { ok: true };
+}
+
+export async function deleteTemplate(id: string): Promise<ActionResult> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("inquiry_templates").delete().eq("id", id);
+  if (error) return { ok: false, error: "Couldn't remove that reply. Please try again." };
+  revalidatePath("/settings");
+  revalidatePath("/inbox", "layout");
+  return { ok: true };
+}

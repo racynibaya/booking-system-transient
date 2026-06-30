@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDateShort } from "@/lib/dates";
-import { getInquiryThread, requireUser } from "@/lib/supabase/dal";
+import { getInquiryTemplates, getInquiryThread, requireUser } from "@/lib/supabase/dal";
 
 // M2 — one inquiry thread. The guest's question + the back-and-forth as chat bubbles (guest left,
 // you right), plus the reply composer. Tap-to-call/email the guest from the header.
 export default async function InboxThreadPage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
-  const t = await getInquiryThread(id);
+  const [t, templates] = await Promise.all([getInquiryThread(id), getInquiryTemplates()]);
   if (!t) notFound();
 
   return (
@@ -56,18 +56,24 @@ export default async function InboxThreadPage({ params }: { params: Promise<{ id
       {/* Conversation */}
       <Card elevation={1} className="flex flex-col gap-3 p-5">
         {t.messages.map((m) => {
-          const mine = m.sender === "operator";
+          const auto = m.sender === "auto";
+          // Operator + auto sit on the operator's side (right); only a real reply uses the solid bubble.
+          const mine = m.sender === "operator" || auto;
           return (
             <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
               <div
                 className={`max-w-[85%] rounded-md px-4 py-2.5 text-body-md ${
-                  mine ? "bg-primary text-on-primary" : "bg-surface-soft text-ink"
+                  auto
+                    ? "bg-surface-strong text-ink"
+                    : mine
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-soft text-ink"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{m.body}</p>
               </div>
               <span className="mt-1 text-caption-sm text-muted">
-                {mine ? "You" : t.guest_name.split(" ")[0]} ·{" "}
+                {auto ? "Automatic reply" : mine ? "You" : t.guest_name.split(" ")[0]} ·{" "}
                 {formatDateShort(m.created_at.slice(0, 10))}
               </span>
             </div>
@@ -75,7 +81,7 @@ export default async function InboxThreadPage({ params }: { params: Promise<{ id
         })}
       </Card>
 
-      <ReplyBox threadId={t.id} />
+      <ReplyBox threadId={t.id} templates={templates} />
     </div>
   );
 }

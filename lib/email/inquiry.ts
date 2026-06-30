@@ -9,6 +9,10 @@ import { createServiceClient } from "@/lib/supabase/server";
 // message that was just posted). In-app conversation; the email is only a nudge with a link back.
 const BASE = env.SITE_URL ?? "https://tuloysanjuan.com";
 
+// Default auto-acknowledge copy when an operator hasn't customized theirs (S3).
+export const DEFAULT_AUTO_REPLY =
+  "Thanks for your question! The host usually replies within a few hours.";
+
 function esc(s: string): string {
   return s.replace(
     /[&<>"]/g,
@@ -93,5 +97,27 @@ export async function notifyGuestReply(o: {
     });
   } catch (err) {
     console.error("[inquiry] notifyGuestReply failed", err);
+  }
+}
+
+// First-contact ack (S3): confirms the question landed AND hands the guest their tokenized thread
+// link immediately, so they have a way back into the conversation before the host even replies.
+export async function notifyGuestInquiryReceived(o: {
+  guestEmail: string;
+  propertyName: string;
+  token: string;
+  autoReplyBody: string;
+}): Promise<void> {
+  try {
+    const link = `${BASE}/inquiry/${o.token}`;
+    const html = shell(
+      "We got your question",
+      `The host at ${esc(o.propertyName)} will get back to you soon.`,
+      row("Reply", esc(o.autoReplyBody)),
+      `<a href="${link}" style="color:#2c7a6b">View the conversation</a> to read replies and follow up.`,
+    );
+    await sendEmail({ to: o.guestEmail, subject: `Your question to ${o.propertyName}`, html });
+  } catch (err) {
+    console.error("[inquiry] notifyGuestInquiryReceived failed", err);
   }
 }
