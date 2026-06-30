@@ -1,6 +1,14 @@
 "use client";
 
-import { Building2, CalendarCheck, CalendarDays, Inbox, LayoutGrid, Settings } from "lucide-react";
+import {
+  Building2,
+  CalendarCheck,
+  CalendarDays,
+  Inbox,
+  LayoutGrid,
+  Settings,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,12 +18,14 @@ const ITEMS = [
   { href: "/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/earnings", label: "Earnings", icon: Wallet },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-// The mobile tab bar keeps to five thumb targets — drop Properties (lowest daily frequency;
-// still reachable from the dashboard's "Your properties"). Desktop's top nav shows all six.
-const BOTTOM_ITEMS = ITEMS.filter((it) => it.href !== "/properties");
+// The mobile tab bar keeps to five thumb targets — drop Properties + Earnings (lower daily
+// frequency; both reachable from the dashboard). Desktop's top nav shows all seven.
+const BOTTOM_HIDDEN = new Set(["/properties", "/earnings"]);
+const BOTTOM_ITEMS = ITEMS.filter((it) => !BOTTOM_HIDDEN.has(it.href));
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);

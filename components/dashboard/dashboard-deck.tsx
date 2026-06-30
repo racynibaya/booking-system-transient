@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 
 // The dashboard's signature: a cinematic "command deck" that fuses the greeting with the money
 // thesis on a living coastal gradient. The sea sky shifts with the time of day (sunrise warmth →
@@ -135,6 +135,13 @@ export function DashboardDeck({
               </p>
             </div>
           </div>
+
+          <Link
+            href="/earnings"
+            className="mt-4 inline-flex items-center gap-1 text-button-sm text-on-primary/85 underline-offset-2 transition-colors hover:text-on-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            View earnings <ArrowRight className="size-4" />
+          </Link>
         </div>
       </div>
     </section>

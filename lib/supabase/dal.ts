@@ -6,6 +6,7 @@ import { cache } from "react";
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
 import { addDays, todayStr } from "@/lib/dates";
+import { DEFAULT_COMMISSION_RATE } from "@/lib/pricing";
 import { monthRange, weekRange } from "@/lib/reports";
 
 import { createClient } from "./server";
@@ -497,4 +498,51 @@ export const getInquiryThread = cache(async (id: string) => {
     a.created_at.localeCompare(b.created_at),
   );
   return { ...data, messages };
+});
+
+// M4 — the earnings ledger. The cash/deposit half (live now): per real booking (confirmed /
+// completed), what it's worth, what's been collected in cash/GCash, Tuloy's 2.5% commission, the
+// operator's net, and any outstanding balance. RLS-scoped. Online-settled rows light up here once
+// the Xendit rail clears (kept separate; this half never touches the gated money path).
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export const getEarnings = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select("id, guest_name, check_in, check_out, status, total_amount, payments(amount, status)")
+    .in("status", ["confirmed", "completed"])
+    .order("check_in", { ascending: false });
+
+  const rows = (data ?? []).map((b) => {
+    const total = b.total_amount ?? 0;
+    const collected = (b.payments ?? [])
+      .filter((p) => p.status === "confirmed")
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+    const commission = round2(total * DEFAULT_COMMISSION_RATE);
+    return {
+      id: b.id,
+      guestName: b.guest_name,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      status: b.status,
+      total,
+      collected,
+      commission,
+      net: round2(total - commission),
+      balance: round2(total - collected),
+    };
+  });
+
+  const sum = (k: "total" | "collected" | "commission" | "net" | "balance") =>
+    round2(rows.reduce((s, r) => s + r[k], 0));
+
+  return {
+    rows,
+    gross: sum("total"),
+    collected: sum("collected"),
+    commission: sum("commission"),
+    net: sum("net"),
+    outstanding: sum("balance"),
+  };
 });

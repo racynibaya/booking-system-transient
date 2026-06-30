@@ -23,6 +23,10 @@ const MS_PER_DAY = 86_400_000;
  */
 export const MIN_STAY_NIGHTS = 2;
 
+// Early-adopter commission rate (per-operator default; some carry their own on the Xendit account).
+// Single source for the earnings ledger's cash/deposit half (M4) until the online rail is live.
+export const DEFAULT_COMMISSION_RATE = 0.025;
+
 /** Whole nights in a half-open stay. `checkOut` must be after `checkIn`. */
 export function nights(checkIn: DateStr, checkOut: DateStr): number {
   const ms = fromDateStr(checkOut).getTime() - fromDateStr(checkIn).getTime();
