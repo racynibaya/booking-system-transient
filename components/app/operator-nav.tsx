@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Inbox,
   LayoutGrid,
+  LineChart,
   Settings,
   Wallet,
 } from "lucide-react";
@@ -19,12 +20,13 @@ const ITEMS = [
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/earnings", label: "Earnings", icon: Wallet },
+  { href: "/insights", label: "Insights", icon: LineChart },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-// The mobile tab bar keeps to five thumb targets — drop Properties + Earnings (lower daily
-// frequency; both reachable from the dashboard). Desktop's top nav shows all seven.
-const BOTTOM_HIDDEN = new Set(["/properties", "/earnings"]);
+// The mobile tab bar keeps to five thumb targets — drop Properties, Earnings + Insights (lower
+// daily frequency; all reachable from the dashboard). Desktop's top nav shows everything.
+const BOTTOM_HIDDEN = new Set(["/properties", "/earnings", "/insights"]);
 const BOTTOM_ITEMS = ITEMS.filter((it) => !BOTTOM_HIDDEN.has(it.href));
 
 function isActive(pathname: string, href: string) {

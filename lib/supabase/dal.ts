@@ -5,10 +5,10 @@ import { cache } from "react";
 
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
-import { addDays, todayStr } from "@/lib/dates";
+import { addDays, fromDateStr, toDateStr, todayStr, type DateStr } from "@/lib/dates";
 import { guestKey } from "@/lib/guests";
 import { DEFAULT_COMMISSION_RATE } from "@/lib/pricing";
-import { monthRange, weekRange } from "@/lib/reports";
+import { bookedRoomNights, daysInRange, monthRange, occupancyPct, weekRange } from "@/lib/reports";
 
 import { createClient } from "./server";
 
@@ -646,5 +646,121 @@ export const getGuest = cache(async (key: string) => {
     stays: settled.length,
     totalValue: settled.reduce((s, r) => s + (r.total_amount ?? 0), 0),
     bookings: rows,
+  };
+});
+
+// ---------------------------------------------------------------------------
+// S4 — Business insights. Everything here is DERIVED from existing rows (bookings,
+// room_types, inquiry_threads) — no new tables, no money-path touch. All reads are
+// RLS-scoped to the operator. Pure month/occupancy math is reused from lib/reports
+// (the same helpers behind P3 reporting) so the figures match the rest of the app.
+// ---------------------------------------------------------------------------
+
+export type TrendPoint = { label: string; value: number };
+export type FunnelStage = { label: string; count: number };
+export type LeadTimeBucket = { label: string; count: number };
+export type InsightsData = {
+  hasData: boolean;
+  revenueByMonth: TrendPoint[]; // booking value by stay month (pesos)
+  occupancyByMonth: TrendPoint[]; // booked room-nights ÷ capacity, % per month
+  funnel: FunnelStage[]; // last-90-day PERIOD TOTALS (not attributed per-inquiry)
+  funnelDays: number;
+  leadTime: LeadTimeBucket[]; // days between booking creation and check-in
+};
+
+const MONTHS_BACK = 6;
+const FUNNEL_DAYS = 90;
+
+// Rolling [start, end) month buckets ending with the current month, oldest first.
+function monthBuckets(today: DateStr): { label: string; start: DateStr; end: DateStr }[] {
+  const d = fromDateStr(today);
+  const out: { label: string; start: DateStr; end: DateStr }[] = [];
+  for (let i = MONTHS_BACK - 1; i >= 0; i--) {
+    const start = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    out.push({
+      label: start.toLocaleDateString("en-US", { month: "short" }),
+      start: toDateStr(start),
+      end: toDateStr(end),
+    });
+  }
+  return out;
+}
+
+// Lead-time buckets (days from booking creation to check-in). Walk-ins booked on/after
+// arrival land in the first bucket (clamped at 0).
+const LEAD_BUCKETS: { label: string; max: number }[] = [
+  { label: "0–1d", max: 1 },
+  { label: "2–7d", max: 7 },
+  { label: "8–14d", max: 14 },
+  { label: "15–30d", max: 30 },
+  { label: "31d+", max: Infinity },
+];
+
+export const getInsights = cache(async (): Promise<InsightsData> => {
+  const today = todayStr();
+  const supabase = await createClient();
+
+  const [bookingsRes, roomsRes, inquiriesRes] = await Promise.all([
+    supabase.from("bookings").select("check_in, check_out, created_at, status, total_amount"),
+    supabase.from("room_types").select("quantity"),
+    supabase.from("inquiry_threads").select("created_at"),
+  ]);
+
+  const bookings = bookingsRes.data ?? [];
+  const totalUnits = (roomsRes.data ?? []).reduce((n, r) => n + (r.quantity ?? 0), 0);
+  const inquiries = inquiriesRes.data ?? [];
+
+  // Stays that sold inventory drive revenue + occupancy.
+  const soldStays = bookings.filter((b) => b.status === "confirmed" || b.status === "completed");
+
+  const buckets = monthBuckets(today);
+  const revenueByMonth: TrendPoint[] = buckets.map((m) => ({
+    label: m.label,
+    value: round2(
+      soldStays
+        .filter((b) => b.check_in >= m.start && b.check_in < m.end)
+        .reduce((s, b) => s + (b.total_amount ?? 0), 0),
+    ),
+  }));
+
+  const occupancyByMonth: TrendPoint[] = buckets.map((m) => {
+    const nights = bookedRoomNights(soldStays, m.start, m.end);
+    return { label: m.label, value: occupancyPct(nights, totalUnits, daysInRange(m.start, m.end)) };
+  });
+
+  // Funnel — PERIOD TOTALS over the last 90 days, not per-inquiry attribution (inquiry_threads
+  // carries no booking link). created_at is an ISO timestamp; a date-string compare is chronological.
+  const since = addDays(today, -FUNNEL_DAYS);
+  const inquiriesIn = inquiries.filter((i) => i.created_at >= since).length;
+  const createdIn = bookings.filter((b) => b.created_at >= since);
+  const confirmedIn = createdIn.filter(
+    (b) => b.status === "confirmed" || b.status === "completed",
+  ).length;
+  const funnel: FunnelStage[] = [
+    { label: "Inquiries", count: inquiriesIn },
+    { label: "Bookings made", count: createdIn.length },
+    { label: "Confirmed", count: confirmedIn },
+  ];
+
+  // Lead-time distribution over sold stays.
+  const leadCounts = new Array(LEAD_BUCKETS.length).fill(0);
+  for (const b of soldStays) {
+    const days = Math.max(0, daysInRange(b.created_at.slice(0, 10), b.check_in));
+    const idx = LEAD_BUCKETS.findIndex((bk) => days <= bk.max);
+    leadCounts[idx === -1 ? LEAD_BUCKETS.length - 1 : idx]++;
+  }
+  const leadTime: LeadTimeBucket[] = LEAD_BUCKETS.map((bk, i) => ({
+    label: bk.label,
+    count: leadCounts[i],
+  }));
+
+  return {
+    hasData: bookings.length > 0 || inquiries.length > 0,
+    revenueByMonth,
+    occupancyByMonth,
+    funnel,
+    funnelDays: FUNNEL_DAYS,
+    leadTime,
   };
 });
