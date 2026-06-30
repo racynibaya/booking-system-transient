@@ -149,7 +149,7 @@ export function TodayConsole({
             {arrivals.map((b) => (
               <li key={b.id}>
                 <Link
-                  href={`/bookings?q=${encodeURIComponent(b.guest_name)}`}
+                  href={`/bookings/${b.id}`}
                   className="group flex items-center gap-3 py-3 transition-colors first:pt-1 hover:bg-surface-soft/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                 >
                   <div className="min-w-0 flex-1">

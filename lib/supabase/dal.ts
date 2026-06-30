@@ -337,6 +337,31 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
   );
 });
 
+// One booking, in full — the booking/guest record (M5). RLS-scoped to the operator's tenant, so a
+// foreign id just returns null (→ notFound). Same proof-signing + lapsed-hold reconciliation as
+// getBookings, plus contact + amount fields the detail view needs.
+export const getBooking = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, created_at, deposit_amount, total_amount, source, proof_url, cancellation_reason, properties(name, slug), room_types(name), payments(amount, status)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const { proof_url, ...b } = data;
+  let proofUrl: string | null = null;
+  if (proof_url) {
+    const { data: signed } = await supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(proof_url, 60 * 10); // 10 min
+    proofUrl = signed?.signedUrl ?? null;
+  }
+  return { ...b, proofUrl, status: effectiveStatus(b.status, b.hold_expires_at) };
+});
+
 // Lean read for the bookings filter bar's Property → Room-type dropdowns (RLS-scoped):
 // just ids + names. getProperties() only carries a room_types(count), so it can't drive
 // the dependent room menu.
