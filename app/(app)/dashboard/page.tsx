@@ -7,15 +7,18 @@ import {
   type BookingPageInfo,
   type SetupStep,
 } from "@/components/dashboard/onboarding-progress";
-import { NeedsAction } from "@/components/dashboard/needs-action";
 import { OccupancyCard } from "@/components/dashboard/occupancy-card";
 import { OwesList } from "@/components/dashboard/owes-list";
+import { TodayConsole } from "@/components/dashboard/today-console";
 import { PropertyCard } from "@/components/properties/property-card";
 import { ShareLinkButton } from "@/components/properties/share-link-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/icon-chip";
+import { todayBoard } from "@/lib/bookings";
+import { todayStr } from "@/lib/dates";
 import {
+  getBookings,
   getCurrentTenant,
   getNeedsActionCounts,
   getOccupancySnapshot,
@@ -28,14 +31,20 @@ import type { PageStatus } from "@/components/properties/property-card";
 
 export default async function DashboardPage() {
   await requireUser();
-  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction] = await Promise.all([
-    getCurrentTenant(),
-    getProperties(),
-    getPaymentMethods(),
-    getRevenueSummary(),
-    getOccupancySnapshot(),
-    getNeedsActionCounts(),
-  ]);
+  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction, bookings] =
+    await Promise.all([
+      getCurrentTenant(),
+      getProperties(),
+      getPaymentMethods(),
+      getRevenueSummary(),
+      getOccupancySnapshot(),
+      getNeedsActionCounts(),
+      getBookings(),
+    ]);
+
+  // M1 — Today console: the day's operating view, re-composed from the bookings already loaded.
+  const todayDate = todayStr();
+  const board = todayBoard(bookings, todayDate);
 
   const roomCount = properties.reduce((n, p) => n + (p.room_types?.[0]?.count ?? 0), 0);
   const hasProperty = properties.length > 0;
@@ -100,7 +109,22 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Who still owes you (left) + how-full / waiting-on-you (right). */}
+      {/* M1 — the operating spine: the day's arrivals + the four counts that define a shift. */}
+      {hasProperty && (
+        <div className="animate-card-rise" style={{ animationDelay: "110ms" }}>
+          <TodayConsole
+            today={todayDate}
+            arrivals={board.arrivals}
+            departuresCount={board.departures.length}
+            stayingCount={board.staying.length}
+            needsConfirmation={needsAction.needsConfirmation}
+            expiringHolds={needsAction.expiringHolds}
+            owesCount={revenue.owes.length}
+          />
+        </div>
+      )}
+
+      {/* Who still owes you (left) + how-full (right). Needs-action folded into the Today console. */}
       <div
         className="grid animate-card-rise grid-cols-1 gap-4 md:grid-cols-2"
         style={{ animationDelay: "140ms" }}
@@ -110,10 +134,6 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-col gap-4">
           <OccupancyCard snapshot={occupancy} />
-          <NeedsAction
-            needsConfirmation={needsAction.needsConfirmation}
-            expiringHolds={needsAction.expiringHolds}
-          />
         </div>
       </div>
 
