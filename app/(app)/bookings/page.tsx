@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import Link from "next/link";
 
 import { BookingsFilters } from "@/components/bookings/bookings-filters";
@@ -50,9 +51,14 @@ export default async function BookingsPage({
         title="Bookings"
         description="See, filter, and confirm or cancel your bookings."
         action={
-          <Link href="/bookings/new" className={buttonClassName({ size: "sm" })}>
-            + Add booking
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/guests" className={buttonClassName({ variant: "secondary", size: "sm" })}>
+              <Users className="size-4" /> Guests
+            </Link>
+            <Link href="/bookings/new" className={buttonClassName({ size: "sm" })}>
+              + Add booking
+            </Link>
+          </div>
         }
       />
       <BookingsFilters

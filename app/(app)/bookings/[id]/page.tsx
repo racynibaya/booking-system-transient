@@ -23,7 +23,8 @@ import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
 import { isLive, STATUS_LABELS } from "@/lib/bookings";
 import { formatDateShort, fromDateStr } from "@/lib/dates";
-import { getBooking, requireUser } from "@/lib/supabase/dal";
+import { guestKey } from "@/lib/guests";
+import { getBooking, getGuest, requireUser } from "@/lib/supabase/dal";
 import type { Database } from "@/lib/supabase/database.types";
 
 type BookingStatus = Database["public"]["Enums"]["booking_status"];
@@ -79,6 +80,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const canCancel = isLive(status);
   const showCollect = (status === "confirmed" || status === "completed") && balance > 0;
 
+  // S1 — recognize a returning guest right where the operator works.
+  const gKey = guestKey(b.guest_phone, b.guest_email, b.guest_name);
+  const guest = gKey ? await getGuest(gKey) : null;
+  const repeatStays = guest?.stays ?? 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
@@ -93,6 +99,15 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           description={`${b.room_types?.name ?? "Room"} · ${formatDateShort(b.check_in)} → ${formatDateShort(b.check_out)} · ${nights} night${nights > 1 ? "s" : ""}`}
           action={<Badge tone={STATUS_TONE[status] ?? "neutral"}>{STATUS_LABELS[status]}</Badge>}
         />
+        {repeatStays > 1 && (
+          <Link
+            href={`/guests/${encodeURIComponent(gKey)}`}
+            className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-body-sm text-primary transition-colors hover:bg-primary/12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <User className="size-4" />
+            Repeat guest · {repeatStays} stays — view profile
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">

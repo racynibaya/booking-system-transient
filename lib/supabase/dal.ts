@@ -6,6 +6,7 @@ import { cache } from "react";
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
 import { addDays, todayStr } from "@/lib/dates";
+import { guestKey } from "@/lib/guests";
 import { DEFAULT_COMMISSION_RATE } from "@/lib/pricing";
 import { monthRange, weekRange } from "@/lib/reports";
 
@@ -570,5 +571,80 @@ export const getInquiryAutoReply = cache(async () => {
   return {
     enabled: data?.inquiry_auto_reply_enabled ?? true,
     text: data?.inquiry_auto_reply ?? "",
+  };
+});
+
+// S1 — guest CRM. Derived from the operator's own bookings (RLS), grouped by guestKey. `stays` and
+// `totalValue` count only real stays (confirmed/completed); the first row per key is the latest, so
+// its name/contact represent the guest now.
+export const getGuests = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select("guest_name, guest_phone, guest_email, check_in, status, total_amount")
+    .order("check_in", { ascending: false });
+
+  const map = new Map<
+    string,
+    {
+      key: string;
+      name: string;
+      phone: string | null;
+      email: string | null;
+      stays: number;
+      totalValue: number;
+      lastStay: string;
+    }
+  >();
+  for (const b of data ?? []) {
+    const key = guestKey(b.guest_phone, b.guest_email, b.guest_name);
+    if (!key) continue;
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key,
+        name: b.guest_name,
+        phone: b.guest_phone,
+        email: b.guest_email,
+        stays: 0,
+        totalValue: 0,
+        lastStay: b.check_in,
+      };
+      map.set(key, g);
+    }
+    if (b.status === "confirmed" || b.status === "completed") {
+      g.stays += 1;
+      g.totalValue += b.total_amount ?? 0;
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) => b.stays - a.stays || b.lastStay.localeCompare(a.lastStay),
+  );
+});
+
+// One guest's full history (all their bookings, newest first). null if the key matches nobody.
+export const getGuest = cache(async (key: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, total_amount, properties(name), room_types(name)",
+    )
+    .order("check_in", { ascending: false });
+
+  const rows = (data ?? []).filter(
+    (b) => guestKey(b.guest_phone, b.guest_email, b.guest_name) === key,
+  );
+  if (rows.length === 0) return null;
+  const f = rows[0];
+  const settled = rows.filter((r) => r.status === "confirmed" || r.status === "completed");
+  return {
+    key,
+    name: f.guest_name,
+    phone: f.guest_phone,
+    email: f.guest_email,
+    stays: settled.length,
+    totalValue: settled.reduce((s, r) => s + (r.total_amount ?? 0), 0),
+    bookings: rows,
   };
 });
