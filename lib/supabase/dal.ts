@@ -461,3 +461,40 @@ export const getManualBookingFormData = cache(async () => {
     })),
   );
 });
+
+// M2 — the operator's inquiry Inbox. RLS-scoped: only the operator's own threads. The list carries
+// a last-message preview; the detail carries the full message history. Guests never read here (the
+// public thread page uses the service-role token path).
+export const getInquiryThreads = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_threads")
+    .select(
+      "id, guest_name, awaiting_operator, last_message_at, created_at, properties(name), inquiry_messages(body, sender, created_at)",
+    )
+    .order("last_message_at", { ascending: false });
+  if (error || !data) return [];
+  return data.map(({ inquiry_messages, ...t }) => {
+    const msgs = [...(inquiry_messages ?? [])].sort((a, b) =>
+      a.created_at.localeCompare(b.created_at),
+    );
+    const last = msgs.at(-1);
+    return { ...t, preview: last?.body ?? "", lastSender: last?.sender ?? null };
+  });
+});
+
+export const getInquiryThread = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_threads")
+    .select(
+      "id, guest_name, guest_email, guest_phone, token, awaiting_operator, created_at, properties(name, slug), inquiry_messages(id, sender, body, created_at)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  const messages = [...(data.inquiry_messages ?? [])].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
+  return { ...data, messages };
+});

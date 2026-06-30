@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarCheck, CalendarDays, LayoutGrid, Settings } from "lucide-react";
+import { Building2, CalendarCheck, CalendarDays, Inbox, LayoutGrid, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,8 +9,13 @@ const ITEMS = [
   { href: "/properties", label: "Properties", icon: Building2 },
   { href: "/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
+
+// The mobile tab bar keeps to five thumb targets — drop Properties (lowest daily frequency;
+// still reachable from the dashboard's "Your properties"). Desktop's top nav shows all six.
+const BOTTOM_ITEMS = ITEMS.filter((it) => it.href !== "/properties");
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -53,7 +58,7 @@ export function BottomNav() {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-hairline bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
-      {ITEMS.map((it) => {
+      {BOTTOM_ITEMS.map((it) => {
         const active = isActive(pathname, it.href);
         const Icon = it.icon;
         return (

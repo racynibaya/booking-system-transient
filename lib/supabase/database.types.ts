@@ -167,6 +167,92 @@ export type Database = {
           },
         ];
       };
+      inquiry_messages: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          sender: string;
+          thread_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          sender: string;
+          thread_id: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          sender?: string;
+          thread_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_messages_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "inquiry_threads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      inquiry_threads: {
+        Row: {
+          awaiting_operator: boolean;
+          created_at: string;
+          guest_email: string;
+          guest_name: string;
+          guest_phone: string | null;
+          id: string;
+          last_message_at: string;
+          property_id: string;
+          tenant_id: string;
+          token: string;
+        };
+        Insert: {
+          awaiting_operator?: boolean;
+          created_at?: string;
+          guest_email: string;
+          guest_name: string;
+          guest_phone?: string | null;
+          id?: string;
+          last_message_at?: string;
+          property_id: string;
+          tenant_id: string;
+          token?: string;
+        };
+        Update: {
+          awaiting_operator?: boolean;
+          created_at?: string;
+          guest_email?: string;
+          guest_name?: string;
+          guest_phone?: string | null;
+          id?: string;
+          last_message_at?: string;
+          property_id?: string;
+          tenant_id?: string;
+          token?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_threads_property_id_fkey";
+            columns: ["property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inquiry_threads_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount: number;
@@ -688,7 +774,7 @@ export type Database = {
           tenant_id: string;
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
-          xendit_kyc_status: Database["public"]["Enums"]["xendit_account_status"] | null;
+          xendit_kyc_status: Database["public"]["Enums"]["xendit_account_status"];
         }[];
       };
       admin_notification_recipients: {

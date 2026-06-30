@@ -388,3 +388,54 @@ export async function submitProof(formData: FormData): Promise<ProofResult> {
 
   return { ok: true };
 }
+
+// M2 — a guest asks a question from the public listing (no account). Service-role path (the guest
+// is anonymous): resolve the listing by slug, open a thread, record the first message. A rendered
+// public listing is already approved (get_public_listing gates it), so reaching here implies a live
+// listing. Operator notification email lands in M2b.
+const inquiryInput = z.object({
+  slug: z.string().min(1),
+  guestName: z.string().trim().min(1).max(100),
+  guestEmail: z.string().trim().email().max(200),
+  guestPhone: z.string().trim().max(40).optional(),
+  message: z.string().trim().min(1).max(2000),
+});
+
+export async function createInquiry(
+  raw: z.infer<typeof inquiryInput>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = inquiryInput.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "Please add your name, email, and question." };
+  }
+  const { slug, guestName, guestEmail, guestPhone, message } = parsed.data;
+
+  const admin = createServiceClient();
+  const { data: prop } = await admin
+    .from("properties")
+    .select("id, tenant_id")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!prop) return { ok: false, error: "We couldn't find that listing." };
+
+  const { data: thread, error: tErr } = await admin
+    .from("inquiry_threads")
+    .insert({
+      tenant_id: prop.tenant_id,
+      property_id: prop.id,
+      guest_name: guestName,
+      guest_email: guestEmail,
+      guest_phone: guestPhone || null,
+    })
+    .select("id")
+    .single();
+  if (tErr || !thread)
+    return { ok: false, error: "Couldn't send your question. Please try again." };
+
+  const { error: mErr } = await admin
+    .from("inquiry_messages")
+    .insert({ thread_id: thread.id, sender: "guest", body: message });
+  if (mErr) return { ok: false, error: "Couldn't send your question. Please try again." };
+
+  return { ok: true };
+}

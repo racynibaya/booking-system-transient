@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { Reveal } from "@/components/motion";
 import { AmenitiesSection } from "@/components/public/amenities-section";
+import { AskQuestion } from "@/components/public/ask-question";
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
 import { LocationMap } from "@/components/public/location-map";
 import { MobileBookingBar } from "@/components/public/mobile-booking-bar";
@@ -365,6 +366,8 @@ export default async function PublicBookingPage({
                 <LocationMap address={property.address} />
               </section>
             )}
+
+            <AskQuestion slug={property.slug} />
 
             {/* On mobile the sidebar collapses, so the socials close out the page here. */}
             <div className="lg:hidden">
