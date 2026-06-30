@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { notifyGuestReply } from "@/lib/email/inquiry";
 import { requireUser } from "@/lib/supabase/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,21 @@ export async function replyToInquiry(threadId: string, body: string): Promise<Ac
     .from("inquiry_messages")
     .insert({ thread_id: threadId, sender: "operator", body: trimmed });
   if (error) return { ok: false, error: "Couldn't send your reply. Please try again." };
+
+  // Best-effort: email the guest a link to read the reply on their tokenized thread page.
+  const { data: thread } = await supabase
+    .from("inquiry_threads")
+    .select("token, guest_email, properties(name)")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (thread?.guest_email) {
+    await notifyGuestReply({
+      guestEmail: thread.guest_email,
+      propertyName: thread.properties?.name ?? "your stay",
+      token: thread.token,
+      body: trimmed,
+    });
+  }
 
   revalidatePath("/inbox", "layout");
   revalidatePath("/dashboard");

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { env } from "@/env";
+import { notifyOperatorNewInquiry } from "@/lib/email/inquiry";
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { computeXenditSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
@@ -413,7 +414,7 @@ export async function createInquiry(
   const admin = createServiceClient();
   const { data: prop } = await admin
     .from("properties")
-    .select("id, tenant_id")
+    .select("id, tenant_id, name")
     .eq("slug", slug)
     .maybeSingle();
   if (!prop) return { ok: false, error: "We couldn't find that listing." };
@@ -436,6 +437,14 @@ export async function createInquiry(
     .from("inquiry_messages")
     .insert({ thread_id: thread.id, sender: "guest", body: message });
   if (mErr) return { ok: false, error: "Couldn't send your question. Please try again." };
+
+  // Best-effort: nudge the operator that a question came in (never blocks the guest's submit).
+  await notifyOperatorNewInquiry({
+    tenantId: prop.tenant_id,
+    propertyName: prop.name,
+    guestName,
+    body: message,
+  });
 
   return { ok: true };
 }
