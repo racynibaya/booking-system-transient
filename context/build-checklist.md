@@ -1,5 +1,29 @@
 # Tuloy — Build Checklist (2026-07-01)
 
+## 🔄 RESUME HERE (end of 2026-07-01 session)
+**The whole payment code is DONE and the full loop is PROVEN in test mode** (guest booked a live
+operator → redirected to Xendit's real checkout page). **All of Slices A–D are now SHIPPED to prod
+DORMANT:** Slice A (legal/consent), Slice B (MANAGED sign-up, both operator types), Slice C (QR Ph
+fee math), and Slice D (guest online-payment cutover).
+- **Slice D SHIPPED 2026-07-01** — PR #126 → `main 1a9336a` (prod deploy Ready). ✓verified dormant
+  post-deploy: `XENDIT_*` unset in prod env, 0 `kyc_status='LIVE'` accounts, 0 confirmed bookings →
+  every listing's `accepts_online_payment` is false, so guests keep the manual GCash-proof flow.
+  Double fail-closed (flag false AND keys unset). Files: `lib/xendit/client.ts`, `app/[slug]/actions.ts`,
+  `components/public/booking-card.tsx` + `listing-view.tsx` + `mobile-booking-bar.tsx`.
+- **3 real bugs caught + fixed by the end-to-end test** (all in Slice D, now shipped):
+  (1) split-rule name must be letters/numbers/spaces only — strip the booking-UUID hyphens;
+  (2) Xendit return URL must be HTTPS — use `env.SITE_URL`, not the request host (http on localhost);
+  (3) `createPaymentSession` must read `payment_link_url` / `payment_session_id` (not `session_url`/`id`).
+- **Test setup used:** Xendit TEST keys are in `.env.development`; xenPlatform is ENABLED in **test
+  mode** (business NOT yet verified — that's the next real gate). One operator (seed-op-2 "Juan Reyes",
+  listing `bacnotan-road-tide-homestay-2-1`) set to `kyc_status='LIVE'` on the LOCAL db for testing.
+  Local demo/test scripts (gitignored): `temporary screenshots/{xendit-rail-demo,onboard,make-live,guest-pay}.cjs`.
+- **NEXT REAL STEP (Racyn's side):** verify Tuloy's business with Xendit (switch toward LIVE mode →
+  submit DTI/BIR/ID/BPI) → get LIVE keys → then I set `XENDIT_*` on prod + register webhooks. Also on
+  the key: enable Payouts=Write + Balance=Read (that's why payout "loading options" was forbidden).
+  Still open in writing: Master entity sole-prop-vs-corp; QR-Ph-only = activate only QR Ph on the account.
+
+
 Past + future builds at a glance. **Money/prod states marked ✓verified were confirmed from source
 this session; everything else is from memory/docs and may lag — verify from ground truth before
 acting on anything money- or prod-related** (git `main`, prod schema via `execute_sql`, `vercel env ls`).
@@ -40,7 +64,7 @@ Plan: `~/.claude/plans/reactive-cooking-meteor.md` · Xendit answers: `xendit-ma
 - [x] **Gate G2** — RESOLVED: one-time operator invite+register accepted (MANAGED); individuals eligible
 - [x] **Slice B** — MANAGED operator sign-up (both entity types, new `account_verification` payload, invite→REGISTERED gate, new onboarding form) — **SHIPPED DORMANT** 2026-07-01 (PR #123, `main e56f1f2`); typecheck + 155 unit tests green
 - [x] **Slice C** — QR Ph fee math (real rate + 12% VAT + ₱15 floor, shared `xenditFee` helper) — **SHIPPED DORMANT** 2026-07-01 (same PR)
-- [ ] **Slice D** — guest online-payment button cutover — needs 1 operator LIVE first
+- [x] **Slice D** — guest online-payment button cutover — **SHIPPED DORMANT** 2026-07-01 (PR #126, `main 1a9336a`); ✓verified dormant post-deploy (`XENDIT_*` unset, 0 LIVE accounts). Activation still needs 1 operator LIVE + prod keys.
   - ✅ **Rail sandbox-verified 2026-07-01** (`scripts/xendit-rail-demo.mjs` w/ test key): sub-account + 2.5% split + real guest checkout link, amount correct (₱2,031.86)
   - ⚠️ **Build note 1:** split-rule name/description must be **letters/numbers/spaces only** (`^[a-zA-Z0-9 ]+$`) — `createSplitRule` caller must sanitize (caught a live 400)
   - ⚠️ **Build note 2:** **QR-Ph-only** is NOT a per-session field (tried `allowed_payment_channels` + `payment_methods`, both ignored) — restrict by **activating only QR Ph on the operator sub-account**, or confirm the exact field with Xendit
