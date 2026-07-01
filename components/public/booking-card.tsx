@@ -43,16 +43,22 @@ export function BookingCard({
   propertyName,
   area,
   minStayNights = MIN_STAY_NIGHTS,
-  source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   // Per-property guest-facing minimum stay. Defaults to MIN_STAY_NIGHTS as a safety net.
   minStayNights?: number;
-  source?: string;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
+  // Attribution tag from the inbound link (?src=tuloy). Read client-side (lazy init) so the listing
+  // page itself never touches searchParams — that keeps the page statically cacheable. Not rendered,
+  // so there's no SSR/client hydration concern; the server action validates it again.
+  const [source] = useState<string | undefined>(() =>
+    typeof window === "undefined"
+      ? undefined
+      : new URLSearchParams(window.location.search).get("src")?.slice(0, 60) || undefined,
+  );
   const [range, setRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   // The calendar is collapsed by default; tapping a date cell reveals it (Airbnb-style).
