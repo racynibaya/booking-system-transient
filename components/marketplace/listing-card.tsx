@@ -83,7 +83,7 @@ export function ListingCard({
             verified pill's glass treatment, set off by a gold star. */}
         {featured && (
           <span className="pointer-events-none absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white shadow-sm backdrop-blur">
-            <Star className="size-3.5 shrink-0 fill-amber-300 text-amber-300" /> Featured
+            <Star className="size-3.5 shrink-0 fill-star-rating text-star-rating" /> Featured
           </span>
         )}
         {/* Heart sits above the link so a tap saves instead of navigating (handled in the button). */}
@@ -103,7 +103,7 @@ export function ListingCard({
         {/* Bottom scrim so the white verified pill stays legible over any cover photo. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white backdrop-blur">
-          <ShieldCheck className="size-3.5 shrink-0 text-[#3fae5a]" /> Verified
+          <ShieldCheck className="size-3.5 shrink-0 text-success" /> Verified
         </span>
       </div>
 

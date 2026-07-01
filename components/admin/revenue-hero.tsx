@@ -33,7 +33,7 @@ export function RevenueHero({
 
   return (
     <section className="overflow-hidden rounded-md border border-hairline shadow-card">
-      <div className="flex flex-col gap-6 bg-linear-to-br from-sunset-1/15 via-primary/[0.07] to-luxe/10 p-5 md:flex-row md:items-start md:justify-between md:p-6">
+      <div className="flex flex-col gap-6 bg-linear-to-br from-primary/[0.09] via-sunset-1/[0.06] to-primary/[0.04] p-5 md:flex-row md:items-start md:justify-between md:p-6">
         {/* GMV — the real money the platform moves today. */}
         <div className="flex flex-col gap-1">
           <p className="text-caption text-muted">Platform GMV</p>
