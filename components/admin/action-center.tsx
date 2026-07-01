@@ -35,6 +35,7 @@ const BUCKETS: BucketMeta[] = [
     label: "Failed payouts",
     icon: AlertTriangle,
     tone: "error",
+    href: "/admin/finance",
   },
   {
     key: "pending_kyc",

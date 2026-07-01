@@ -143,3 +143,57 @@ export const getActivityFeed = cache(async (): Promise<ActivityEvent[]> => {
   const { data } = await supabase.rpc("admin_activity_feed");
   return (data ?? []) as unknown as ActivityEvent[];
 });
+
+// --- Finance section (Slice 2) — all sourced from the payout ledger -------------------------------
+
+export type PayoutStatus = "clearing" | "payable" | "paid" | "failed" | "refunded" | "clawed_back";
+
+export type FinanceOverview = {
+  commission: { total: number; d30: number; d7: number };
+  gross: {
+    stay_value: number;
+    deposits: number;
+    service_fees: number;
+    paymongo_fees: number;
+    owner_payouts: number;
+  };
+  pending_owner_payout: number;
+  // Keyed by PayoutStatus; only statuses present in the ledger appear.
+  by_status: Partial<Record<PayoutStatus, { count: number; owner_payout: number }>>;
+  trend: { label: string; value: number }[];
+};
+
+export const getFinanceOverview = cache(async (): Promise<FinanceOverview | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_finance_overview");
+  if (error || !data) return null;
+  return data as unknown as FinanceOverview;
+});
+
+export type PayoutRow = {
+  id: string;
+  operator_name: string;
+  guest_name: string;
+  property_name: string;
+  stay_value: number;
+  deposit_amount: number;
+  operator_commission: number;
+  owner_payout: number;
+  status: PayoutStatus;
+  clear_eta: string;
+  created_at: string;
+  total_count: number;
+};
+
+// Paginated, optionally status-filtered ledger rows. `total_count` (window count) rides on each row.
+export const listPayouts = cache(
+  async (opts: { status?: string; limit?: number; offset?: number } = {}): Promise<PayoutRow[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("admin_list_payouts", {
+      p_status: opts.status ?? undefined,
+      p_limit: opts.limit ?? 50,
+      p_offset: opts.offset ?? 0,
+    });
+    return (data ?? []) as unknown as PayoutRow[];
+  },
+);
