@@ -121,7 +121,7 @@ describe("cancelBooking — F2.1 guarded status write", () => {
     expect(updateMock).toHaveBeenCalledWith({ status: "cancelled", cancellation_reason: null });
     expect(eqMock).toHaveBeenCalledWith("id", BOOKING_ID);
     expect(inMock).toHaveBeenCalledWith("status", ["held", "awaiting_confirmation", "confirmed"]);
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings", "layout");
   });
 
   it("persists the operator's reason and passes it to the guest email", async () => {
@@ -224,7 +224,7 @@ describe("createManualBooking — F2.2 one-engine entry", () => {
     expect(eqMock).toHaveBeenCalledWith("id", BOOKING_ID);
     expect(inMock).toHaveBeenCalledWith("status", ["held"]);
     expect(sendEmailMock).toHaveBeenCalledTimes(2); // guest + operator
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings", "layout");
     expect(vi.mocked(redirect)).toHaveBeenCalledWith("/bookings");
   });
 
@@ -268,7 +268,7 @@ describe("createManualBooking — F2.2 one-engine entry", () => {
       ok: false,
       error: "Booking saved but couldn't be marked confirmed. Open it from the dashboard.",
     });
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings");
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/bookings", "layout");
     expect(vi.mocked(redirect)).not.toHaveBeenCalled();
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
