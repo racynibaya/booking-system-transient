@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   title: "Tuloy — Take bookings even while you sleep",
   description:
     "Tuloy turns your San Juan, La Union transient's Facebook page into a live, bookable calendar — guests reserve and pay a deposit on their own, with no double-bookings.",
+  // iOS home-screen install: run full-screen (no Safari chrome) with a short title.
+  appleWebApp: {
+    capable: true,
+    title: "Tuloy",
+    statusBarStyle: "default",
+  },
 };
 
 // Theme color for the installed PWA's address/status bar. Next 16 wants this in the
