@@ -68,6 +68,7 @@ export function BookingCard({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [tos, setTos] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -176,6 +177,7 @@ export function BookingCard({
       guestPhone: phone,
       guestEmail: email,
       source,
+      termsAccepted: tos,
     });
     setPending(false);
     if (res.ok) {
@@ -593,6 +595,27 @@ export function BookingCard({
             />
           </label>
 
+          <label className="flex items-start gap-2.5 text-body-sm text-muted">
+            <input
+              type="checkbox"
+              checked={tos}
+              onChange={(e) => setTos(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span>
+              I agree to Tuloy&rsquo;s{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener"
+                className="text-primary underline underline-offset-2"
+              >
+                Terms
+              </a>
+              .
+            </span>
+          </label>
+
           {error && <p className="text-body-sm text-error">{error}</p>}
 
           <div className="mt-1 flex gap-2">
@@ -605,7 +628,7 @@ export function BookingCard({
             </button>
             <button
               type="button"
-              disabled={pending || name.trim() === "" || email.trim() === ""}
+              disabled={pending || name.trim() === "" || email.trim() === "" || !tos}
               onClick={reserve}
               className={`flex-1 ${ctaClass}`}
             >
