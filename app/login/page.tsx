@@ -34,6 +34,7 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tos, setTos] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export default function LoginPage() {
     // signin/signup redirect server-side on success; only error/notice come back.
     const res = isForgot
       ? await requestPasswordReset(email)
-      : await passwordAuth(mode, { email, password, name });
+      : await passwordAuth(mode, { email, password, name, tosAccepted: tos });
     setPending(false);
     if ("error" in res) setError(res.error);
     else setNotice(res.notice);
@@ -141,6 +142,37 @@ export default function LoginPage() {
               </button>
             )}
 
+            {mode === "signup" && (
+              <label className="flex items-start gap-2.5 text-body-sm text-muted">
+                <input
+                  type="checkbox"
+                  checked={tos}
+                  onChange={(e) => setTos(e.target.checked)}
+                  required
+                  className="mt-0.5 size-4 shrink-0"
+                />
+                <span>
+                  I agree to Tuloy&rsquo;s{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-primary underline underline-offset-2 hover:text-primary-active"
+                  >
+                    Terms
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-primary underline underline-offset-2 hover:text-primary-active"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+            )}
+
             {error && <p className="text-body-sm text-error">{error}</p>}
             {notice && (
               <p className="rounded-md border border-hairline bg-surface-soft p-3 text-body-sm text-ink">
@@ -148,7 +180,11 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button
+              type="submit"
+              disabled={pending || (mode === "signup" && !tos)}
+              className="w-full"
+            >
               {pending ? "…" : COPY[mode].cta}
             </Button>
           </form>

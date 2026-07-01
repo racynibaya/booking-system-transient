@@ -12,6 +12,7 @@ import {
 import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { computeXenditSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
+import { TERMS_VERSION } from "@/lib/legal/version";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 import { createPaymentSession, createSplitRule } from "@/lib/xendit/client";
@@ -29,6 +30,9 @@ const publicBookingInput = z
     // Attribution tag from the booking link (?src=…). Pure metadata for the operator; never
     // touches the money path. Stamped after the hold via a best-effort service-role update.
     source: z.string().trim().max(60).optional(),
+    // Guest's acceptance of the Terms (Part A clickwrap). Enforced in the action body; the accepted
+    // version is stamped onto the booking after the hold.
+    termsAccepted: z.boolean().optional(),
   })
   // Basic range sanity (check-out after check-in). The per-property minimum-stay gate can't live
   // in the static schema — it depends on the room's property setting — so it's enforced in the
@@ -69,6 +73,10 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your details." };
   }
   const d = parsed.data;
+
+  if (!d.termsAccepted) {
+    return { ok: false, error: "Please accept the Terms to book." };
+  }
 
   // Per-property guest-facing minimum stay (the authoritative server-side gate; the booking-card
   // mirrors it for UX). Config read, not money — fetched via the service client like the other
@@ -136,6 +144,17 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
       .update({ source: d.source })
       .eq("id", booking.id)
       .is("source", null);
+  }
+
+  // Stamp the accepted Terms version onto the booking — the guest's clickwrap record (Part A).
+  // Same best-effort, set-once, service-role pattern as the source stamp above.
+  {
+    const admin = createServiceClient();
+    await admin
+      .from("bookings")
+      .update({ terms_version: TERMS_VERSION })
+      .eq("id", booking.id)
+      .is("terms_version", null);
   }
 
   // Auto-acknowledge (Pro/Business perk): email the guest the moment the hold lands, so they're never
