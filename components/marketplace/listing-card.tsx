@@ -103,7 +103,7 @@ export function ListingCard({
         {/* Bottom scrim so the white verified pill stays legible over any cover photo. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-caption font-medium text-white backdrop-blur">
-          <ShieldCheck className="size-3.5 shrink-0 text-success" /> Verified
+          <ShieldCheck className="size-3.5 shrink-0 text-white" /> Verified
         </span>
       </div>
 
