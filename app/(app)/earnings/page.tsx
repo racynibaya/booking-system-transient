@@ -72,7 +72,7 @@ export default async function EarningsPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat icon={Wallet} label="Booking value" value={peso(e.gross)} />
         <Stat icon={TrendingUp} label="Net to you" value={peso(e.net)} tone="success" />
-        <Stat icon={Receipt} label="Tuloy commission (2.5%)" value={peso(e.commission)} />
+        <Stat icon={Receipt} label="Tuloy commission (0%)" value={peso(e.commission)} />
         <Stat icon={Wallet} label="Outstanding" value={peso(e.outstanding)} tone="warning" />
       </div>
 
