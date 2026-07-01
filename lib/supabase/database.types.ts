@@ -1180,6 +1180,10 @@ export type Database = {
         };
         Returns: undefined;
       };
+      rate_limit_hit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
+      };
       submit_proof: {
         Args: { p_booking_id: string; p_proof_url: string };
         Returns: {

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { recordConsent } from "@/lib/legal/consent";
 import { requestConsentMeta } from "@/lib/legal/consent-request";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type AuthResult = { error: string } | { notice: string };
@@ -28,6 +29,14 @@ export async function passwordAuth(
     return { error: parsed.error.issues[0]?.message ?? "Please check your details." };
   }
   const { email, password } = parsed.data;
+
+  // Throttle by IP to blunt brute-force / credential-stuffing (signin) and mass signup abuse.
+  const ip = await clientIp();
+  const [rlLimit, rlWindow] = mode === "signup" ? [8, 600] : [15, 300];
+  if (!(await rateLimit(`auth:${mode}:${ip}`, rlLimit, rlWindow))) {
+    return { error: "Too many attempts. Please wait a few minutes and try again." };
+  }
+
   const supabase = await createClient();
 
   if (mode === "signup") {
@@ -93,6 +102,13 @@ export async function passwordAuth(
 export async function requestPasswordReset(email: string): Promise<AuthResult> {
   const parsed = z.email("Enter a valid email address.").safeParse(email);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a valid email." };
+
+  // Throttle reset requests per target address so nobody can email-bomb a victim's inbox. Return the
+  // same generic notice when limited so the endpoint stays enumeration-safe.
+  const notice = {
+    notice: "If an account exists for that email, we've sent a password reset link.",
+  };
+  if (!(await rateLimit(`auth:pwreset:${parsed.data.toLowerCase()}`, 4, 900))) return notice;
 
   const h = await headers();
   const origin = h.get("origin") ?? `https://${h.get("host")}`;

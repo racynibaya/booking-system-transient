@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { rateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/server";
 
 // S5 — guest submits their review through the service-role path, the token in the URL as the
@@ -19,6 +20,11 @@ export async function submitReview(
   const parsed = submitInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Please choose a star rating." };
   const { token, rating, comment } = parsed.data;
+
+  // Throttle per review link (submission is already idempotent; this caps abuse of a leaked token).
+  if (!(await rateLimit(`review:${token}`, 6, 3600))) {
+    return { ok: false, error: "Too many attempts. Please wait a moment and try again." };
+  }
 
   const admin = createServiceClient();
   const { data, error } = await admin
