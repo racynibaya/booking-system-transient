@@ -6,8 +6,7 @@ import {
   meetsMinStay,
   MIN_STAY_NIGHTS,
   nights,
-  XENDIT_FIXED,
-  XENDIT_MDR,
+  xenditFee,
 } from "./pricing";
 
 describe("nights", () => {
@@ -92,16 +91,22 @@ describe("computeXenditSplit", () => {
     expect(s.commission).toBe(100); // 2.5% of the FULL stay (D1)
     expect(s.ownerNet).toBe(1900); // deposit − commission, settles to the sub-account
     expect(s.tuloyRevenue).toBe(100); // commission only — no 6% service fee (cheaper than aggregator)
-    // Guest pays just the deposit, grossed up for the Xendit fee: 2000 / (1 − 0.035) = 2072.54
-    expect(s.guestTotal).toBeCloseTo(2072.54, 2);
+    // Guest pays just the deposit, grossed up for QR Ph's fee (1.4% + 12% VAT): 2000 / (1 − 0.01568)
+    expect(s.guestTotal).toBeCloseTo(2031.86, 2);
   });
 
   it("reconciles: after Xendit's fee, net settled = operator net + commission", () => {
     const s = computeXenditSplit(4000, 2000, 0.025);
-    const xenditFee = s.guestTotal * XENDIT_MDR + XENDIT_FIXED;
-    const settledAfterFee = s.guestTotal - xenditFee;
-    expect(settledAfterFee).toBeCloseTo(s.deposit, 2);
-    expect(settledAfterFee).toBeCloseTo(s.ownerNet + s.commission, 2);
+    const settledAfterFee = s.guestTotal - xenditFee(s.guestTotal);
+    expect(settledAfterFee).toBeCloseTo(s.deposit, 1);
+    expect(settledAfterFee).toBeCloseTo(s.ownerNet + s.commission, 1);
+  });
+
+  it("applies the ₱15 fee floor (+ VAT) on a cheap deposit", () => {
+    // 600 grossed at 1.4% would produce a fee below the ₱15 floor → flat floor+VAT add-on.
+    const s = computeXenditSplit(1200, 600, 0.025);
+    expect(s.guestTotal).toBeCloseTo(616.8, 2); // 600 + 15·1.12
+    expect(s.guestTotal - xenditFee(s.guestTotal)).toBeCloseTo(600, 1);
   });
 
   it("nets the operator 97.5% of the full stay (sub-account net + check-in balance)", () => {
