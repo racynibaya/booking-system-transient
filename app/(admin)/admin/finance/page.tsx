@@ -5,6 +5,7 @@ import { FinanceHero } from "@/components/admin/finance-hero";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { PayoutsTable } from "@/components/admin/payouts-table";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   getFinanceOverview,
   listPayouts,
@@ -47,9 +48,8 @@ export default async function AdminFinancePage({
 
   if (!finance) {
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="text-display-sm text-ink">Finance</h1>
-        <p className="text-body-sm text-muted">Couldn&rsquo;t load finance right now.</p>
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Finance" description="Couldn&rsquo;t load finance right now." />
       </div>
     );
   }
@@ -61,12 +61,10 @@ export default async function AdminFinancePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-display-sm text-ink">Finance</h1>
-        <p className="text-body-sm text-muted">
-          Commission earned and every payout across the platform.
-        </p>
-      </div>
+      <PageHeader
+        title="Finance"
+        description="Commission earned and every payout across the platform."
+      />
 
       <FinanceHero finance={finance} />
 

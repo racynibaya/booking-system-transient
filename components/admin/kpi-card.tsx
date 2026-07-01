@@ -1,20 +1,19 @@
 import type { LucideIcon } from "lucide-react";
 
-// Compact metric card for the dashboard rail — the reference's Users/Clicks/Sales/Items tiles.
-// No sparkline: there's no historical series to chart, and a fake trend line would be dishonest.
-// Each card wears its own brand-derived accent so the dashboard reads colorful + playful.
+// Compact metric card for the dashboard rail. Retoned to the restrained Sea Glass palette so the
+// admin reads as calm as the operator + public surfaces: neutral canvas cards + a hairline border,
+// with only a SUBTLE semantic icon chip (sea-green / success / attention). No loud per-card fills.
+// Accent names are kept so call sites don't churn; they now map to three quiet tones.
 export type Accent = "coral" | "blue" | "green" | "amber" | "purple" | "sunset";
 
+const CARD = "border-hairline bg-canvas";
 const ACCENTS: Record<Accent, { card: string; chip: string }> = {
-  coral: { card: "border-primary/20 bg-primary/[0.05]", chip: "bg-primary/15 text-primary" },
-  blue: {
-    card: "border-legal-link/25 bg-legal-link/[0.06]",
-    chip: "bg-legal-link/15 text-legal-link",
-  },
-  green: { card: "border-success/25 bg-success/[0.06]", chip: "bg-success/15 text-success" },
-  amber: { card: "border-warning/30 bg-warning/[0.07]", chip: "bg-warning/20 text-warning" },
-  purple: { card: "border-luxe/25 bg-luxe/[0.06]", chip: "bg-luxe/15 text-luxe" },
-  sunset: { card: "border-sunset-1/30 bg-sunset-1/[0.07]", chip: "bg-sunset-1/20 text-sunset-1" },
+  coral: { card: CARD, chip: "bg-primary/12 text-primary" },
+  blue: { card: CARD, chip: "bg-primary/12 text-primary" },
+  green: { card: CARD, chip: "bg-success/12 text-success" },
+  amber: { card: CARD, chip: "bg-warning/15 text-warning" },
+  purple: { card: CARD, chip: "bg-primary/12 text-primary" },
+  sunset: { card: CARD, chip: "bg-primary/12 text-primary" },
 };
 
 export function KpiCard({

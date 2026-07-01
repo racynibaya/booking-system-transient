@@ -31,7 +31,7 @@ export function FinanceHero({ finance }: { finance: FinanceOverview }) {
 
   return (
     <section className="overflow-hidden rounded-md border border-hairline shadow-card">
-      <div className="flex flex-col gap-1 bg-linear-to-br from-primary/[0.10] via-sunset-1/[0.08] to-luxe/10 p-5 md:p-6">
+      <div className="flex flex-col gap-1 bg-linear-to-br from-primary/[0.10] via-sunset-1/[0.08] to-primary/[0.05] p-5 md:p-6">
         <p className="flex items-center gap-1.5 text-caption text-muted">
           <HandCoins className="size-3.5" />
           Commission earned (all-time)

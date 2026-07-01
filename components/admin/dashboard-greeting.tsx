@@ -17,7 +17,7 @@ export function DashboardGreeting({ name }: { name: string | null }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <h1 className="text-display-lg text-ink">
+      <h1 className="font-display text-display-xl text-ink">
         {greetingFor(hour)}, {name ?? "there"}
       </h1>
       <p className="text-body-sm text-muted">Here&rsquo;s how the platform is doing today.</p>
