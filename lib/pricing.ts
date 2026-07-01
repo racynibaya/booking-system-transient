@@ -79,12 +79,20 @@ function round2(n: number): number {
 //   operator nets = D − commission — settles to their sub-account; they self-withdraw
 //   Tuloy keeps   = commission
 //
-// ⚠️ XENDIT_MDR/FIXED are PLACEHOLDERS — set to the worst-case ENABLED method before go-live (same
-// discipline as PAYMONGO_MDR). ⚠️ The model assumes Xendit takes its fee on the gross charge and the
-// Split Rule distributes the net (net-settled ≈ D). CONFIRM the actual fee/split ordering against a
-// sandbox charge in Slice 2b and adjust the gross-up if Xendit splits gross-then-fees.
-export const XENDIT_MDR = 0.035; // placeholder — confirm worst-case enabled method before go-live
-export const XENDIT_FIXED = 0; // placeholder — many PH e-wallet/QR methods carry no fixed fee; confirm
+// Pilot: QR Ph is the ONLY enabled guest method (decided 2026-07-01). Xendit PH list rate for QR Ph =
+// 1.4% with a ₱15 per-transaction floor, all exclusive of 12% VAT (VAT rides on the fee). Per Xendit's
+// answer, the fee + VAT is deducted from the operator's receiving sub-account, and the Split Rule
+// routes Tuloy's flat 2.5%·S to Master — so the guest bears the processing fee (grossed onto the
+// deposit, D2) and the operator bears the commission. Add GCash (2.3%) later by widening the rate here.
+export const XENDIT_MDR = 0.014; // QR Ph percentage, VAT-exclusive
+export const XENDIT_MIN_FEE = 15; // QR Ph per-transaction floor (peso), VAT-exclusive
+export const XENDIT_VAT = 0.12; // PH value-added tax, added on top of Xendit's fee
+
+// The actual Xendit fee (incl. VAT) on a gross settlement of `gross` pesos — max(rate, floor), then
+// VAT. Single source for the gross-up and the reconciliation checks.
+export function xenditFee(gross: number): number {
+  return round2(Math.max(gross * XENDIT_MDR, XENDIT_MIN_FEE) * (1 + XENDIT_VAT));
+}
 
 export type XenditSplit = {
   stayValue: number; // S
@@ -105,7 +113,14 @@ export function computeXenditSplit(
   commissionRate: number,
 ): XenditSplit {
   const commission = round2(stayValue * commissionRate);
-  const guestTotal = round2((deposit + XENDIT_FIXED) / (1 - XENDIT_MDR));
+  // Gross up the deposit so the operator nets exactly D after Xendit's fee+VAT. Percentage regime,
+  // unless the fee would fall below the ₱15 floor (cheap stays) — then it's a flat floor+VAT add-on.
+  const rateVat = XENDIT_MDR * (1 + XENDIT_VAT);
+  let guestTotal = deposit / (1 - rateVat);
+  if (guestTotal * XENDIT_MDR < XENDIT_MIN_FEE) {
+    guestTotal = deposit + XENDIT_MIN_FEE * (1 + XENDIT_VAT);
+  }
+  guestTotal = round2(guestTotal);
   return {
     stayValue,
     deposit,

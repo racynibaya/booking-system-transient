@@ -12,9 +12,10 @@ import {
   createSubAccount,
   getBalance,
   getPayoutChannels,
-  type KycDocType,
+  type PhBusinessRegType,
   submitAccountVerification,
   uploadKycFile,
+  type XenditFileRef,
 } from "@/lib/xendit/client";
 import { parseAccountStatus } from "@/lib/xendit/status";
 import { env } from "@/env";
@@ -89,10 +90,10 @@ export async function deletePaymentMethod(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-// Start the operator's Xendit onboarding: create their OWNED sub-account (white-label — they never
-// touch Xendit) and persist the binding. KYC is then submitted via submitXenditKyc (account_verification).
-// Create-once. Dormant until XENDIT_SECRET_KEY is set; the webhook (lib/xendit/webhook-handler.ts)
-// advances kyc_status → 'LIVE'.
+// Start the operator's Xendit onboarding: create their MANAGED sub-account and persist the binding.
+// Xendit emails the operator an invite; once they accept it (sub-account → REGISTERED) we submit their
+// KYC via submitXenditKyc (account_verification). Create-once. Dormant until XENDIT_SECRET_KEY is set;
+// the webhook (lib/xendit/webhook-handler.ts) advances kyc_status → 'LIVE'.
 export async function startXenditOnboarding(): Promise<ActionResult> {
   const sk = env.XENDIT_SECRET_KEY;
   if (!sk) return { ok: false, error: "Online payments aren't available yet." };
@@ -112,9 +113,9 @@ export async function startXenditOnboarding(): Promise<ActionResult> {
     sub = await createSubAccount({
       secretKey: sk,
       email: user.email ?? `${tenant.id}@tuloysanjuan.com`,
-      // OWNED = white-label: the operator never touches Xendit; we submit KYC via account_verification
-      // and disburse via the Payouts API (operator-initiated). See memory xendit-owned-custody-legal.
-      type: "OWNED",
+      // MANAGED: Xendit emails the operator an invite; they accept it once, then Tuloy submits their KYC
+      // on their behalf (account_verification) and they self-withdraw from their own dashboard.
+      type: "MANAGED",
       businessName: tenant.name ?? "Tuloy operator",
     });
   } catch {
@@ -127,7 +128,7 @@ export async function startXenditOnboarding(): Promise<ActionResult> {
   const { error } = await admin.from("tenant_xendit_accounts").insert({
     tenant_id: tenant.id,
     sub_account_id: sub.id,
-    type: "OWNED",
+    type: "MANAGED",
     kyc_status: parseAccountStatus(sub.status) ?? "INVITED",
   });
   // A concurrent call won the race (unique tenant_id) — that's a harmless idempotent success.
@@ -138,39 +139,33 @@ export async function startXenditOnboarding(): Promise<ActionResult> {
   return { ok: true };
 }
 
-// The 7 Sole-Prop KYC documents Xendit requires (from the account manager). The form sends each as a
-// FormData file under `doc_<TYPE>`; codes are PROVISIONAL until the AM template is confirmed.
-const KYC_DOC_TYPES = [
-  "DTI_CERTIFICATE",
-  "BIR_2303",
-  "GOVERNMENT_ID",
-  "PROOF_OF_BUSINESS",
-  "BANK_ACCOUNT_PROOF",
-  "SERVICE_AGREEMENT",
-  "LIVENESS_SELFIE",
-] as const satisfies readonly KycDocType[];
-
-// Submit the operator's OWNED-account KYC via account_verification (the MANAGED→OWNED re-point). Takes
-// FormData because it carries the 7 document files: we upload each to Xendit's file API (server-side,
-// with the secret key) → file_id, then submit the verification. Also stores the operator's payout
-// destination (where they self-withdraw). KYC submission is LIVE-mode-only, so this can't run on the
-// sandbox key. The webhook (lib/xendit/webhook-handler.ts) carries kyc_status → LIVE async.
+// Submit the operator's MANAGED-account KYC via account_verification. Takes FormData because it carries
+// the identity document files (selfie, ID front/back, + DTI & BIR for a sole proprietorship): each is
+// uploaded to Xendit's file API server-side → a file reference, then the verification is submitted.
+// Supports both a government-ID-only host (INDIVIDUAL) and a DTI-registered host (SOLE_PROPRIETORSHIP).
+// Also stores the operator's payout destination. LIVE-mode-only (sandbox 404s), and built to Xendit's
+// documented template — expect to adjust on the first real operator. The webhook carries kyc_status → LIVE.
 export async function submitXenditKyc(formData: FormData): Promise<ActionResult> {
   const sk = env.XENDIT_SECRET_KEY;
   if (!sk) return { ok: false, error: "Online payments aren't available yet." };
 
   const str = (k: string) => (formData.get(k) ?? "").toString();
   const parsed = xenditKycInput.safeParse({
+    entity_type: str("entity_type"),
     legal_name: str("legal_name"),
     trading_name: str("trading_name"),
+    business_description: str("business_description"),
     given_names: str("given_names"),
     surname: str("surname"),
+    date_of_birth: str("date_of_birth"),
     email: str("email"),
-    phone_number: str("phone_number"),
+    mobile_number: str("mobile_number"),
     street_line1: str("street_line1"),
     city: str("city"),
     province_state: str("province_state"),
     postal_code: str("postal_code"),
+    id_type: str("id_type"),
+    id_number: str("id_number"),
     payout_channel_code: str("payout_channel_code"),
     payout_account_number: str("payout_account_number"),
     payout_account_name: str("payout_account_name"),
@@ -181,6 +176,11 @@ export async function submitXenditKyc(formData: FormData): Promise<ActionResult>
 
   const account = await getXenditAccount();
   if (!account) return { ok: false, error: "Set up online payments first." };
+  // The operator must accept the Xendit invite (sub-account REGISTERED) before we submit — otherwise
+  // account_verification 404s with XEN_PLATFORM_SUB_ACCOUNT_NOT_LIVE.
+  if (account.kyc_status === "INVITED") {
+    return { ok: false, error: "Please accept the Xendit invite email first, then come back." };
+  }
   // Already submitted — idempotent success; the webhook drives the rest.
   if (account.kyc_submitted_at) {
     revalidatePath("/settings");
@@ -190,37 +190,62 @@ export async function submitXenditKyc(formData: FormData): Promise<ActionResult>
   const d = parsed.data;
   let kycStatus: ReturnType<typeof parseAccountStatus> = null;
   try {
-    // Upload each KYC document → file_id, then submit account_verification.
-    const documents: { type: KycDocType; fileId: string }[] = [];
-    for (const type of KYC_DOC_TYPES) {
-      const file = formData.get(`doc_${type}`);
-      if (!(file instanceof File) || file.size === 0) {
-        return { ok: false, error: "Please upload all required documents." };
-      }
+    // Upload each identity document → a file reference, then submit account_verification.
+    const upload = async (field: string): Promise<XenditFileRef> => {
+      const file = formData.get(field);
+      if (!(file instanceof File) || file.size === 0) throw new Error(`missing:${field}`);
       const { fileId } = await uploadKycFile(sk, file, file.name);
-      documents.push({ type, fileId });
+      return { fileName: file.name, fileId };
+    };
+    const [selfie, idFront, idBack] = await Promise.all([
+      upload("doc_selfie"),
+      upload("doc_id_front"),
+      upload("doc_id_back"),
+    ]);
+    let businessRegistrationDocuments:
+      | { type: PhBusinessRegType; file: XenditFileRef }[]
+      | undefined;
+    if (d.entity_type === "SOLE_PROPRIETORSHIP") {
+      businessRegistrationDocuments = [
+        { type: "PH_DTI_REGISTRATION", file: await upload("doc_dti") },
+        { type: "PH_BIR_2303", file: await upload("doc_bir") },
+      ];
     }
+
+    const addr = {
+      streetLine1: d.street_line1,
+      city: d.city,
+      province: d.province_state,
+      postalCode: d.postal_code,
+    };
     const res = await submitAccountVerification({
       secretKey: sk,
       forUserId: account.sub_account_id,
-      legalName: d.legal_name,
-      tradingName: d.trading_name,
-      pic: {
-        givenNames: d.given_names,
-        surname: d.surname,
+      entityType: d.entity_type,
+      businessLegalName: d.legal_name,
+      businessDescription:
+        d.business_description || "Short-stay transient accommodation, San Juan, La Union",
+      businessAddress: addr,
+      person: {
+        firstName: d.given_names,
+        lastName: d.surname,
+        dateOfBirth: d.date_of_birth,
         email: d.email,
-        phoneNumber: d.phone_number || undefined,
+        mobileNumber: d.mobile_number,
+        address: addr,
+        selfie,
+        idType: d.id_type,
+        idNumber: d.id_number,
+        idFront,
+        idBack,
       },
-      address: {
-        city: d.city,
-        provinceState: d.province_state,
-        streetLine1: d.street_line1,
-        postalCode: d.postal_code,
-      },
-      documents,
+      businessRegistrationDocuments,
     });
     kycStatus = parseAccountStatus(res.status);
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("missing:")) {
+      return { ok: false, error: "Please upload all required documents." };
+    }
     return { ok: false, error: "Couldn't submit to Xendit — please check your details and retry." };
   }
 

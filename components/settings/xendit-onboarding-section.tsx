@@ -73,16 +73,28 @@ const STATUS: Record<
   },
 };
 
-// The 7 Sole-Prop KYC documents (must match the server-side KYC_DOC_TYPES). The form field name is
-// `doc_<TYPE>`; the action uploads each to Xendit and submits account_verification.
-const DOCS: { type: string; label: string }[] = [
-  { type: "DTI_CERTIFICATE", label: "DTI Certificate" },
-  { type: "BIR_2303", label: "BIR Form 2303" },
-  { type: "GOVERNMENT_ID", label: "Government-issued ID" },
-  { type: "PROOF_OF_BUSINESS", label: "Proof of business" },
-  { type: "BANK_ACCOUNT_PROOF", label: "Bank account proof" },
-  { type: "SERVICE_AGREEMENT", label: "Signed Xendit service agreement" },
-  { type: "LIVENESS_SELFIE", label: "Selfie holding your ID" },
+// Identity documents (field name `doc_<type>`, must match what submitXenditKyc reads). Everyone
+// uploads the ID set; a DTI-registered host (sole proprietorship) also uploads the business papers.
+const ID_DOCS: { type: string; label: string }[] = [
+  { type: "selfie", label: "Selfie holding your ID" },
+  { type: "id_front", label: "Government ID — front" },
+  { type: "id_back", label: "Government ID — back" },
+];
+const BIZ_DOCS: { type: string; label: string }[] = [
+  { type: "dti", label: "DTI Certificate" },
+  { type: "bir", label: "BIR Form 2303" },
+];
+
+// PH government-ID options for the identity dropdown (values must match validation `id_type`).
+const ID_TYPES = [
+  { value: "PH_PHILSYS_PHYSICAL", label: "PhilSys / National ID" },
+  { value: "PH_DRIVERS_LICENSE", label: "Driver's License" },
+  { value: "PH_UMID", label: "UMID" },
+  { value: "PH_SSS_OR_GSIS", label: "SSS / GSIS ID" },
+  { value: "PH_PRC_LICENSE", label: "PRC License" },
+  { value: "PH_POSTAL_ID", label: "Postal ID" },
+  { value: "PH_VOTER_ID", label: "Voter's ID" },
+  { value: "PASSPORT", label: "Passport" },
 ];
 
 // The wizard's four chapters. Keeping the long KYC form as four short, finishable steps is the whole
@@ -98,23 +110,6 @@ const STEPS = [
   { title: "Your documents", subtitle: "Clear photos or PDFs, each under 10MB.", icon: FileText },
   { title: "Review & submit", subtitle: "One last look before we verify you.", icon: BadgeCheck },
 ] as const;
-
-const REQUIRED: string[][] = [
-  [
-    "legal_name",
-    "trading_name",
-    "given_names",
-    "surname",
-    "email",
-    "street_line1",
-    "city",
-    "province_state",
-    "postal_code",
-  ],
-  ["payout_channel_code", "payout_account_name", "payout_account_number"],
-  DOCS.map((d) => `doc_${d.type}`),
-  [],
-];
 
 const LAST = STEPS.length - 1;
 
@@ -302,6 +297,30 @@ function KycWizard({
   // and the review step update as the operator types.
   const [snap, setSnap] = useState<Record<string, string>>({});
   const [docNames, setDocNames] = useState<Record<string, string>>({});
+  const [entityType, setEntityType] = useState<"INDIVIDUAL" | "SOLE_PROPRIETORSHIP">("INDIVIDUAL");
+
+  // A DTI-registered host uploads the business papers on top of the ID set.
+  const docs = entityType === "SOLE_PROPRIETORSHIP" ? [...ID_DOCS, ...BIZ_DOCS] : ID_DOCS;
+  const REQUIRED: string[][] = [
+    [
+      "legal_name",
+      "trading_name",
+      "given_names",
+      "surname",
+      "date_of_birth",
+      "email",
+      "mobile_number",
+      "street_line1",
+      "city",
+      "province_state",
+      "postal_code",
+      "id_type",
+      "id_number",
+    ],
+    ["payout_channel_code", "payout_account_name", "payout_account_number"],
+    docs.map((d) => `doc_${d.type}`),
+    [],
+  ];
 
   const sync = () => {
     const form = formRef.current;
@@ -309,7 +328,7 @@ function KycWizard({
     const next: Record<string, string> = {};
     for (const [k, v] of new FormData(form).entries()) if (typeof v === "string") next[k] = v;
     const files: Record<string, string> = {};
-    for (const d of DOCS) {
+    for (const d of docs) {
       const el = form.elements.namedItem(`doc_${d.type}`) as HTMLInputElement | null;
       if (el?.files?.length) files[d.type] = el.files[0].name;
     }
@@ -445,6 +464,34 @@ function KycWizard({
             {/* Step 1 — About you */}
             <div hidden={step !== 0} className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
+                <p className="mb-2 text-body-sm text-ink">
+                  Do you have a business registration (DTI)?
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["INDIVIDUAL", "No — personal / government ID only"],
+                      ["SOLE_PROPRIETORSHIP", "Yes — DTI registered"],
+                    ] as const
+                  ).map(([val, label]) => (
+                    <button
+                      type="button"
+                      key={val}
+                      onClick={() => setEntityType(val)}
+                      className={`rounded-md border p-3 text-left text-body-sm transition-colors ${
+                        entityType === val
+                          ? "border-primary bg-surface-soft text-ink"
+                          : "border-hairline text-muted hover:border-primary/50"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <input type="hidden" name="entity_type" value={entityType} />
+              </div>
+
+              <div className="sm:col-span-2">
                 <Field label="Full legal name (as on your ID)" error={errors.legal_name}>
                   <Input
                     name="legal_name"
@@ -455,14 +502,19 @@ function KycWizard({
                 </Field>
               </div>
               <div className="sm:col-span-2">
-                <Field
-                  label="Business / property name (as on your DTI)"
-                  error={errors.trading_name}
-                >
+                <Field label="Business / property name" error={errors.trading_name}>
                   <Input
                     name="trading_name"
                     defaultValue={defaults.trading_name}
                     placeholder="Seaside Transient"
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Short description of your place (optional)">
+                  <Input
+                    name="business_description"
+                    placeholder="Short-stay transient accommodation, San Juan, La Union"
                   />
                 </Field>
               </div>
@@ -471,6 +523,9 @@ function KycWizard({
               </Field>
               <Field label="Last name" error={errors.surname}>
                 <Input name="surname" placeholder="Dela Cruz" autoComplete="family-name" />
+              </Field>
+              <Field label="Date of birth" error={errors.date_of_birth}>
+                <Input name="date_of_birth" type="date" autoComplete="bday" />
               </Field>
               <Field label="Email" error={errors.email}>
                 <Input
@@ -481,13 +536,28 @@ function KycWizard({
                   autoComplete="email"
                 />
               </Field>
-              <Field label="Mobile number (optional)">
+              <Field label="Mobile number" error={errors.mobile_number}>
                 <Input
-                  name="phone_number"
+                  name="mobile_number"
                   placeholder="0917 123 4567"
                   inputMode="tel"
                   autoComplete="tel"
                 />
+              </Field>
+              <Field label="Government ID type" error={errors.id_type}>
+                <Select name="id_type" defaultValue="">
+                  <option value="" disabled>
+                    Select your ID
+                  </option>
+                  {ID_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="ID number" error={errors.id_number}>
+                <Input name="id_number" placeholder="As shown on your ID" />
               </Field>
               <div className="sm:col-span-2">
                 <Field label="Street address" error={errors.street_line1}>
@@ -539,7 +609,7 @@ function KycWizard({
 
             {/* Step 3 — Documents */}
             <div hidden={step !== 2} className="grid gap-3 sm:grid-cols-2">
-              {DOCS.map((doc) => {
+              {docs.map((doc) => {
                 const fileName = docNames[doc.type];
                 const missing = !!errors[`doc_${doc.type}`];
                 return (
@@ -603,7 +673,7 @@ function KycWizard({
               <div className="flex items-center gap-2 rounded-md bg-surface-soft px-3.5 py-3">
                 <BadgeCheck className="size-4 shrink-0 text-success" />
                 <p className="text-body-sm text-body">
-                  {Object.keys(docNames).length} of {DOCS.length} documents attached
+                  {Object.keys(docNames).length} of {docs.length} documents attached
                 </p>
               </div>
 

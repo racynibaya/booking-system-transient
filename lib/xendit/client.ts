@@ -121,47 +121,127 @@ export async function createSubAccount(input: CreateSubAccountInput): Promise<Su
   return { id: json.id, status: json.status, type: json.type };
 }
 
-// --- Account verification (OWNED KYC) ----------------------------------------------------------
+// --- Account verification (MANAGED KYC) --------------------------------------------------------
 //
-// The MANAGED→OWNED re-point (2026-06-29). MANAGED KYC was the `account_holders` + PATCH-link flow,
-// which 403'd ("only LIVE OWNED sub-account") and forced the operator onto Xendit's dashboard. The AM
-// confirmed the OWNED path is `POST /account_verification` (`for-user-id`) — Tuloy submits the
-// operator's KYC programmatically and they never touch Xendit. Operators must be a registered business,
-// so SOLE_PROPRIETORSHIP (Xendit no longer onboards individuals). See memory xendit-owned-custody-legal.
+// MANAGED path (2026-07-01, from xendit-managed-answers.md, built to Xendit's documented account_verification
+// schema). Two-step: uploadKycFile → file_id, then POST /account_verification (`for-user-id`). The
+// sub-account MUST already be REGISTERED (operator accepted the email invite) or this 404s with
+// XEN_PLATFORM_SUB_ACCOUNT_NOT_LIVE. Supports BOTH a host with only a government ID (INDIVIDUAL) and a
+// DTI-registered host (SOLE_PROPRIETORSHIP — adds business_registration_documents).
 //
-// ⚠️ KYC submission is LIVE-MODE ONLY (sandbox keys → XEN_PLATFORM_SUB_ACCOUNT_NOT_LIVE), so this can't
-// be exercised in sandbox. ⚠️ The exact body shape + document `type` codes are AM-template-PENDING; the
-// structure below mirrors the account_holders body that the sandbox accepted plus the account_verification
-// top-level fields. Finalize against the AM template / a real LIVE submission before go-live.
+// ⚠️ LIVE-MODE ONLY (sandbox → XEN_PLATFORM_SUB_ACCOUNT_NOT_LIVE) and Xendit publishes no PH INDIVIDUAL
+// sample — the exact minimal required field subset is unconfirmed. Built to the documented template;
+// EXPECT to adjust on the first real operator (Racyn's decision). Returns the pending status; LIVE is
+// driven async by the account/verification webhook → tenant_xendit_accounts.kyc_status.
 const PH = "PH";
 const LODGING_INDUSTRY = "LODGING_HOTELS_MOTELS_AND_RESORTS";
 
-// The 7 Sole-Prop KYC documents (from the AM). Codes are PROVISIONAL — confirm against the template.
-export type KycDocType =
-  | "DTI_CERTIFICATE"
-  | "BIR_2303"
-  | "GOVERNMENT_ID"
-  | "PROOF_OF_BUSINESS"
-  | "BANK_ACCOUNT_PROOF"
-  | "SERVICE_AGREEMENT"
-  | "LIVENESS_SELFIE";
+export type XenditEntityType = "INDIVIDUAL" | "SOLE_PROPRIETORSHIP";
+
+// PH government-ID codes accepted for the operator's identification.
+export type PhIdType =
+  | "PH_PHILSYS_PHYSICAL"
+  | "PH_PHILSYS_DIGITAL"
+  | "PH_UMID"
+  | "PH_DRIVERS_LICENSE"
+  | "PH_SSS_OR_GSIS"
+  | "PH_PRC_LICENSE"
+  | "PH_POSTAL_ID"
+  | "PH_VOTER_ID"
+  | "PH_ACR_OR_IMMIGRANT_COR"
+  | "PASSPORT";
+
+// PH business-registration doc codes — SOLE_PROPRIETORSHIP only.
+export type PhBusinessRegType = "PH_DTI_REGISTRATION" | "PH_BIR_2303";
+
+export type XenditFileRef = { fileName: string; fileId: string }; // from uploadKycFile
+type XenditAddress = { streetLine1: string; city: string; province: string; postalCode: string };
 
 export type AccountVerificationInput = {
   secretKey: string;
-  forUserId: string; // the OWNED operator sub-account
-  legalName: string;
-  tradingName?: string;
-  pic: { givenNames: string; surname: string; email: string; phoneNumber?: string };
-  address: { city: string; provinceState: string; streetLine1: string; postalCode: string };
-  documents: { type: KycDocType; fileId: string }[]; // file_ids from uploadKycFile
+  forUserId: string; // the MANAGED operator sub-account (must be REGISTERED)
+  entityType: XenditEntityType;
+  businessLegalName: string;
+  businessDescription: string;
+  businessAddress: XenditAddress;
+  person: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string; // YYYY-MM-DD
+    email: string;
+    mobileNumber: string; // local, without country code
+    address: XenditAddress;
+    selfie: XenditFileRef;
+    idType: PhIdType;
+    idNumber: string;
+    idFront: XenditFileRef;
+    idBack: XenditFileRef;
+  };
+  businessRegistrationDocuments?: { type: PhBusinessRegType; file: XenditFileRef }[]; // sole prop
 };
 
-// POST /account_verification (`for-user-id`) — submit the operator's KYC for an OWNED sub-account.
-// Returns the (still-pending) verification status; LIVE is driven async by the account_holder.kyc.status
-// / account webhook → tenant_xendit_accounts.kyc_status.
+const addr = (a: XenditAddress) => ({
+  street_line_1: a.streetLine1,
+  city: a.city,
+  province: a.province,
+  state: a.province, // PH requires both province and state
+  postal_code: a.postalCode,
+  country_code: PH,
+});
+
+const fileObj = (f: XenditFileRef) => ({ file_name: f.fileName, file_id: f.fileId });
+
 export async function submitAccountVerification(
   input: AccountVerificationInput,
 ): Promise<{ status: string }> {
+  const p = input.person;
+  const identification = [
+    {
+      type: p.idType,
+      number: p.idNumber,
+      document_front: fileObj(p.idFront),
+      document_back: fileObj(p.idBack),
+    },
+  ];
+
+  const kyc_details: Record<string, unknown> = {
+    business_legal_name: input.businessLegalName,
+    business_description: input.businessDescription,
+    business_address: addr(input.businessAddress),
+    business_intents: ["PAYMENTS"],
+    business_source_of_funds: ["REVENUE"],
+    authorized_person_first_name: p.firstName,
+    authorized_person_last_name: p.lastName,
+    authorized_person_nationality: PH,
+    authorized_person_date_of_birth: p.dateOfBirth,
+    authorized_person_email_address: p.email,
+    authorized_person_mobile_country_code: "+63",
+    authorized_person_mobile_number_only: p.mobileNumber,
+    authorized_person_address: addr(p.address),
+    authorized_person_selfie_document: fileObj(p.selfie),
+    authorized_person_identification: identification,
+    stakeholders: [
+      {
+        roles: ["BUSINESS_OWNER"],
+        first_name: p.firstName,
+        last_name: p.lastName,
+        nationality: PH,
+        date_of_birth: p.dateOfBirth,
+        is_authorized_person: true,
+        address: addr(p.address),
+        identification,
+      },
+    ],
+  };
+
+  if (input.businessRegistrationDocuments?.length) {
+    kyc_details.business_registration_documents = input.businessRegistrationDocuments.map((d) => ({
+      type: d.type,
+      country: PH,
+      document: fileObj(d.file),
+    }));
+  }
+
   const json = await xenditFetch<{ status?: string }>(
     input.secretKey,
     "POST",
@@ -169,39 +249,10 @@ export async function submitAccountVerification(
     {
       forUserId: input.forUserId,
       body: {
-        business_entity_type: "SOLE_PROPRIETORSHIP",
-        business_industry_code: LODGING_INDUSTRY,
         country_of_incorporation: PH,
-        business_detail: {
-          type: "SOLE_PROPRIETORSHIP",
-          legal_name: input.legalName,
-          trading_name: input.tradingName,
-          country_of_operation: PH,
-          industry_category: LODGING_INDUSTRY,
-        },
-        individual_details: [
-          {
-            type: "PIC",
-            role: "owner",
-            given_names: input.pic.givenNames,
-            surname: input.pic.surname,
-            email: input.pic.email,
-            phone_number: input.pic.phoneNumber,
-            nationality: PH,
-          },
-        ],
-        address: {
-          country: PH,
-          city: input.address.city,
-          province_state: input.address.provinceState,
-          street_line1: input.address.streetLine1,
-          postal_code: input.address.postalCode,
-        },
-        kyc_documents: input.documents.map((d) => ({
-          type: d.type,
-          country: PH,
-          file_id: d.fileId,
-        })),
+        business_entity_type: input.entityType,
+        business_industry_code: LODGING_INDUSTRY,
+        kyc_details,
       },
     },
   );
