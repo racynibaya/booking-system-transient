@@ -22,7 +22,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
 
 export function ProblemSolution() {
   return (
-    <section id="features" className="px-6 py-24">
+    <section id="features" className="scroll-mt-20 px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <Reveal className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <span className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
