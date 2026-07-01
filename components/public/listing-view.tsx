@@ -271,6 +271,7 @@ export function ListingView({
                 propertyName={property.name}
                 area={property.area}
                 minStayNights={property.min_stay_nights}
+                acceptsOnlinePayment={listing.accepts_online_payment}
               />
               {/* Fills the sidebar gap below the booking card on desktop. */}
               <div className="mt-4 hidden lg:block">
@@ -360,6 +361,7 @@ export function ListingView({
           propertyName={property.name}
           area={property.area}
           minStayNights={property.min_stay_nights}
+          acceptsOnlinePayment={listing.accepts_online_payment}
         />
       </main>
     </SelectedRoomProvider>

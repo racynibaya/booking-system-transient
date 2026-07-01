@@ -323,40 +323,47 @@ export type PaymentSession = { id: string; sessionUrl: string; status: string };
 // with the split rule attached (`with-split-rule`). Returns a hosted-checkout `session_url` the guest
 // pays at (picks GCash/card); the outcome arrives async via the Session webhook → confirm (Slice 2c).
 export async function createPaymentSession(input: PaymentSessionInput): Promise<PaymentSession> {
-  const json = await xenditFetch<{ id: string; session_url: string; status: string }>(
-    input.secretKey,
-    "POST",
-    "/sessions",
-    {
-      forUserId: input.forUserId,
-      withSplitRule: input.splitRuleId,
-      body: {
-        reference_id: input.referenceId,
-        session_type: "PAY",
-        mode: "PAYMENT_LINK",
-        amount: input.amount,
-        currency: "PHP",
-        country: "PH",
-        capture_method: "AUTOMATIC",
-        description: input.description,
-        customer: input.customer
-          ? {
-              type: "INDIVIDUAL",
-              email: input.customer.email,
-              mobile_number: input.customer.mobileNumber,
-              individual_detail: {
-                given_names: input.customer.givenNames,
-                surname: input.customer.surname,
-              },
-            }
-          : undefined,
-        success_return_url: input.successReturnUrl,
-        cancel_return_url: input.cancelReturnUrl,
-        metadata: input.metadata,
-      },
+  const json = await xenditFetch<{
+    id?: string;
+    payment_session_id?: string;
+    session_url?: string;
+    payment_link_url?: string;
+    status: string;
+  }>(input.secretKey, "POST", "/sessions", {
+    forUserId: input.forUserId,
+    withSplitRule: input.splitRuleId,
+    body: {
+      reference_id: input.referenceId,
+      session_type: "PAY",
+      mode: "PAYMENT_LINK",
+      amount: input.amount,
+      currency: "PHP",
+      country: "PH",
+      capture_method: "AUTOMATIC",
+      description: input.description,
+      customer: input.customer
+        ? {
+            type: "INDIVIDUAL",
+            email: input.customer.email,
+            mobile_number: input.customer.mobileNumber,
+            individual_detail: {
+              given_names: input.customer.givenNames,
+              surname: input.customer.surname,
+            },
+          }
+        : undefined,
+      success_return_url: input.successReturnUrl,
+      cancel_return_url: input.cancelReturnUrl,
+      metadata: input.metadata,
     },
-  );
-  return { id: json.id, sessionUrl: json.session_url, status: json.status };
+  });
+  // The hosted PAYMENT_LINK session returns the checkout link as `payment_link_url` and the id as
+  // `payment_session_id` (verified against a live sandbox response); keep the older names as fallbacks.
+  return {
+    id: json.payment_session_id ?? json.id ?? "",
+    sessionUrl: json.payment_link_url ?? json.session_url ?? "",
+    status: json.status,
+  };
 }
 
 // --- Refunds -----------------------------------------------------------------------------------

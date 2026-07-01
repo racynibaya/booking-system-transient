@@ -78,11 +78,13 @@ export function MobileBookingBar({
   propertyName,
   area,
   minStayNights,
+  acceptsOnlinePayment,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   minStayNights: number;
+  acceptsOnlinePayment: boolean;
 }) {
   const { selectedRoomId } = useSelectedRoom();
   const [open, setOpen] = useState(false);
@@ -112,6 +114,7 @@ export function MobileBookingBar({
             propertyName={propertyName}
             area={area}
             minStayNights={minStayNights}
+            acceptsOnlinePayment={acceptsOnlinePayment}
           />
         </Drawer>
       )}
