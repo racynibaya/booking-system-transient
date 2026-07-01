@@ -1,10 +1,9 @@
 "use client";
 
-import "react-day-picker/style.css";
-
 import { Check, ChevronDown, MoonStar, TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import type { DateRange } from "react-day-picker";
 
 import { createPublicBooking, submitProof, type PublicPaymentMethod } from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
@@ -25,6 +24,13 @@ export type PublicRoom = {
   blocks: { start_date: string; end_date: string }[];
 };
 
+// react-day-picker (+ its CSS) is only needed once a guest opens the calendar, so it's code-split
+// out of the initial listing-page bundle and loaded on demand.
+const BookingCalendar = dynamic(() => import("@/components/public/booking-calendar"), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-caption text-muted">Loading calendar…</div>,
+});
+
 const fieldClass =
   "h-11 w-full rounded-sm border border-hairline bg-canvas px-3 text-body-md text-ink placeholder:text-muted-soft transition-colors focus:border-border-strong focus:outline-none";
 const labelClass = "text-caption text-muted";
@@ -37,16 +43,22 @@ export function BookingCard({
   propertyName,
   area,
   minStayNights = MIN_STAY_NIGHTS,
-  source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   // Per-property guest-facing minimum stay. Defaults to MIN_STAY_NIGHTS as a safety net.
   minStayNights?: number;
-  source?: string;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
+  // Attribution tag from the inbound link (?src=tuloy). Read client-side (lazy init) so the listing
+  // page itself never touches searchParams — that keeps the page statically cacheable. Not rendered,
+  // so there's no SSR/client hydration concern; the server action validates it again.
+  const [source] = useState<string | undefined>(() =>
+    typeof window === "undefined"
+      ? undefined
+      : new URLSearchParams(window.location.search).get("src")?.slice(0, 60) || undefined,
+  );
   const [range, setRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   // The calendar is collapsed by default; tapping a date cell reveals it (Airbnb-style).
@@ -491,9 +503,8 @@ export function BookingCard({
           {/* Calendar — collapsed until a date cell is tapped; auto-closes on a full range. */}
           {calendarOpen && (
             <div className="booking-calendar flex animate-room-swap justify-center rounded-md border border-hairline bg-surface-soft px-1 py-2">
-              <DayPicker
-                mode="range"
-                selected={range}
+              <BookingCalendar
+                range={range}
                 onSelect={(r) => {
                   setRange(r);
                   // v9 sets from===to on the first click; only collapse once a real
@@ -502,17 +513,8 @@ export function BookingCard({
                     setCalendarOpen(false);
                   }
                 }}
-                disabled={disabledDays}
-                excludeDisabled
-                modifiers={{ booked: bookedDays }}
-                modifiersClassNames={{ booked: "rdp-booked" }}
-                style={
-                  {
-                    "--rdp-accent-color": "var(--color-primary)",
-                    "--rdp-accent-background-color": "var(--color-primary)",
-                    "--rdp-today-color": "var(--color-primary)",
-                  } as CSSProperties
-                }
+                disabledDays={disabledDays}
+                bookedDays={bookedDays}
               />
             </div>
           )}

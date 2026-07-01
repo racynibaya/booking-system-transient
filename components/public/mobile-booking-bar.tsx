@@ -78,13 +78,11 @@ export function MobileBookingBar({
   propertyName,
   area,
   minStayNights,
-  source,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   minStayNights: number;
-  source?: string;
 }) {
   const { selectedRoomId } = useSelectedRoom();
   const [open, setOpen] = useState(false);
@@ -114,7 +112,6 @@ export function MobileBookingBar({
             propertyName={propertyName}
             area={area}
             minStayNights={minStayNights}
-            source={source}
           />
         </Drawer>
       )}
