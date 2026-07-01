@@ -24,14 +24,14 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace;
 
   /* ---- Colors · brand (LEAD — Sea Glass) -------------------------------- */
-  --color-primary: #2c7a6b; /* muted sea-green — the single brand color (CTAs, brand) */
-  --color-primary-active: #246356; /* press / pointer-down (darker) */
+  --color-primary: #1f6f78; /* deep sea — the single brand color (CTAs, brand, accents) */
+  --color-primary-active: #185a62; /* press / pointer-down (darker deep sea) */
   --color-primary-disabled: #c7dcd6; /* pale sea tint — disabled CTA */
   --color-on-primary: #ffffff; /* white text on sea-green (passes contrast) */
 
   /* ---- Colors · accent (rare — Surf & Sea) ------------------------------
      Used sparingly: bright interactive highlights / active, and one warm spark. */
-  --color-accent: #0e8c8c; /* surf teal — rare bright accent / active */
+  --color-accent: #1f6f78; /* unified to deep sea — one sea color across the app */
   --color-accent-warm: #e0a33e; /* soft sun — the rarest warm spark only */
 
   /* ---- Colors · grounding teal + legacy aliases ------------------------- */
