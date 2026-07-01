@@ -22,10 +22,25 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fail the build on a known HIGH/CRITICAL dependency CVE. Moderate/low are reported but don't
+      # block (today: 2 transitive postcss moderates whose only "fix" downgrades Next to v9).
+      - run: npm audit --audit-level=high
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+
+  # Secret scanning — catch an API key / token that slipped into the working tree before it ships.
+  # Scans files in the tree (not history) to stay fast + false-positive-free; allowlist in .gitleaks.toml.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secret scan (gitleaks)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz -o /tmp/gl.tgz
+          tar -xzf /tmp/gl.tgz -C /tmp gitleaks
+          /tmp/gitleaks detect --source . --no-git --redact --exit-code 1
 
   # NOTE: no `e2e` job. The Playwright suite is stack-dependent — it boots the app
   # (needs Supabase env) and the magic-link spec reads email out of Mailpit, a

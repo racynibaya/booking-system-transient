@@ -2,6 +2,7 @@ import { env } from "@/env";
 import { sendEmail } from "@/lib/email/resend";
 import { guestDepositReminderEmail } from "@/lib/email/templates";
 import { createServiceClient } from "@/lib/supabase/server";
+import { verifyCallbackToken } from "@/lib/xendit/signature";
 
 // Pre-expiry deposit-reminder sweep (Pro/Business perk — the inquiry-labor wedge). For held bookings
 // nearing the end of their hold with no payment proof yet, email the guest one reminder so the tool
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   if (!env.CRON_SECRET) {
     return new Response("cron not configured", { status: 503 });
   }
-  if (request.headers.get("authorization") !== `Bearer ${env.CRON_SECRET}`) {
+  if (!verifyCallbackToken(request.headers.get("authorization"), `Bearer ${env.CRON_SECRET}`)) {
     return new Response("unauthorized", { status: 401 });
   }
 
