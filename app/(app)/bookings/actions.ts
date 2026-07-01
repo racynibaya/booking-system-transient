@@ -47,7 +47,7 @@ export async function confirmBooking(bookingId: string): Promise<ActionResult> {
     await sendConfirmationEmails(booking, user.email ?? null);
   }
 
-  revalidatePath("/bookings");
+  revalidatePath("/bookings", "layout");
   return { ok: true };
 }
 
@@ -109,7 +109,7 @@ export async function cancelBooking(bookingId: string, reason?: string): Promise
     });
   }
 
-  revalidatePath("/bookings");
+  revalidatePath("/bookings", "layout");
   return { ok: true };
 }
 
@@ -185,7 +185,7 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ac
       .in("status", ["held"]);
     if (updateError) {
       // The booking IS real (held, dates protected) — make it visible and tell the operator.
-      revalidatePath("/bookings");
+      revalidatePath("/bookings", "layout");
       return {
         ok: false,
         error: "Booking saved but couldn't be marked confirmed. Open it from the dashboard.",
@@ -196,7 +196,7 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ac
     await sendConfirmationEmails(booking, user.email ?? null);
   }
 
-  revalidatePath("/bookings");
+  revalidatePath("/bookings", "layout");
   redirect("/bookings");
 }
 

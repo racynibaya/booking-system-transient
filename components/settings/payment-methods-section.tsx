@@ -62,43 +62,49 @@ function MethodForm({ method, onDone }: { method?: Method; onDone: () => void })
   }
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
-      <Field label="Type">
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as PaymentMethodType)}
-          className={SELECT_CLASS}
-        >
-          {PAYMENT_METHOD_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {PAYMENT_METHOD_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      {type === "bank" && (
-        <Field label="Bank name">
-          <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="BPI" />
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Type">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as PaymentMethodType)}
+            className={SELECT_CLASS}
+          >
+            {PAYMENT_METHOD_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {PAYMENT_METHOD_LABELS[t]}
+              </option>
+            ))}
+          </select>
         </Field>
-      )}
 
-      <Field label="Account name">
-        <Input
-          value={accountName}
-          onChange={(e) => setAccountName(e.target.value)}
-          placeholder="Juan Dela Cruz"
-        />
-      </Field>
+        {type === "bank" && (
+          <Field label="Bank name">
+            <Input
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              placeholder="BPI"
+            />
+          </Field>
+        )}
 
-      <Field label={type === "bank" ? "Account number" : "Mobile number"}>
-        <Input
-          value={accountNumber}
-          onChange={(e) => setAccountNumber(e.target.value)}
-          placeholder={type === "bank" ? "0000 0000 0000" : "0917 123 4567"}
-          inputMode="numeric"
-        />
-      </Field>
+        <Field label="Account name">
+          <Input
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+            placeholder="Juan Dela Cruz"
+          />
+        </Field>
+
+        <Field label={type === "bank" ? "Account number" : "Mobile number"}>
+          <Input
+            value={accountNumber}
+            onChange={(e) => setAccountNumber(e.target.value)}
+            placeholder={type === "bank" ? "0000 0000 0000" : "0917 123 4567"}
+            inputMode="numeric"
+          />
+        </Field>
+      </div>
 
       {error && <p className="text-body-sm text-error">{error}</p>}
 

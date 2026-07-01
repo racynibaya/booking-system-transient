@@ -1,22 +1,25 @@
-import { Check, Moon, Plus, Sun, Sunrise } from "lucide-react";
-import Link from "next/link";
+import { Check, Moon, Sun, Sunrise } from "lucide-react";
 
+import { DashboardDeck } from "@/components/dashboard/dashboard-deck";
+import { DeckShareButton } from "@/components/dashboard/deck-share-button";
 import {
   OnboardingProgress,
   type BookingPageInfo,
   type SetupStep,
 } from "@/components/dashboard/onboarding-progress";
-import { MoneyHero } from "@/components/dashboard/money-hero";
-import { NeedsAction } from "@/components/dashboard/needs-action";
 import { OccupancyCard } from "@/components/dashboard/occupancy-card";
 import { OwesList } from "@/components/dashboard/owes-list";
+import { RecentActivity } from "@/components/dashboard/recent-activity";
+import { TodayConsole } from "@/components/dashboard/today-console";
 import { PropertyCard } from "@/components/properties/property-card";
 import { ShareLinkButton } from "@/components/properties/share-link-button";
 import { Badge } from "@/components/ui/badge";
-import { buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/icon-chip";
+import { todayBoard } from "@/lib/bookings";
+import { todayStr } from "@/lib/dates";
 import {
+  getBookings,
   getCurrentTenant,
   getNeedsActionCounts,
   getOccupancySnapshot,
@@ -29,14 +32,32 @@ import type { PageStatus } from "@/components/properties/property-card";
 
 export default async function DashboardPage() {
   await requireUser();
-  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction] = await Promise.all([
-    getCurrentTenant(),
-    getProperties(),
-    getPaymentMethods(),
-    getRevenueSummary(),
-    getOccupancySnapshot(),
-    getNeedsActionCounts(),
-  ]);
+  const [tenant, properties, paymentMethods, revenue, occupancy, needsAction, bookings] =
+    await Promise.all([
+      getCurrentTenant(),
+      getProperties(),
+      getPaymentMethods(),
+      getRevenueSummary(),
+      getOccupancySnapshot(),
+      getNeedsActionCounts(),
+      getBookings(),
+    ]);
+
+  // M1 — Today console: the day's operating view, re-composed from the bookings already loaded.
+  const todayDate = todayStr();
+  const board = todayBoard(bookings, todayDate);
+
+  // M6 — recent activity: the latest booking events, newest first (derived, no events table).
+  const recentActivity = [...bookings]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 6)
+    .map((b) => ({
+      id: b.id,
+      guest_name: b.guest_name,
+      status: b.status,
+      room: b.room_types?.name ?? null,
+      createdAt: b.created_at,
+    }));
 
   const roomCount = properties.reduce((n, p) => n + (p.room_types?.[0]?.count ?? 0), 0);
   const hasProperty = properties.length > 0;
@@ -54,6 +75,7 @@ export default async function DashboardPage() {
     }).format(new Date()),
   );
   const partOfDay = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const tod = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const DayIcon = hour < 12 ? Sunrise : hour < 18 ? Sun : Moon;
   const greeting = tenant?.name ? `${partOfDay}, ${tenant.name}.` : "Welcome to Tuloy.";
   const today = new Date().toLocaleDateString("en-PH", {
@@ -77,50 +99,55 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Greeting + the two daily actions, one tap each. */}
-      <header className="flex animate-card-rise flex-wrap items-end justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <IconChip icon={DayIcon} size="lg" gradient className="hidden sm:flex" />
-          <div>
-            <p className="text-body-sm text-muted">{today}</p>
-            <h1 className="mt-0.5 font-display text-display-xl text-ink">{greeting}</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/bookings/new" className={buttonClassName({ size: "sm" })}>
-            <Plus className="size-4" /> Add booking
-          </Link>
-          {primary && <ShareLinkButton slug={primary.slug} name={primary.name} />}
-        </div>
-      </header>
+      {/* The signature: greeting + money thesis fused on a living coastal deck. */}
+      <div className="animate-card-rise">
+        <DashboardDeck
+          date={today}
+          greeting={greeting}
+          partOfDay={tod}
+          icon={DayIcon}
+          collectedThisWeek={revenue.collectedThisWeek}
+          comingThisMonth={revenue.comingThisMonth}
+          owesTotal={revenue.owesTotal}
+          owesCount={revenue.owes.length}
+          addBookingHref="/bookings/new"
+          share={primary && <DeckShareButton slug={primary.slug} name={primary.name} />}
+        />
+      </div>
 
-      {/* Starting out: the checklist leads, since there's no money/occupancy yet. */}
+      {/* Still setting up: the checklist sits right under the deck. */}
       {!setupComplete && (
         <div className="animate-card-rise" style={{ animationDelay: "70ms" }}>
           <OnboardingProgress steps={steps} bookingPage={bookingPage} />
         </div>
       )}
 
-      {/* Money (left) + how-full / waiting-on-you (right). */}
+      {/* M1 — the operating spine: the day's arrivals + the four counts that define a shift. */}
+      {hasProperty && (
+        <div className="animate-card-rise" style={{ animationDelay: "110ms" }}>
+          <TodayConsole
+            today={todayDate}
+            arrivals={board.arrivals}
+            departuresCount={board.departures.length}
+            stayingCount={board.staying.length}
+            needsConfirmation={needsAction.needsConfirmation}
+            expiringHolds={needsAction.expiringHolds}
+            owesCount={revenue.owes.length}
+          />
+        </div>
+      )}
+
+      {/* Who still owes you (left) + how-full (right). Needs-action folded into the Today console. */}
       <div
         className="grid animate-card-rise grid-cols-1 gap-4 md:grid-cols-2"
         style={{ animationDelay: "140ms" }}
       >
         <div className="flex flex-col gap-4">
-          <MoneyHero
-            collectedThisWeek={revenue.collectedThisWeek}
-            comingThisMonth={revenue.comingThisMonth}
-            owesTotal={revenue.owesTotal}
-            owesCount={revenue.owes.length}
-          />
           <OwesList owes={revenue.owes} />
         </div>
         <div className="flex flex-col gap-4">
           <OccupancyCard snapshot={occupancy} />
-          <NeedsAction
-            needsConfirmation={needsAction.needsConfirmation}
-            expiringHolds={needsAction.expiringHolds}
-          />
+          <RecentActivity items={recentActivity} />
         </div>
       </div>
 

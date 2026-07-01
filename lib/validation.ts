@@ -71,37 +71,29 @@ export const paymentMethodInput = z
   });
 export type PaymentMethodInput = z.infer<typeof paymentMethodInput>;
 
-// Operator PAYOUT destination (centralized aggregator: where Tuloy disburses the operator's share).
-// Distinct from PAYMENT_METHOD_TYPES (what guests send deposits to) — payouts go only to GCash or a
-// bank. No rate fields: commission/service-fee rates are admin-managed, never operator-supplied.
-export const PAYOUT_METHODS = ["gcash", "bank"] as const;
-export type PayoutMethod = (typeof PAYOUT_METHODS)[number];
-
-export const PAYOUT_METHOD_LABELS: Record<PayoutMethod, string> = {
-  gcash: "GCash",
-  bank: "Bank account",
-};
-
-export const payoutAccountInput = z
-  .object({
-    method: z.enum(PAYOUT_METHODS),
-    // Name PayMongo checks against the receiving account — a mismatch makes the transfer fail.
-    payout_name: z.string().trim().min(1, "Account name is required").max(80),
-    account_number: z.string().trim().min(1, "Account number is required").max(34),
-    bank_name: optionalText(60),
-    // Receiving-institution code. Banks pick it from the institutions list; GCash is resolved
-    // server-side to the fixed GCash InstaPay code, so it's optional on the input.
-    payout_bic: optionalText(40),
-  })
-  .refine((v) => v.method !== "bank" || !!v.bank_name, {
-    message: "Bank name is required",
-    path: ["bank_name"],
-  })
-  .refine((v) => v.method !== "bank" || !!v.payout_bic, {
-    message: "Select your bank",
-    path: ["payout_bic"],
-  });
-export type PayoutAccountInput = z.infer<typeof payoutAccountInput>;
+// Operator Xendit KYC (OWNED onboarding / account_verification). Text fields only — the 7 KYC document
+// files ride in FormData and are validated server-side. Entity type (SOLE_PROPRIETORSHIP), country PH,
+// and the lodging industry code are fixed server-side. Also collects the operator's payout destination
+// (where they self-withdraw) and the Tuloy ToS acceptance (the custody-clause agreement).
+export const xenditKycInput = z.object({
+  legal_name: z.string().trim().min(1, "Your full legal name is required").max(120),
+  trading_name: z.string().trim().min(1, "Your property/business name is required").max(120),
+  given_names: z.string().trim().min(1, "First name is required").max(100),
+  surname: z.string().trim().min(1, "Last name is required").max(100),
+  email: z.email("Enter a valid email").max(120),
+  phone_number: optionalText(20),
+  street_line1: z.string().trim().min(1, "Street address is required").max(180),
+  city: z.string().trim().min(1, "City/town is required").max(80),
+  province_state: z.string().trim().min(1, "Province is required").max(80),
+  postal_code: z.string().trim().min(1, "Postal code is required").max(12),
+  // Payout destination — where the operator withdraws their balance to (they control withdrawals).
+  payout_channel_code: z.string().trim().min(1, "Choose where to get paid").max(40),
+  payout_account_number: z.string().trim().min(1, "Account number is required").max(40),
+  payout_account_name: z.string().trim().min(1, "Account name is required").max(120),
+  // The operator must accept the Tuloy operator agreement (custody clause) to onboard.
+  tos_accepted: z.literal(true, { message: "You must accept the operator agreement" }),
+});
+export type XenditKycInput = z.infer<typeof xenditKycInput>;
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 

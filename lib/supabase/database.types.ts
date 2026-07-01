@@ -167,6 +167,127 @@ export type Database = {
           },
         ];
       };
+      inquiry_messages: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          sender: string;
+          thread_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          sender: string;
+          thread_id: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          sender?: string;
+          thread_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_messages_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "inquiry_threads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      inquiry_templates: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          sort_order: number;
+          tenant_id: string;
+          title: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          sort_order?: number;
+          tenant_id: string;
+          title: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          sort_order?: number;
+          tenant_id?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_templates_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      inquiry_threads: {
+        Row: {
+          awaiting_operator: boolean;
+          created_at: string;
+          guest_email: string;
+          guest_name: string;
+          guest_phone: string | null;
+          id: string;
+          last_message_at: string;
+          property_id: string;
+          tenant_id: string;
+          token: string;
+        };
+        Insert: {
+          awaiting_operator?: boolean;
+          created_at?: string;
+          guest_email: string;
+          guest_name: string;
+          guest_phone?: string | null;
+          id?: string;
+          last_message_at?: string;
+          property_id: string;
+          tenant_id: string;
+          token?: string;
+        };
+        Update: {
+          awaiting_operator?: boolean;
+          created_at?: string;
+          guest_email?: string;
+          guest_name?: string;
+          guest_phone?: string | null;
+          id?: string;
+          last_message_at?: string;
+          property_id?: string;
+          tenant_id?: string;
+          token?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_threads_property_id_fkey";
+            columns: ["property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inquiry_threads_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount: number;
@@ -379,6 +500,79 @@ export type Database = {
           },
         ];
       };
+      reviews: {
+        Row: {
+          booking_id: string;
+          comment: string | null;
+          created_at: string;
+          guest_email: string;
+          guest_name: string;
+          id: string;
+          invited_at: string;
+          operator_replied_at: string | null;
+          operator_reply: string | null;
+          property_id: string;
+          rating: number | null;
+          submitted_at: string | null;
+          tenant_id: string;
+          token: string;
+        };
+        Insert: {
+          booking_id: string;
+          comment?: string | null;
+          created_at?: string;
+          guest_email: string;
+          guest_name: string;
+          id?: string;
+          invited_at?: string;
+          operator_replied_at?: string | null;
+          operator_reply?: string | null;
+          property_id: string;
+          rating?: number | null;
+          submitted_at?: string | null;
+          tenant_id: string;
+          token?: string;
+        };
+        Update: {
+          booking_id?: string;
+          comment?: string | null;
+          created_at?: string;
+          guest_email?: string;
+          guest_name?: string;
+          id?: string;
+          invited_at?: string;
+          operator_replied_at?: string | null;
+          operator_reply?: string | null;
+          property_id?: string;
+          rating?: number | null;
+          submitted_at?: string | null;
+          tenant_id?: string;
+          token?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey";
+            columns: ["booking_id"];
+            isOneToOne: true;
+            referencedRelation: "bookings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_property_id_fkey";
+            columns: ["property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       room_types: {
         Row: {
           base_price: number;
@@ -533,6 +727,62 @@ export type Database = {
           },
         ];
       };
+      tenant_xendit_accounts: {
+        Row: {
+          account_holder_id: string | null;
+          commission_rate: number;
+          created_at: string;
+          id: string;
+          kyc_status: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at: string | null;
+          payout_account_name: string | null;
+          payout_account_number: string | null;
+          payout_channel_code: string | null;
+          sub_account_id: string;
+          tenant_id: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_holder_id?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          kyc_status?: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at?: string | null;
+          payout_account_name?: string | null;
+          payout_account_number?: string | null;
+          payout_channel_code?: string | null;
+          sub_account_id: string;
+          tenant_id: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_holder_id?: string | null;
+          commission_rate?: number;
+          created_at?: string;
+          id?: string;
+          kyc_status?: Database["public"]["Enums"]["xendit_account_status"];
+          kyc_submitted_at?: string | null;
+          payout_account_name?: string | null;
+          payout_account_number?: string | null;
+          payout_channel_code?: string | null;
+          sub_account_id?: string;
+          tenant_id?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_xendit_accounts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           created_at: string;
@@ -541,6 +791,8 @@ export type Database = {
           gcash_number: string | null;
           gcash_qr_path: string | null;
           id: string;
+          inquiry_auto_reply: string | null;
+          inquiry_auto_reply_enabled: boolean;
           is_admin: boolean;
           name: string | null;
           user_id: string;
@@ -554,6 +806,8 @@ export type Database = {
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          inquiry_auto_reply?: string | null;
+          inquiry_auto_reply_enabled?: boolean;
           is_admin?: boolean;
           name?: string | null;
           user_id: string;
@@ -567,6 +821,8 @@ export type Database = {
           gcash_number?: string | null;
           gcash_qr_path?: string | null;
           id?: string;
+          inquiry_auto_reply?: string | null;
+          inquiry_auto_reply_enabled?: boolean;
           is_admin?: boolean;
           name?: string | null;
           user_id?: string;
@@ -632,6 +888,7 @@ export type Database = {
           tenant_id: string;
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
+          xendit_kyc_status: Database["public"]["Enums"]["xendit_account_status"];
         }[];
       };
       admin_notification_recipients: {
@@ -813,6 +1070,7 @@ export type Database = {
         Returns: number;
       };
       get_public_listing: { Args: { p_slug: string }; Returns: Json };
+      get_public_reviews: { Args: { p_slug: string }; Returns: Json };
       is_current_user_admin: { Args: never; Returns: boolean };
       list_public_listings: { Args: never; Returns: Json };
       mark_payout_failed: {
@@ -823,9 +1081,23 @@ export type Database = {
         Args: { p_payout_id: string; p_provider_ref: string };
         Returns: number;
       };
+      mint_review_invites: {
+        Args: never;
+        Returns: {
+          guest_email: string;
+          guest_name: string;
+          id: string;
+          property_name: string;
+          token: string;
+        }[];
+      };
       reconcile_disbursement: {
         Args: { p_payout_id: string; p_reason?: string; p_succeeded: boolean };
         Returns: number;
+      };
+      reply_to_review: {
+        Args: { p_reply: string; p_review_id: string };
+        Returns: undefined;
       };
       resubmit_verification: { Args: never; Returns: undefined };
       set_tenant_verification: {
@@ -891,6 +1163,13 @@ export type Database = {
         | "refunding";
       payout_method: "gcash" | "bank";
       tenant_verification: "pending" | "approved" | "suspended" | "changes_requested";
+      xendit_account_status:
+        | "INVITED"
+        | "REGISTERED"
+        | "AWAITING_DOCS"
+        | "PENDING_VERIFICATION"
+        | "LIVE"
+        | "SUSPENDED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1042,6 +1321,14 @@ export const Constants = {
       ],
       payout_method: ["gcash", "bank"],
       tenant_verification: ["pending", "approved", "suspended", "changes_requested"],
+      xendit_account_status: [
+        "INVITED",
+        "REGISTERED",
+        "AWAITING_DOCS",
+        "PENDING_VERIFICATION",
+        "LIVE",
+        "SUSPENDED",
+      ],
     },
   },
 } as const;

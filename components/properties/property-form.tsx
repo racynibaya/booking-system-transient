@@ -79,41 +79,44 @@ export function PropertyForm({
         if (!res.ok) setFormError(res.error);
         else toast.success("Saved");
       })}
-      className="flex max-w-xl flex-col gap-5"
+      className="flex flex-col gap-6"
     >
-      <Field label="Property name" error={errors.name?.message}>
-        <Input {...register("name")} placeholder="Kahuna Beach House" />
-      </Field>
+      {/* Short fields share a 2-column grid so the form fills the card instead of stacking down the
+          left edge; description/amenities/socials below stay full width. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Field label="Property name" error={errors.name?.message}>
+            <Input {...register("name")} placeholder="Kahuna Beach House" />
+          </Field>
+        </div>
 
-      {/* Barangay uses the searchable Combobox (41 options) instead of a native
-          select. Rendered with an inline label, NOT <Field>, because wrapping a
-          <button> trigger in a <label> double-fires its click and the panel
-          toggles shut on open. */}
-      <div className="flex flex-col gap-2">
-        <span className="text-caption text-muted">Barangay</span>
-        <Combobox
-          options={SAN_JUAN_AREAS}
-          value={area}
-          onChange={(v) => setValue("area", v, { shouldDirty: true, shouldValidate: true })}
-          placeholder="Select a barangay…"
-          searchPlaceholder="Search barangays…"
-          emptyLabel="No barangay matches"
-          invalid={!!errors.area}
-        />
-        {errors.area?.message && (
-          <span className="text-body-sm text-error">{errors.area.message}</span>
-        )}
-      </div>
+        {/* Barangay uses the searchable Combobox (41 options) instead of a native
+            select. Rendered with an inline label, NOT <Field>, because wrapping a
+            <button> trigger in a <label> double-fires its click and the panel
+            toggles shut on open. */}
+        <div className="flex flex-col gap-2">
+          <span className="text-caption text-muted">Barangay</span>
+          <Combobox
+            options={SAN_JUAN_AREAS}
+            value={area}
+            onChange={(v) => setValue("area", v, { shouldDirty: true, shouldValidate: true })}
+            placeholder="Select a barangay…"
+            searchPlaceholder="Search barangays…"
+            emptyLabel="No barangay matches"
+            invalid={!!errors.area}
+          />
+          {errors.area?.message && (
+            <span className="text-body-sm text-error">{errors.area.message}</span>
+          )}
+        </div>
 
-      <Field label="Address" error={errors.address?.message}>
-        <Input {...register("address")} placeholder="Brgy. Urbiztondo, San Juan, La Union" />
-      </Field>
+        <Field label="Address" error={errors.address?.message}>
+          <Input {...register("address")} placeholder="Brgy. Urbiztondo, San Juan, La Union" />
+        </Field>
 
-      {/* Native time pickers are NOT wrapped in <label> here: on iOS Safari a
-          label-wrapped date/time input forwards the tap and the picker opens then
-          instantly closes (reads as "unresponsive"). Associate via htmlFor instead,
-          and stack full-width on phones so the native control isn't cramped. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Native time pickers are NOT wrapped in <label> here: on iOS Safari a
+            label-wrapped date/time input forwards the tap and the picker opens then
+            instantly closes (reads as "unresponsive"). Associate via htmlFor instead. */}
         <div className="flex flex-col gap-2">
           <label htmlFor="check_in_time" className="text-caption text-muted">
             Check-in time
@@ -132,29 +135,34 @@ export function PropertyForm({
             <span className="text-body-sm text-error">{errors.check_out_time.message}</span>
           )}
         </div>
+
+        <Field label="Minimum nights" error={errors.min_stay_nights?.message}>
+          <Input
+            type="number"
+            min={1}
+            max={30}
+            className="max-w-28"
+            {...register("min_stay_nights", { valueAsNumber: true })}
+          />
+          <span className="text-body-sm text-muted">
+            Shortest stay guests can book online. Walk-ins you record manually aren&apos;t affected.
+          </span>
+        </Field>
+
+        <label className="flex items-center gap-2 self-end pb-3">
+          <input type="checkbox" {...register("dot_accredited")} className="size-4" />
+          <span className="text-body-sm text-ink">DOT accredited</span>
+        </label>
+
+        <div className="sm:col-span-2">
+          <Field label="Description" error={errors.description?.message}>
+            <Textarea
+              {...register("description")}
+              placeholder="A short description guests will see."
+            />
+          </Field>
+        </div>
       </div>
-
-      <Field label="Minimum nights" error={errors.min_stay_nights?.message}>
-        <Input
-          type="number"
-          min={1}
-          max={30}
-          className="max-w-28"
-          {...register("min_stay_nights", { valueAsNumber: true })}
-        />
-        <span className="text-body-sm text-muted">
-          Shortest stay guests can book online. Walk-ins you record manually aren&apos;t affected.
-        </span>
-      </Field>
-
-      <Field label="Description" error={errors.description?.message}>
-        <Textarea {...register("description")} placeholder="A short description guests will see." />
-      </Field>
-
-      <label className="flex items-center gap-2">
-        <input type="checkbox" {...register("dot_accredited")} className="size-4" />
-        <span className="text-body-sm text-ink">DOT accredited</span>
-      </label>
 
       <Field label="Amenities" error={errors.amenities?.message}>
         <div className="flex flex-col gap-3">

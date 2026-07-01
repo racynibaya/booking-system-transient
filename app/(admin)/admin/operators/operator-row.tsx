@@ -4,7 +4,6 @@ import { BadgeCheck, Ban, Check, Eye, Home, Info, Loader2, Undo2 } from "lucide-
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { RateEditor } from "@/components/admin/rate-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,7 +32,29 @@ export type AdminOperator = {
     account_number: string | null;
     bank_name: string | null;
   }[];
+  xendit_kyc_status:
+    | "INVITED"
+    | "REGISTERED"
+    | "AWAITING_DOCS"
+    | "PENDING_VERIFICATION"
+    | "LIVE"
+    | "SUSPENDED"
+    | null;
   created_at: string;
+};
+
+// Xendit onboarding state → a compact "Online pay" chip beside the verification badge. Only LIVE
+// operators can take online payments; the mid-states collapse to one neutral "onboarding" label.
+const KYC_CHIP: Record<
+  NonNullable<AdminOperator["xendit_kyc_status"]>,
+  { label: string; tone: "success" | "danger" | "neutral" }
+> = {
+  INVITED: { label: "Online pay: onboarding", tone: "neutral" },
+  REGISTERED: { label: "Online pay: onboarding", tone: "neutral" },
+  AWAITING_DOCS: { label: "Online pay: onboarding", tone: "neutral" },
+  PENDING_VERIFICATION: { label: "Online pay: onboarding", tone: "neutral" },
+  LIVE: { label: "Online pay: live", tone: "success" },
+  SUSPENDED: { label: "Online pay: suspended", tone: "danger" },
 };
 
 // Verification status → label + semantic tone, on the same scale as booking badges.
@@ -149,6 +170,11 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-title-md text-ink">{op.name ?? "(unnamed)"}</p>
             <Badge tone={s.tone}>{s.label}</Badge>
+            {op.xendit_kyc_status && (
+              <Badge tone={KYC_CHIP[op.xendit_kyc_status].tone}>
+                {KYC_CHIP[op.xendit_kyc_status].label}
+              </Badge>
+            )}
           </div>
           <p className="text-body-sm text-muted">{op.email}</p>
           {op.payment_methods.length === 0 ? (
@@ -197,7 +223,6 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
             <Home className="size-4" />
             <span>{showListing ? "Hide" : "View"} listing</span>
           </Button>
-          <RateEditor tenantId={op.tenant_id} />
           {gcashFlagged && (
             <Button size="sm" disabled={pending} onClick={confirmGcash} aria-label="Confirm GCash">
               <BadgeCheck className="size-4" />

@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { CalendarRange, Receipt, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState, type ComponentProps } from "react";
 
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
@@ -145,7 +146,12 @@ export function BookingsTable({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-title-md text-ink">{b.guest_name}</p>
+                    <Link
+                      href={`/bookings/${b.id}`}
+                      className="truncate text-title-md text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      {b.guest_name}
+                    </Link>
                     {contact && (
                       <p className="mt-0.5 truncate text-caption-sm text-muted">{contact}</p>
                     )}

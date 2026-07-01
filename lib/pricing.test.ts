@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
-  computeBookingSplit,
   computeDeposit,
   computeTotal,
+  computeXenditSplit,
   meetsMinStay,
   MIN_STAY_NIGHTS,
   nights,
-  PAYMONGO_FIXED,
-  PAYMONGO_MDR,
+  XENDIT_FIXED,
+  XENDIT_MDR,
 } from "./pricing";
 
 describe("nights", () => {
@@ -86,39 +86,34 @@ describe("meetsMinStay", () => {
   });
 });
 
-// Centralized-aggregator money model: Tuloy take = operator commission + guest service fee, both
-// sized on the full stay and collected through the deposit; the PayMongo fee is passed to the guest.
-describe("computeBookingSplit", () => {
-  const rates = { commissionRate: 0.05, serviceFeeRate: 0.06 };
-
-  it("splits a ₱4,000 stay / ₱2,000 deposit per the decided model", () => {
-    const s = computeBookingSplit(4000, 2000, rates);
-    expect(s.serviceFee).toBe(240); // 6% of stay
-    expect(s.operatorCommission).toBe(200); // 5% of stay
-    expect(s.ownerPayout).toBe(1800); // deposit − commission
-    expect(s.tuloyRevenue).toBe(440); // service fee + commission ≈ 11% of stay
-    // Guest charge grosses up the PayMongo fee: (2000 + 240 + 15) / (1 − 0.035) = 2336.79
-    expect(s.guestTotal).toBeCloseTo(2336.79, 2);
+describe("computeXenditSplit", () => {
+  it("splits a ₱4,000 stay / ₱2,000 deposit at the 2.5% early-adopter rate", () => {
+    const s = computeXenditSplit(4000, 2000, 0.025);
+    expect(s.commission).toBe(100); // 2.5% of the FULL stay (D1)
+    expect(s.ownerNet).toBe(1900); // deposit − commission, settles to the sub-account
+    expect(s.tuloyRevenue).toBe(100); // commission only — no 6% service fee (cheaper than aggregator)
+    // Guest pays just the deposit, grossed up for the Xendit fee: 2000 / (1 − 0.035) = 2072.54
+    expect(s.guestTotal).toBeCloseTo(2072.54, 2);
   });
 
-  it("reconciles: after PayMongo takes its fee, the wallet holds deposit + service fee", () => {
-    const s = computeBookingSplit(4000, 2000, rates);
-    const paymongoFee = s.guestTotal * PAYMONGO_MDR + PAYMONGO_FIXED;
-    const walletAfterFee = s.guestTotal - paymongoFee;
-    expect(walletAfterFee).toBeCloseTo(s.deposit + s.serviceFee, 2);
-    expect(walletAfterFee).toBeCloseTo(s.ownerPayout + s.tuloyRevenue, 2);
+  it("reconciles: after Xendit's fee, net settled = operator net + commission", () => {
+    const s = computeXenditSplit(4000, 2000, 0.025);
+    const xenditFee = s.guestTotal * XENDIT_MDR + XENDIT_FIXED;
+    const settledAfterFee = s.guestTotal - xenditFee;
+    expect(settledAfterFee).toBeCloseTo(s.deposit, 2);
+    expect(settledAfterFee).toBeCloseTo(s.ownerNet + s.commission, 2);
   });
 
-  it("nets the operator 95% of the full stay (deposit payout + check-in balance)", () => {
-    const s = computeBookingSplit(4000, 2000, rates);
-    const collectedAtCheckIn = s.stayValue - s.deposit; // paid directly to operator, off-platform
-    expect(s.ownerPayout + collectedAtCheckIn).toBeCloseTo(0.95 * s.stayValue, 2);
+  it("nets the operator 97.5% of the full stay (sub-account net + check-in balance)", () => {
+    const s = computeXenditSplit(4000, 2000, 0.025);
+    const collectedAtCheckIn = s.stayValue - s.deposit; // paid directly to the operator, off-platform
+    expect(s.ownerNet + collectedAtCheckIn).toBeCloseTo(0.975 * s.stayValue, 2);
   });
 
-  it("honors per-owner discounted rates", () => {
-    const s = computeBookingSplit(4000, 2000, { commissionRate: 0.025, serviceFeeRate: 0.03 });
-    expect(s.operatorCommission).toBe(100);
-    expect(s.serviceFee).toBe(120);
-    expect(s.tuloyRevenue).toBe(220);
+  it("sizes commission on the full stay, not the deposit (anti-gaming, D1)", () => {
+    // Halving the deposit must NOT shrink Tuloy's commission — it stays 2.5% of the stay.
+    const full = computeXenditSplit(4000, 2000, 0.025);
+    const tinyDeposit = computeXenditSplit(4000, 500, 0.025);
+    expect(tinyDeposit.commission).toBe(full.commission);
   });
 });

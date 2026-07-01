@@ -204,3 +204,25 @@ export function filterAndSortByView<T extends ViewRow>(
     return a.check_in.localeCompare(b.check_in);
   });
 }
+
+// ---------------------------------------------------------------------------
+// Today board — the operator's daily operating view. Pure split of the booking
+// rows into the three things that define a day on the ground: who's arriving,
+// who's leaving, and who's in the place tonight. Date strings compare
+// chronologically, so this is a pure function of the passed `today`.
+// ---------------------------------------------------------------------------
+type DayRow = { status: BookingStatus; check_in: string; check_out: string };
+
+export function todayBoard<T extends DayRow>(rows: T[], today: string) {
+  // Arrivals: still-live bookings landing today (confirmed, awaiting, or a live hold).
+  const arrivals = rows
+    .filter((b) => b.check_in === today && isLive(b.status))
+    .sort((a, b) => a.check_out.localeCompare(b.check_out));
+  // Departures + in-house are real stays, so confirmed only.
+  const departures = rows.filter((b) => b.check_out === today && b.status === "confirmed");
+  // Staying tonight = already checked in and not leaving today (arrivals are counted separately).
+  const staying = rows.filter(
+    (b) => b.status === "confirmed" && b.check_in < today && b.check_out > today,
+  );
+  return { arrivals, departures, staying };
+}

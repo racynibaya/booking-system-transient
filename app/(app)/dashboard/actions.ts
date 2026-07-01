@@ -49,6 +49,7 @@ export async function markBalanceCollected(bookingId: string): Promise<ActionRes
   if (remaining <= 0) {
     // Already settled (or a double-click that lost the race) — nothing to record.
     revalidatePath("/dashboard");
+    revalidatePath("/bookings", "layout");
     return { ok: true };
   }
 
@@ -63,5 +64,6 @@ export async function markBalanceCollected(bookingId: string): Promise<ActionRes
   if (error) return { ok: false, error: "Couldn't record the payment. Please try again." };
 
   revalidatePath("/dashboard");
+  revalidatePath("/bookings", "layout");
   return { ok: true };
 }

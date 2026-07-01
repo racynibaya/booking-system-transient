@@ -8,7 +8,7 @@ import { CtaButton } from "./cta-button";
 import { MobileMenu } from "./mobile-menu";
 
 const NAV_LINKS = [
-  { label: "Features", href: "/about#features", id: "features" },
+  { label: "Why Tuloy", href: "/about#features", id: "features" },
   { label: "How it works", href: "/about#how-it-works", id: "how-it-works" },
   { label: "Pricing", href: "/about#pricing", id: "pricing" },
 ];
@@ -99,8 +99,10 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <CtaButton href="/login">Get started</CtaButton>
-          <MobileMenu links={NAV_LINKS} />
+          <div className="hidden md:block">
+            <CtaButton href="/login">Get started free</CtaButton>
+          </div>
+          <MobileMenu links={NAV_LINKS} cta={{ label: "Get started free", href: "/login" }} />
         </div>
       </div>
     </header>

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import type { Database } from "@/lib/supabase/database.types";
 import {
   effectiveStatus,
   filterAndSortByView,
   filterByStatus,
   isNewRequest,
   parseBookingFilters,
+  todayBoard,
   viewCounts,
 } from "./bookings";
 
@@ -208,5 +210,41 @@ describe("filterByStatus", () => {
   it("narrows to the selected statuses", () => {
     expect(filterByStatus(ROWS, ["confirmed"]).map((r) => r.id)).toEqual(["A", "E"]);
     expect(filterByStatus(ROWS, ["expired", "cancelled"]).map((r) => r.id)).toEqual(["D", "F"]);
+  });
+});
+
+describe("todayBoard", () => {
+  const TODAY = "2026-06-20";
+  type BookingStatus = Database["public"]["Enums"]["booking_status"];
+  const row = (id: string, status: BookingStatus, check_in: string, check_out: string) => ({
+    id,
+    status,
+    check_in,
+    check_out,
+  });
+
+  // Arrivals: live bookings landing today (confirmed / awaiting / held); not cancelled or expired.
+  const ROWS = [
+    row("arr-confirmed", "confirmed", "2026-06-20", "2026-06-22"),
+    row("arr-awaiting", "awaiting_confirmation", "2026-06-20", "2026-06-21"),
+    row("arr-held", "held", "2026-06-20", "2026-06-23"),
+    row("arr-cancelled", "cancelled", "2026-06-20", "2026-06-22"), // excluded — not live
+    row("depart-today", "confirmed", "2026-06-18", "2026-06-20"),
+    row("staying", "confirmed", "2026-06-19", "2026-06-22"),
+    row("future", "confirmed", "2026-06-25", "2026-06-27"),
+  ];
+
+  it("splits arrivals, departures, and staying-tonight", () => {
+    const b = todayBoard(ROWS, TODAY);
+    expect(b.arrivals.map((r) => r.id)).toEqual(["arr-awaiting", "arr-confirmed", "arr-held"]);
+    expect(b.departures.map((r) => r.id)).toEqual(["depart-today"]);
+    expect(b.staying.map((r) => r.id)).toEqual(["staying"]);
+  });
+
+  it("excludes cancelled/expired arrivals and only counts confirmed departures + stays", () => {
+    const b = todayBoard(ROWS, TODAY);
+    expect(b.arrivals.some((r) => r.id === "arr-cancelled")).toBe(false);
+    // a guest arriving today is not also double-counted as 'staying'
+    expect(b.staying.some((r) => r.check_in === TODAY)).toBe(false);
   });
 });

@@ -5,8 +5,11 @@ import { cache } from "react";
 
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
-import { addDays, todayStr } from "@/lib/dates";
-import { monthRange, weekRange } from "@/lib/reports";
+import { addDays, fromDateStr, toDateStr, todayStr, type DateStr } from "@/lib/dates";
+import { notifyGuestReviewInvite } from "@/lib/email/reviews";
+import { guestKey } from "@/lib/guests";
+import { DEFAULT_COMMISSION_RATE } from "@/lib/pricing";
+import { bookedRoomNights, daysInRange, monthRange, occupancyPct, weekRange } from "@/lib/reports";
 
 import { createClient } from "./server";
 
@@ -141,97 +144,6 @@ export const getRevenueSummary = cache(async (): Promise<RevenueSummary> => {
 });
 
 // ---------------------------------------------------------------------------
-// Earnings / payouts. The operator's window into the commission rail: each centralized (online-paid)
-// booking accrues one payout_ledger row (clearing → payable → paid), so this is where a host sees
-// money in flight now that payouts are ~T+2 platform transfers, not instant GCash. RLS-scoped to the
-// operator's own rows (payout_ledger_select_own); read-only.
-// ---------------------------------------------------------------------------
-export type PayoutStatus =
-  | "clearing"
-  | "payable"
-  | "paid"
-  | "failed"
-  | "refunded"
-  | "clawed_back"
-  | "refunding";
-
-export type PayoutRow = {
-  id: string;
-  bookingId: string;
-  status: PayoutStatus;
-  ownerPayout: number;
-  operatorCommission: number;
-  guestServiceFee: number;
-  stayValue: number;
-  depositAmount: number;
-  clearEta: string | null;
-  payoutRef: string | null;
-  refundAmount: number | null;
-  createdAt: string;
-  guestName: string | null;
-  checkIn: string | null;
-  checkOut: string | null;
-  propertyName: string | null;
-};
-
-export type EarningsSummary = {
-  clearing: number; // owner_payout still in the clearing window
-  payable: number; // cleared, awaiting the next payout run
-  paid: number; // total disbursed to date
-  onHold: number; // refunded + clawed_back + refunding (money the host won't net)
-  rows: PayoutRow[];
-};
-
-export const getEarnings = cache(async (): Promise<EarningsSummary> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("payout_ledger")
-    .select(
-      "id, booking_id, status, stay_value, deposit_amount, operator_commission, guest_service_fee, owner_payout, clear_eta, payout_ref, refund_amount, created_at, bookings(guest_name, check_in, check_out, properties(name))",
-    )
-    .order("created_at", { ascending: false });
-
-  if (error || !data) return { clearing: 0, payable: 0, paid: 0, onHold: 0, rows: [] };
-
-  const rows: PayoutRow[] = data.map((r) => {
-    const booking = r.bookings as {
-      guest_name: string | null;
-      check_in: string | null;
-      check_out: string | null;
-      properties: { name: string | null } | null;
-    } | null;
-    return {
-      id: r.id,
-      bookingId: r.booking_id,
-      status: r.status as PayoutStatus,
-      ownerPayout: Number(r.owner_payout ?? 0),
-      operatorCommission: Number(r.operator_commission ?? 0),
-      guestServiceFee: Number(r.guest_service_fee ?? 0),
-      stayValue: Number(r.stay_value ?? 0),
-      depositAmount: Number(r.deposit_amount ?? 0),
-      clearEta: r.clear_eta,
-      payoutRef: r.payout_ref,
-      refundAmount: r.refund_amount == null ? null : Number(r.refund_amount),
-      createdAt: r.created_at,
-      guestName: booking?.guest_name ?? null,
-      checkIn: booking?.check_in ?? null,
-      checkOut: booking?.check_out ?? null,
-      propertyName: booking?.properties?.name ?? null,
-    };
-  });
-
-  const sumWhere = (pred: (s: PayoutStatus) => boolean) =>
-    rows.filter((r) => pred(r.status)).reduce((s, r) => s + r.ownerPayout, 0);
-
-  return {
-    clearing: sumWhere((s) => s === "clearing"),
-    payable: sumWhere((s) => s === "payable"),
-    paid: sumWhere((s) => s === "paid"),
-    onHold: sumWhere((s) => s === "refunded" || s === "clawed_back" || s === "refunding"),
-    rows,
-  };
-});
-
 export type OccupancyNight = { date: string; open: number; total: number };
 export type OccupancySnapshot = {
   tonightOpen: number;
@@ -335,13 +247,16 @@ export const getPaymentMethods = cache(async () => {
   return data;
 });
 
-// The current operator's payout destination (centralized aggregator) — where Tuloy disburses their
-// share. RLS-scoped; null if not set up yet. Rate columns are read for display only.
-export const getPayoutAccount = cache(async () => {
+// The current operator's Xendit sub-account binding (the commission rail). RLS-scoped, select-only;
+// null until they start onboarding. kyc_status='LIVE' is what lets them accept online payments — the
+// webhook (lib/xendit/webhook-handler.ts) is the only writer of that column.
+export const getXenditAccount = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("tenant_payout_accounts")
-    .select("id, method, payout_name, account_number, bank_name, payout_bic, status, updated_at")
+    .from("tenant_xendit_accounts")
+    .select(
+      "id, sub_account_id, type, kyc_status, commission_rate, kyc_submitted_at, payout_channel_code, payout_account_number, payout_account_name, updated_at",
+    )
     .maybeSingle();
 
   if (error) return null;
@@ -358,6 +273,18 @@ export const getProperties = cache(async () => {
     .order("created_at", { ascending: false });
 
   if (error) return [];
+  return data;
+});
+
+// All properties + their room types (id, name, quantity) for the top-level availability calendar
+// (M3). RLS-scoped. quantity drives the per-day units-available math in RoomCalendar.
+export const getCalendarProperties = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, name, room_types(id, name, quantity)")
+    .order("name", { ascending: true });
+  if (error || !data) return [];
   return data;
 });
 
@@ -423,6 +350,31 @@ export const getBookings = cache(async (filters: BookingFilters = {}) => {
       return { ...b, proofUrl, status: effectiveStatus(b.status, b.hold_expires_at) };
     }),
   );
+});
+
+// One booking, in full — the booking/guest record (M5). RLS-scoped to the operator's tenant, so a
+// foreign id just returns null (→ notFound). Same proof-signing + lapsed-hold reconciliation as
+// getBookings, plus contact + amount fields the detail view needs.
+export const getBooking = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, hold_expires_at, created_at, deposit_amount, total_amount, source, proof_url, cancellation_reason, properties(name, slug), room_types(name), payments(amount, status)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const { proof_url, ...b } = data;
+  let proofUrl: string | null = null;
+  if (proof_url) {
+    const { data: signed } = await supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(proof_url, 60 * 10); // 10 min
+    proofUrl = signed?.signedUrl ?? null;
+  }
+  return { ...b, proofUrl, status: effectiveStatus(b.status, b.hold_expires_at) };
 });
 
 // Lean read for the bookings filter bar's Property → Room-type dropdowns (RLS-scoped):
@@ -512,3 +464,355 @@ export const getManualBookingFormData = cache(async () => {
     })),
   );
 });
+
+// M2 — the operator's inquiry Inbox. RLS-scoped: only the operator's own threads. The list carries
+// a last-message preview; the detail carries the full message history. Guests never read here (the
+// public thread page uses the service-role token path).
+export const getInquiryThreads = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_threads")
+    .select(
+      "id, guest_name, awaiting_operator, last_message_at, created_at, properties(name), inquiry_messages(body, sender, created_at)",
+    )
+    .order("last_message_at", { ascending: false });
+  if (error || !data) return [];
+  return data.map(({ inquiry_messages, ...t }) => {
+    const msgs = [...(inquiry_messages ?? [])].sort((a, b) =>
+      a.created_at.localeCompare(b.created_at),
+    );
+    const last = msgs.at(-1);
+    return { ...t, preview: last?.body ?? "", lastSender: last?.sender ?? null };
+  });
+});
+
+export const getInquiryThread = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_threads")
+    .select(
+      "id, guest_name, guest_email, guest_phone, token, awaiting_operator, created_at, properties(name, slug), inquiry_messages(id, sender, body, created_at)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  const messages = [...(data.inquiry_messages ?? [])].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
+  return { ...data, messages };
+});
+
+// M4 — the earnings ledger. The cash/deposit half (live now): per real booking (confirmed /
+// completed), what it's worth, what's been collected in cash/GCash, Tuloy's 2.5% commission, the
+// operator's net, and any outstanding balance. RLS-scoped. Online-settled rows light up here once
+// the Xendit rail clears (kept separate; this half never touches the gated money path).
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export const getEarnings = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select("id, guest_name, check_in, check_out, status, total_amount, payments(amount, status)")
+    .in("status", ["confirmed", "completed"])
+    .order("check_in", { ascending: false });
+
+  const rows = (data ?? []).map((b) => {
+    const total = b.total_amount ?? 0;
+    const collected = (b.payments ?? [])
+      .filter((p) => p.status === "confirmed")
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+    const commission = round2(total * DEFAULT_COMMISSION_RATE);
+    return {
+      id: b.id,
+      guestName: b.guest_name,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      status: b.status,
+      total,
+      collected,
+      commission,
+      net: round2(total - commission),
+      balance: round2(total - collected),
+    };
+  });
+
+  const sum = (k: "total" | "collected" | "commission" | "net" | "balance") =>
+    round2(rows.reduce((s, r) => s + r[k], 0));
+
+  return {
+    rows,
+    gross: sum("total"),
+    collected: sum("collected"),
+    commission: sum("commission"),
+    net: sum("net"),
+    outstanding: sum("balance"),
+  };
+});
+
+// S3 — operator's saved reply templates + auto-reply config (RLS-scoped to the operator's tenant).
+export const getInquiryTemplates = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("inquiry_templates")
+    .select("id, title, body, sort_order")
+    .order("sort_order", { ascending: true });
+  if (error || !data) return [];
+  return data;
+});
+
+export const getInquiryAutoReply = cache(async () => {
+  const user = await getUser();
+  if (!user) return { enabled: true, text: "" };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tenants")
+    .select("inquiry_auto_reply_enabled, inquiry_auto_reply")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return {
+    enabled: data?.inquiry_auto_reply_enabled ?? true,
+    text: data?.inquiry_auto_reply ?? "",
+  };
+});
+
+// S1 — guest CRM. Derived from the operator's own bookings (RLS), grouped by guestKey. `stays` and
+// `totalValue` count only real stays (confirmed/completed); the first row per key is the latest, so
+// its name/contact represent the guest now.
+export const getGuests = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select("guest_name, guest_phone, guest_email, check_in, status, total_amount")
+    .order("check_in", { ascending: false });
+
+  const map = new Map<
+    string,
+    {
+      key: string;
+      name: string;
+      phone: string | null;
+      email: string | null;
+      stays: number;
+      totalValue: number;
+      lastStay: string;
+    }
+  >();
+  for (const b of data ?? []) {
+    const key = guestKey(b.guest_phone, b.guest_email, b.guest_name);
+    if (!key) continue;
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key,
+        name: b.guest_name,
+        phone: b.guest_phone,
+        email: b.guest_email,
+        stays: 0,
+        totalValue: 0,
+        lastStay: b.check_in,
+      };
+      map.set(key, g);
+    }
+    if (b.status === "confirmed" || b.status === "completed") {
+      g.stays += 1;
+      g.totalValue += b.total_amount ?? 0;
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) => b.stays - a.stays || b.lastStay.localeCompare(a.lastStay),
+  );
+});
+
+// One guest's full history (all their bookings, newest first). null if the key matches nobody.
+export const getGuest = cache(async (key: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select(
+      "id, guest_name, guest_phone, guest_email, check_in, check_out, num_guests, status, total_amount, properties(name), room_types(name)",
+    )
+    .order("check_in", { ascending: false });
+
+  const rows = (data ?? []).filter(
+    (b) => guestKey(b.guest_phone, b.guest_email, b.guest_name) === key,
+  );
+  if (rows.length === 0) return null;
+  const f = rows[0];
+  const settled = rows.filter((r) => r.status === "confirmed" || r.status === "completed");
+  return {
+    key,
+    name: f.guest_name,
+    phone: f.guest_phone,
+    email: f.guest_email,
+    stays: settled.length,
+    totalValue: settled.reduce((s, r) => s + (r.total_amount ?? 0), 0),
+    bookings: rows,
+  };
+});
+
+// ---------------------------------------------------------------------------
+// S4 — Business insights. Everything here is DERIVED from existing rows (bookings,
+// room_types, inquiry_threads) — no new tables, no money-path touch. All reads are
+// RLS-scoped to the operator. Pure month/occupancy math is reused from lib/reports
+// (the same helpers behind P3 reporting) so the figures match the rest of the app.
+// ---------------------------------------------------------------------------
+
+export type TrendPoint = { label: string; value: number };
+export type FunnelStage = { label: string; count: number };
+export type LeadTimeBucket = { label: string; count: number };
+export type InsightsData = {
+  hasData: boolean;
+  revenueByMonth: TrendPoint[]; // booking value by stay month (pesos)
+  occupancyByMonth: TrendPoint[]; // booked room-nights ÷ capacity, % per month
+  funnel: FunnelStage[]; // last-90-day PERIOD TOTALS (not attributed per-inquiry)
+  funnelDays: number;
+  leadTime: LeadTimeBucket[]; // days between booking creation and check-in
+};
+
+const MONTHS_BACK = 6;
+const FUNNEL_DAYS = 90;
+
+// Rolling [start, end) month buckets ending with the current month, oldest first.
+function monthBuckets(today: DateStr): { label: string; start: DateStr; end: DateStr }[] {
+  const d = fromDateStr(today);
+  const out: { label: string; start: DateStr; end: DateStr }[] = [];
+  for (let i = MONTHS_BACK - 1; i >= 0; i--) {
+    const start = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    out.push({
+      label: start.toLocaleDateString("en-US", { month: "short" }),
+      start: toDateStr(start),
+      end: toDateStr(end),
+    });
+  }
+  return out;
+}
+
+// Lead-time buckets (days from booking creation to check-in). Walk-ins booked on/after
+// arrival land in the first bucket (clamped at 0).
+const LEAD_BUCKETS: { label: string; max: number }[] = [
+  { label: "0–1d", max: 1 },
+  { label: "2–7d", max: 7 },
+  { label: "8–14d", max: 14 },
+  { label: "15–30d", max: 30 },
+  { label: "31d+", max: Infinity },
+];
+
+export const getInsights = cache(async (): Promise<InsightsData> => {
+  const today = todayStr();
+  const supabase = await createClient();
+
+  const [bookingsRes, roomsRes, inquiriesRes] = await Promise.all([
+    supabase.from("bookings").select("check_in, check_out, created_at, status, total_amount"),
+    supabase.from("room_types").select("quantity"),
+    supabase.from("inquiry_threads").select("created_at"),
+  ]);
+
+  const bookings = bookingsRes.data ?? [];
+  const totalUnits = (roomsRes.data ?? []).reduce((n, r) => n + (r.quantity ?? 0), 0);
+  const inquiries = inquiriesRes.data ?? [];
+
+  // Stays that sold inventory drive revenue + occupancy.
+  const soldStays = bookings.filter((b) => b.status === "confirmed" || b.status === "completed");
+
+  const buckets = monthBuckets(today);
+  const revenueByMonth: TrendPoint[] = buckets.map((m) => ({
+    label: m.label,
+    value: round2(
+      soldStays
+        .filter((b) => b.check_in >= m.start && b.check_in < m.end)
+        .reduce((s, b) => s + (b.total_amount ?? 0), 0),
+    ),
+  }));
+
+  const occupancyByMonth: TrendPoint[] = buckets.map((m) => {
+    const nights = bookedRoomNights(soldStays, m.start, m.end);
+    return { label: m.label, value: occupancyPct(nights, totalUnits, daysInRange(m.start, m.end)) };
+  });
+
+  // Funnel — PERIOD TOTALS over the last 90 days, not per-inquiry attribution (inquiry_threads
+  // carries no booking link). created_at is an ISO timestamp; a date-string compare is chronological.
+  const since = addDays(today, -FUNNEL_DAYS);
+  const inquiriesIn = inquiries.filter((i) => i.created_at >= since).length;
+  const createdIn = bookings.filter((b) => b.created_at >= since);
+  const confirmedIn = createdIn.filter(
+    (b) => b.status === "confirmed" || b.status === "completed",
+  ).length;
+  const funnel: FunnelStage[] = [
+    { label: "Inquiries", count: inquiriesIn },
+    { label: "Bookings made", count: createdIn.length },
+    { label: "Confirmed", count: confirmedIn },
+  ];
+
+  // Lead-time distribution over sold stays.
+  const leadCounts = new Array(LEAD_BUCKETS.length).fill(0);
+  for (const b of soldStays) {
+    const days = Math.max(0, daysInRange(b.created_at.slice(0, 10), b.check_in));
+    const idx = LEAD_BUCKETS.findIndex((bk) => days <= bk.max);
+    leadCounts[idx === -1 ? LEAD_BUCKETS.length - 1 : idx]++;
+  }
+  const leadTime: LeadTimeBucket[] = LEAD_BUCKETS.map((bk, i) => ({
+    label: bk.label,
+    count: leadCounts[i],
+  }));
+
+  return {
+    hasData: bookings.length > 0 || inquiries.length > 0,
+    revenueByMonth,
+    occupancyByMonth,
+    funnel,
+    funnelDays: FUNNEL_DAYS,
+    leadTime,
+  };
+});
+
+// S5 — the operator's submitted reviews (newest first), for the Reviews page + reply UI. RLS scopes
+// to the operator's own tenant. Pending invites (submitted_at null) are excluded — nothing to show
+// until the guest actually reviews.
+export type OperatorReview = {
+  id: string;
+  guestName: string;
+  rating: number;
+  comment: string | null;
+  operatorReply: string | null;
+  submittedAt: string;
+  propertyName: string;
+};
+
+export const getReviews = cache(async (): Promise<OperatorReview[]> => {
+  await requireUser();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reviews")
+    .select("id, guest_name, rating, comment, operator_reply, submitted_at, properties(name)")
+    .not("submitted_at", "is", null)
+    .order("submitted_at", { ascending: false });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    guestName: r.guest_name,
+    rating: r.rating ?? 0,
+    comment: r.comment,
+    operatorReply: r.operator_reply,
+    submittedAt: r.submitted_at ?? "",
+    propertyName: r.properties?.name ?? "",
+  }));
+});
+
+// Lazy review-invite trigger (no cron): mint invite rows for the operator's finished stays that
+// don't have one, and email each new guest their review link exactly once (best-effort — the RPC's
+// on-conflict guard means only truly new invites come back, so re-running never double-sends).
+// Called on the operator Reviews page load.
+export async function mintReviewInvites(): Promise<void> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mint_review_invites");
+  if (error || !data) return;
+  for (const inv of data) {
+    await notifyGuestReviewInvite({
+      guestEmail: inv.guest_email,
+      guestName: inv.guest_name,
+      propertyName: inv.property_name ?? "your stay",
+      token: inv.token,
+    });
+  }
+}

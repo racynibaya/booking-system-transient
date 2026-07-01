@@ -23,6 +23,10 @@ const MS_PER_DAY = 86_400_000;
  */
 export const MIN_STAY_NIGHTS = 2;
 
+// Early-adopter commission rate (per-operator default; some carry their own on the Xendit account).
+// Single source for the earnings ledger's cash/deposit half (M4) until the online rail is live.
+export const DEFAULT_COMMISSION_RATE = 0.025;
+
 /** Whole nights in a half-open stay. `checkOut` must be after `checkIn`. */
 export function nights(checkIn: DateStr, checkOut: DateStr): number {
   const ms = fromDateStr(checkOut).getTime() - fromDateStr(checkIn).getTime();
@@ -60,57 +64,53 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// --- Centralized-aggregator money model ---------------------------------------------------
+// --- Xendit xenPlatform commission model (Slice 2) ----------
 //
-// Tuloy collects the guest's deposit + a service fee into ONE platform PayMongo account, then
-// disburses the operator's share to their GCash/bank, keeping ~11% of the full stay (5% operator
-// commission + 6% guest service fee). Both fees are sized on the FULL STAY VALUE (S) but collected
-// through the DEPOSIT (D) transaction — no full-payment-online required.
+// The guest charge is created ON the operator's sub-account and a Split Rule routes Tuloy's commission
+// to the Master AT CAPTURE — funds never pool in a Tuloy balance (no custody). Unlike the aggregator
+// (≈11%: 5% operator commission + 6% guest service fee), this is a SINGLE 2.5% commission on the FULL
+// STAY (D1), borne by the operator (withheld via the split), with ONLY the Xendit processing fee
+// grossed onto the guest (D2). So the guest pays just the deposit + the fee gross-up — cheaper than the
+// aggregator (no 6% line) — and Tuloy keeps 2.5%·S.
 //
-//   guest pays:  G = (D + serviceFee + PAYMONGO_FIXED) / (1 - PAYMONGO_MDR)   [fee passed through]
-//   owner gets:  D - operatorCommission  (deposit payout; + collects S-D at check-in directly)
-//   Tuloy keeps: serviceFee + operatorCommission  (≈ 0.11·S)
+//   commission = 0.025 · S        — flat peso amount routed to Master via the Split Rule
+//   guest pays G = (D + XENDIT_FIXED) / (1 − XENDIT_MDR)   — gross up the DEPOSIT for the Xendit fee
+//   operator nets = D − commission — settles to their sub-account; they self-withdraw
+//   Tuloy keeps   = commission
 //
-// The PayMongo processing fee is grossed up into the guest's "service fee" line so the operator
-// nets their full share. MDR/fixed must be the WORST-CASE enabled method (the guest picks the method
-// at checkout, after the amount is fixed) so we never under-cover. The guest checkout enables card
-// (createPlatformCheckout), so the worst case is PayMongo's standard DOMESTIC CARD rate: 3.5% + ₱15.
-// ⚠️ GO-LIVE TODO: confirm against your PayMongo dashboard before charging real money — set this to the
-// worst-case ENABLED method's real rate (negotiated rates may differ; INTERNATIONAL cards are higher at
-// ~4.5% — restrict the checkout to domestic/e-wallets if that exposure matters). Kept at 3.5% for now.
-export const PAYMONGO_MDR = 0.035; // 3.5% — PayMongo standard domestic card (placeholder until go-live)
-export const PAYMONGO_FIXED = 15; // ₱15 — PayMongo standard domestic card fixed fee
+// ⚠️ XENDIT_MDR/FIXED are PLACEHOLDERS — set to the worst-case ENABLED method before go-live (same
+// discipline as PAYMONGO_MDR). ⚠️ The model assumes Xendit takes its fee on the gross charge and the
+// Split Rule distributes the net (net-settled ≈ D). CONFIRM the actual fee/split ordering against a
+// sandbox charge in Slice 2b and adjust the gross-up if Xendit splits gross-then-fees.
+export const XENDIT_MDR = 0.035; // placeholder — confirm worst-case enabled method before go-live
+export const XENDIT_FIXED = 0; // placeholder — many PH e-wallet/QR methods carry no fixed fee; confirm
 
-export type BookingSplit = {
+export type XenditSplit = {
   stayValue: number; // S
-  deposit: number; // D — base for the operator's deposit payout
-  serviceFee: number; // guest-borne Tuloy fee, 0.06·S
-  operatorCommission: number; // withheld from the deposit payout, 0.05·S
-  guestTotal: number; // G — what the guest is charged (deposit + serviceFee + grossed-up PayMongo fee)
-  ownerPayout: number; // D − operatorCommission — what Tuloy disburses from the deposit
-  tuloyRevenue: number; // serviceFee + operatorCommission ≈ 0.11·S
+  deposit: number; // D — collected online
+  commission: number; // Tuloy's 0.025·S, routed to Master (flat) at capture
+  guestTotal: number; // G — what the guest is charged (deposit grossed up for the Xendit fee)
+  ownerNet: number; // D − commission — settles to the operator's sub-account
+  tuloyRevenue: number; // commission
 };
 
-// Single source of truth for the split — used by the guest checkout (guestTotal) and the payout
-// ledger (operatorCommission / ownerPayout / serviceFee). `rates` are per-owner (early-adopter
-// discount). Caller should ensure deposit ≥ operatorCommission (true for normal deposits ≥ ~30%);
-// ownerPayout can go negative otherwise — guard at booking config, not here.
-export function computeBookingSplit(
+// Single source of truth for the Xendit split — used by the guest checkout (guestTotal) and the split
+// rule (commission). `commissionRate` is per-operator (tenant_xendit_accounts.commission_rate, default
+// 0.025 — early-adopter rate). Caller ensures deposit ≥ commission (true for normal deposits ≥ ~30% of
+// a stay whose commission is 2.5%); ownerNet can otherwise go negative — guard at booking config.
+export function computeXenditSplit(
   stayValue: number,
   deposit: number,
-  rates: { commissionRate: number; serviceFeeRate: number },
-): BookingSplit {
-  const serviceFee = round2(stayValue * rates.serviceFeeRate);
-  const operatorCommission = round2(stayValue * rates.commissionRate);
-  const base = round2(deposit + serviceFee);
-  const guestTotal = round2((base + PAYMONGO_FIXED) / (1 - PAYMONGO_MDR));
+  commissionRate: number,
+): XenditSplit {
+  const commission = round2(stayValue * commissionRate);
+  const guestTotal = round2((deposit + XENDIT_FIXED) / (1 - XENDIT_MDR));
   return {
     stayValue,
     deposit,
-    serviceFee,
-    operatorCommission,
+    commission,
     guestTotal,
-    ownerPayout: round2(deposit - operatorCommission),
-    tuloyRevenue: round2(serviceFee + operatorCommission),
+    ownerNet: round2(deposit - commission),
+    tuloyRevenue: commission,
   };
 }

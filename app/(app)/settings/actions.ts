@@ -3,20 +3,20 @@
 import { revalidatePath } from "next/cache";
 
 import { notifyAdminsPayoutChanged } from "@/lib/email/gcash-alert";
+import { getCurrentTenant, getXenditAccount, requireUser } from "@/lib/supabase/dal";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
-  GCASH_INSTAPAY_BIC,
-  listReceivingInstitutions,
-  type ReceivingInstitution,
-} from "@/lib/paymongo/client";
-import { getCurrentTenant, getPayoutAccount, requireUser } from "@/lib/supabase/dal";
-import { createClient } from "@/lib/supabase/server";
+  createPayout,
+  createSubAccount,
+  getBalance,
+  getPayoutChannels,
+  type KycDocType,
+  submitAccountVerification,
+  uploadKycFile,
+} from "@/lib/xendit/client";
+import { parseAccountStatus } from "@/lib/xendit/status";
 import { env } from "@/env";
-import {
-  payoutAccountInput,
-  type PayoutAccountInput,
-  paymentMethodInput,
-  type PaymentMethodInput,
-} from "@/lib/validation";
+import { paymentMethodInput, type PaymentMethodInput, xenditKycInput } from "@/lib/validation";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -62,61 +62,6 @@ export async function upsertPaymentMethod(input: PaymentMethodInput): Promise<Ac
   return { ok: true };
 }
 
-// Create or update the operator's PAYOUT destination (centralized aggregator — where Tuloy disburses
-// their share). One row per tenant (unique tenant_id); rates are admin-managed and never sent here.
-// Same re-verify-on-change alert as payout methods (the DB trigger stamps gcash_changed_at).
-export async function upsertPayoutAccount(input: PayoutAccountInput): Promise<ActionResult> {
-  const parsed = payoutAccountInput.safeParse(input);
-  if (!parsed.success)
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-
-  const tenant = await getCurrentTenant();
-  if (!tenant) return { ok: false, error: "No operator account found." };
-  const supabase = await createClient();
-  const { method, payout_name, account_number, bank_name, payout_bic } = parsed.data;
-
-  const fields = {
-    method,
-    payout_name,
-    account_number,
-    bank_name: method === "bank" ? bank_name || null : null,
-    // GCash always rides its one fixed InstaPay code; banks carry the institution the operator picked.
-    payout_bic: method === "bank" ? payout_bic || null : GCASH_INSTAPAY_BIC,
-  };
-
-  const existing = await getPayoutAccount();
-  const { error } = existing
-    ? await supabase
-        .from("tenant_payout_accounts")
-        // Re-saving valid details re-activates a destination a failed transfer had flagged.
-        .update({ ...fields, status: "active", updated_at: new Date().toISOString() })
-        .eq("id", existing.id)
-    : await supabase.from("tenant_payout_accounts").insert({ ...fields, tenant_id: tenant.id });
-  if (error) return { ok: false, error: error.message };
-
-  await alertIfApproved();
-  revalidatePath("/settings");
-  return { ok: true };
-}
-
-export type PayoutInstitutionsResult =
-  | { ok: true; institutions: ReceivingInstitution[] }
-  | { ok: false; error: string };
-
-// The banks/e-wallets a payout can be addressed to (name + BIC), for the operator's bank picker.
-// Reads the platform key directly (the list is the same for every operator); returns a clear error
-// while Money Movement is still dormant so the UI can fall back gracefully.
-export async function listPayoutInstitutions(): Promise<PayoutInstitutionsResult> {
-  const sk = env.PAYMONGO_PLATFORM_SECRET_KEY;
-  if (!sk) return { ok: false, error: "Bank list is not available yet." };
-  try {
-    const institutions = await listReceivingInstitutions(sk);
-    return { ok: true, institutions };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not load banks." };
-  }
-}
-
 // Persist a method's QR image path (the upload itself is browser-side; storage RLS scopes the path
 // to the operator's tenant folder).
 export async function setPaymentMethodQr(id: string, path: string): Promise<ActionResult> {
@@ -139,5 +84,306 @@ export async function deletePaymentMethod(id: string): Promise<ActionResult> {
 
   await alertIfApproved();
   revalidatePath("/settings");
+  return { ok: true };
+}
+
+// Start the operator's Xendit onboarding: create their OWNED sub-account (white-label — they never
+// touch Xendit) and persist the binding. KYC is then submitted via submitXenditKyc (account_verification).
+// Create-once. Dormant until XENDIT_SECRET_KEY is set; the webhook (lib/xendit/webhook-handler.ts)
+// advances kyc_status → 'LIVE'.
+export async function startXenditOnboarding(): Promise<ActionResult> {
+  const sk = env.XENDIT_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Online payments aren't available yet." };
+
+  const [user, tenant] = await Promise.all([requireUser(), getCurrentTenant()]);
+  if (!tenant) return { ok: false, error: "No operator account found." };
+
+  // Create-once: a sub-account already exists → never make a second (a duplicate mis-splits every
+  // future charge). Idempotent success.
+  if (await getXenditAccount()) {
+    revalidatePath("/settings");
+    return { ok: true };
+  }
+
+  let sub;
+  try {
+    sub = await createSubAccount({
+      secretKey: sk,
+      email: user.email ?? `${tenant.id}@tuloysanjuan.com`,
+      // OWNED = white-label: the operator never touches Xendit; we submit KYC via account_verification
+      // and disburse via the Payouts API (operator-initiated). See memory xendit-owned-custody-legal.
+      type: "OWNED",
+      businessName: tenant.name ?? "Tuloy operator",
+    });
+  } catch {
+    return { ok: false, error: "Couldn't reach Xendit — please try again." };
+  }
+
+  // Persist via service-role: the table is select-only for operators (sub_account_id / kyc_status /
+  // commission_rate are money-trust). kyc_status mirrors what Xendit returned at creation.
+  const admin = createServiceClient();
+  const { error } = await admin.from("tenant_xendit_accounts").insert({
+    tenant_id: tenant.id,
+    sub_account_id: sub.id,
+    type: "OWNED",
+    kyc_status: parseAccountStatus(sub.status) ?? "INVITED",
+  });
+  // A concurrent call won the race (unique tenant_id) — that's a harmless idempotent success.
+  if (error && error.code !== "23505")
+    return { ok: false, error: "Couldn't save — please try again." };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+// The 7 Sole-Prop KYC documents Xendit requires (from the account manager). The form sends each as a
+// FormData file under `doc_<TYPE>`; codes are PROVISIONAL until the AM template is confirmed.
+const KYC_DOC_TYPES = [
+  "DTI_CERTIFICATE",
+  "BIR_2303",
+  "GOVERNMENT_ID",
+  "PROOF_OF_BUSINESS",
+  "BANK_ACCOUNT_PROOF",
+  "SERVICE_AGREEMENT",
+  "LIVENESS_SELFIE",
+] as const satisfies readonly KycDocType[];
+
+// Submit the operator's OWNED-account KYC via account_verification (the MANAGED→OWNED re-point). Takes
+// FormData because it carries the 7 document files: we upload each to Xendit's file API (server-side,
+// with the secret key) → file_id, then submit the verification. Also stores the operator's payout
+// destination (where they self-withdraw). KYC submission is LIVE-mode-only, so this can't run on the
+// sandbox key. The webhook (lib/xendit/webhook-handler.ts) carries kyc_status → LIVE async.
+export async function submitXenditKyc(formData: FormData): Promise<ActionResult> {
+  const sk = env.XENDIT_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Online payments aren't available yet." };
+
+  const str = (k: string) => (formData.get(k) ?? "").toString();
+  const parsed = xenditKycInput.safeParse({
+    legal_name: str("legal_name"),
+    trading_name: str("trading_name"),
+    given_names: str("given_names"),
+    surname: str("surname"),
+    email: str("email"),
+    phone_number: str("phone_number"),
+    street_line1: str("street_line1"),
+    city: str("city"),
+    province_state: str("province_state"),
+    postal_code: str("postal_code"),
+    payout_channel_code: str("payout_channel_code"),
+    payout_account_number: str("payout_account_number"),
+    payout_account_name: str("payout_account_name"),
+    tos_accepted: formData.get("tos_accepted") === "true",
+  });
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const account = await getXenditAccount();
+  if (!account) return { ok: false, error: "Set up online payments first." };
+  // Already submitted — idempotent success; the webhook drives the rest.
+  if (account.kyc_submitted_at) {
+    revalidatePath("/settings");
+    return { ok: true };
+  }
+
+  const d = parsed.data;
+  let kycStatus: ReturnType<typeof parseAccountStatus> = null;
+  try {
+    // Upload each KYC document → file_id, then submit account_verification.
+    const documents: { type: KycDocType; fileId: string }[] = [];
+    for (const type of KYC_DOC_TYPES) {
+      const file = formData.get(`doc_${type}`);
+      if (!(file instanceof File) || file.size === 0) {
+        return { ok: false, error: "Please upload all required documents." };
+      }
+      const { fileId } = await uploadKycFile(sk, file, file.name);
+      documents.push({ type, fileId });
+    }
+    const res = await submitAccountVerification({
+      secretKey: sk,
+      forUserId: account.sub_account_id,
+      legalName: d.legal_name,
+      tradingName: d.trading_name,
+      pic: {
+        givenNames: d.given_names,
+        surname: d.surname,
+        email: d.email,
+        phoneNumber: d.phone_number || undefined,
+      },
+      address: {
+        city: d.city,
+        provinceState: d.province_state,
+        streetLine1: d.street_line1,
+        postalCode: d.postal_code,
+      },
+      documents,
+    });
+    kycStatus = parseAccountStatus(res.status);
+  } catch {
+    return { ok: false, error: "Couldn't submit to Xendit — please check your details and retry." };
+  }
+
+  // Mark KYC submitted + store the operator's payout destination. The webhook remains the authoritative
+  // writer of kyc_status → LIVE; we set the returned (still-pending) status optimistically.
+  const admin = createServiceClient();
+  const fields: {
+    kyc_submitted_at: string;
+    payout_channel_code: string;
+    payout_account_number: string;
+    payout_account_name: string;
+    updated_at: string;
+    kyc_status?: NonNullable<typeof kycStatus>;
+  } = {
+    kyc_submitted_at: new Date().toISOString(),
+    payout_channel_code: d.payout_channel_code,
+    payout_account_number: d.payout_account_number,
+    payout_account_name: d.payout_account_name,
+    updated_at: new Date().toISOString(),
+  };
+  if (kycStatus) fields.kyc_status = kycStatus;
+
+  const { error } = await admin.from("tenant_xendit_accounts").update(fields).eq("id", account.id);
+  if (error) return { ok: false, error: "Couldn't save — please try again." };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+// --- Disbursement (Slice 4): operator-initiated withdrawal = the custody mitigation -------------
+// OWNED operators have no Xendit dashboard, so we surface their balance + a withdraw action IN TULOY.
+// The operator triggers the payout on their own command (counsel's "facilitating disbursement at the
+// operator's instruction"), drawn from THEIR sub-account to THEIR bank. Dormant until XENDIT_SECRET_KEY;
+// LIVE-only in practice (needs the Payouts/Balance permissions on the key).
+
+export type PayoutChannelsResult =
+  | { ok: true; channels: { code: string; name: string; category: string }[] }
+  | { ok: false; error: string };
+
+// The PH banks/e-wallets an operator can be paid out to (for the onboarding destination picker).
+export async function listPayoutChannels(): Promise<PayoutChannelsResult> {
+  const sk = env.XENDIT_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Not available yet." };
+  try {
+    const channels = await getPayoutChannels(sk);
+    return {
+      ok: true,
+      channels: channels.map((c) => ({
+        code: c.channelCode,
+        name: c.channelName,
+        category: c.category,
+      })),
+    };
+  } catch {
+    return { ok: false, error: "Couldn't load payout options." };
+  }
+}
+
+export type EarningsResult = { ok: true; balance: number } | { ok: false; error: string };
+
+// The operator's withdrawable balance in their sub-account.
+export async function getXenditEarnings(): Promise<EarningsResult> {
+  const sk = env.XENDIT_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Not available yet." };
+  const account = await getXenditAccount();
+  if (!account) return { ok: false, error: "No online-payment account found." };
+  try {
+    const { balance } = await getBalance(sk, account.sub_account_id);
+    return { ok: true, balance };
+  } catch {
+    return { ok: false, error: "Couldn't read your balance right now." };
+  }
+}
+
+// Operator-initiated withdrawal of their full sub-account balance to their stored bank/e-wallet.
+export async function withdrawXenditBalance(): Promise<ActionResult> {
+  const sk = env.XENDIT_SECRET_KEY;
+  if (!sk) return { ok: false, error: "Not available yet." };
+  const account = await getXenditAccount();
+  if (!account) return { ok: false, error: "No online-payment account found." };
+  if (account.kyc_status !== "LIVE") return { ok: false, error: "Your account isn't active yet." };
+  if (
+    !account.payout_channel_code ||
+    !account.payout_account_number ||
+    !account.payout_account_name
+  ) {
+    return { ok: false, error: "Add your bank details first." };
+  }
+
+  let balance: number;
+  try {
+    ({ balance } = await getBalance(sk, account.sub_account_id));
+  } catch {
+    return { ok: false, error: "Couldn't read your balance right now." };
+  }
+  if (balance <= 0) return { ok: false, error: "You have no balance to withdraw yet." };
+
+  try {
+    await createPayout({
+      secretKey: sk,
+      forUserId: account.sub_account_id,
+      referenceId: `wd-${account.id}-${Date.now()}`,
+      channelCode: account.payout_channel_code,
+      accountNumber: account.payout_account_number,
+      accountHolderName: account.payout_account_name,
+      amount: balance,
+    });
+  } catch {
+    return { ok: false, error: "Withdrawal couldn't start — please try again." };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+// S3 — auto-reply config + saved reply templates. All RLS-scoped to the operator's own tenant (the
+// column allowlist grant covers the two tenants columns; the template policies scope the rows).
+export async function setAutoReply(enabled: boolean, text: string): Promise<ActionResult> {
+  await requireUser();
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
+  const trimmed = text.trim();
+  if (trimmed.length > 1000)
+    return { ok: false, error: "That auto-reply is a bit long — trim it down." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tenants")
+    .update({ inquiry_auto_reply_enabled: enabled, inquiry_auto_reply: trimmed || null })
+    .eq("id", tenant.id);
+  if (error) return { ok: false, error: "Couldn't save. Please try again." };
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function upsertTemplate(input: {
+  id?: string;
+  title: string;
+  body: string;
+}): Promise<ActionResult> {
+  await requireUser();
+  const tenant = await getCurrentTenant();
+  if (!tenant) return { ok: false, error: "Your operator account isn't set up yet." };
+  const title = input.title.trim();
+  const body = input.body.trim();
+  if (!title || !body) return { ok: false, error: "Add a title and a message." };
+  if (title.length > 80 || body.length > 2000)
+    return { ok: false, error: "That's a bit long — trim it down." };
+
+  const supabase = await createClient();
+  const { error } = input.id
+    ? await supabase.from("inquiry_templates").update({ title, body }).eq("id", input.id)
+    : await supabase.from("inquiry_templates").insert({ tenant_id: tenant.id, title, body });
+  if (error) return { ok: false, error: "Couldn't save that reply. Please try again." };
+  revalidatePath("/settings");
+  revalidatePath("/inbox", "layout");
+  return { ok: true };
+}
+
+export async function deleteTemplate(id: string): Promise<ActionResult> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("inquiry_templates").delete().eq("id", id);
+  if (error) return { ok: false, error: "Couldn't remove that reply. Please try again." };
+  revalidatePath("/settings");
+  revalidatePath("/inbox", "layout");
   return { ok: true };
 }

@@ -1,23 +1,37 @@
-import { Banknote, Wallet } from "lucide-react";
+import { CreditCard, MessageCircle, Wallet } from "lucide-react";
 
+import { InquirySettingsSection } from "@/components/settings/inquiry-settings-section";
 import { PaymentMethodsSection } from "@/components/settings/payment-methods-section";
-import { PayoutAccountSection } from "@/components/settings/payout-account-section";
+import { XenditOnboardingSection } from "@/components/settings/xendit-onboarding-section";
 import { IconChip } from "@/components/ui/icon-chip";
 import { PageHeader } from "@/components/ui/page-header";
+import { env } from "@/env";
 import {
   getCurrentTenant,
+  getInquiryAutoReply,
+  getInquiryTemplates,
   getPaymentMethods,
-  getPayoutAccount,
+  getXenditAccount,
   requireUser,
 } from "@/lib/supabase/dal";
 
 export default async function SettingsPage() {
-  await requireUser();
-  const [methods, tenant, payoutAccount] = await Promise.all([
+  const user = await requireUser();
+  // The Xendit commission rail is dormant until the platform key is set — only fetch + show the
+  // online-payments section on a deployment where it's configured (same gate as the webhook/actions).
+  const xenditEnabled = !!env.XENDIT_SECRET_KEY;
+  const [methods, tenant, xenditAccount, autoReply, templates] = await Promise.all([
     getPaymentMethods(),
     getCurrentTenant(),
-    getPayoutAccount(),
+    xenditEnabled ? getXenditAccount() : Promise.resolve(null),
+    getInquiryAutoReply(),
+    getInquiryTemplates(),
   ]);
+  const xenditDefaults = {
+    legal_name: tenant?.name ?? "",
+    trading_name: tenant?.name ?? "",
+    email: user.email ?? "",
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -40,18 +54,34 @@ export default async function SettingsPage() {
         <PaymentMethodsSection methods={methods ?? []} tenantId={tenant?.id ?? ""} />
       </section>
 
+      {xenditEnabled && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <IconChip icon={CreditCard} tone="sea" />
+              <h2 className="text-display-sm text-ink">Online payments</h2>
+            </div>
+            <p className="text-body-sm text-muted">
+              Let guests pay online at checkout. Your share settles to your own account — Tuloy only
+              takes its commission at the point of payment.
+            </p>
+          </div>
+          <XenditOnboardingSection account={xenditAccount} defaults={xenditDefaults} />
+        </section>
+      )}
+
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2.5">
-            <IconChip icon={Banknote} tone="sea" />
-            <h2 className="text-display-sm text-ink">Get paid</h2>
+            <IconChip icon={MessageCircle} tone="sea" />
+            <h2 className="text-display-sm text-ink">Guest replies</h2>
           </div>
           <p className="text-body-sm text-muted">
-            Where we send your share after a guest pays. Just your GCash or bank — no PayMongo
-            account needed.
+            Acknowledge questions instantly and keep canned answers ready — so no guest waits and
+            you reply in a couple of taps.
           </p>
         </div>
-        <PayoutAccountSection account={payoutAccount} />
+        <InquirySettingsSection autoReply={autoReply} templates={templates} />
       </section>
     </div>
   );
