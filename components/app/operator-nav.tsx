@@ -10,6 +10,7 @@ import {
   LineChart,
   MoreHorizontal,
   Settings,
+  Star,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,7 @@ const ITEMS = [
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/earnings", label: "Earnings", icon: Wallet },
   { href: "/properties", label: "Properties", icon: Building2 },
+  { href: "/reviews", label: "Reviews", icon: Star },
   { href: "/insights", label: "Insights", icon: LineChart },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -33,7 +35,7 @@ const ITEMS = [
 // (Properties = setup, Insights = analytics, Settings = config) live under "More" at every
 // width: the header is capped at max-w-5xl, so eight full labels never fit alongside the brand
 // and account controls — five inline + More is the honest ceiling.
-const SECONDARY_HREFS = new Set(["/properties", "/insights", "/settings"]);
+const SECONDARY_HREFS = new Set(["/properties", "/reviews", "/insights", "/settings"]);
 const SECONDARY_ITEMS = ITEMS.filter((it) => SECONDARY_HREFS.has(it.href));
 
 // Mobile has room for four thumb tabs, so the bottom bar shows the four tap-constantly

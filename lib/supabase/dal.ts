@@ -6,6 +6,7 @@ import { cache } from "react";
 import { unitsAvailableOn } from "@/lib/availability";
 import { effectiveStatus, type BookingFilters } from "@/lib/bookings";
 import { addDays, fromDateStr, toDateStr, todayStr, type DateStr } from "@/lib/dates";
+import { notifyGuestReviewInvite } from "@/lib/email/reviews";
 import { guestKey } from "@/lib/guests";
 import { DEFAULT_COMMISSION_RATE } from "@/lib/pricing";
 import { bookedRoomNights, daysInRange, monthRange, occupancyPct, weekRange } from "@/lib/reports";
@@ -764,3 +765,54 @@ export const getInsights = cache(async (): Promise<InsightsData> => {
     leadTime,
   };
 });
+
+// S5 — the operator's submitted reviews (newest first), for the Reviews page + reply UI. RLS scopes
+// to the operator's own tenant. Pending invites (submitted_at null) are excluded — nothing to show
+// until the guest actually reviews.
+export type OperatorReview = {
+  id: string;
+  guestName: string;
+  rating: number;
+  comment: string | null;
+  operatorReply: string | null;
+  submittedAt: string;
+  propertyName: string;
+};
+
+export const getReviews = cache(async (): Promise<OperatorReview[]> => {
+  await requireUser();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reviews")
+    .select("id, guest_name, rating, comment, operator_reply, submitted_at, properties(name)")
+    .not("submitted_at", "is", null)
+    .order("submitted_at", { ascending: false });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    guestName: r.guest_name,
+    rating: r.rating ?? 0,
+    comment: r.comment,
+    operatorReply: r.operator_reply,
+    submittedAt: r.submitted_at ?? "",
+    propertyName: r.properties?.name ?? "",
+  }));
+});
+
+// Lazy review-invite trigger (no cron): mint invite rows for the operator's finished stays that
+// don't have one, and email each new guest their review link exactly once (best-effort — the RPC's
+// on-conflict guard means only truly new invites come back, so re-running never double-sends).
+// Called on the operator Reviews page load.
+export async function mintReviewInvites(): Promise<void> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mint_review_invites");
+  if (error || !data) return;
+  for (const inv of data) {
+    await notifyGuestReviewInvite({
+      guestEmail: inv.guest_email,
+      guestName: inv.guest_name,
+      propertyName: inv.property_name ?? "your stay",
+      token: inv.token,
+    });
+  }
+}

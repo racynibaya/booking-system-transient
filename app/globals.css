@@ -59,7 +59,7 @@
   --color-body: #38454a; /* secondary running text */
   --color-muted: #5e6c6e; /* teal-steel — sub-titles, inactive labels */
   --color-muted-soft: #8b9794; /* disabled link text */
-  --color-star-rating: #1d2a2c; /* stars render in ink, not gold */
+  --color-star-rating: #e0a33e; /* soft-sun gold — filled review stars + rating bars */
 
   /* ---- Colors · semantic ------------------------------------------------- */
   --color-error: #c42e2e; /* inline form error text (true red, distinct from the teals) */

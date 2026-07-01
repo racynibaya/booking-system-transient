@@ -1,4 +1,4 @@
-import { ArrowLeft, LogIn, LogOut, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowLeft, LogIn, LogOut, MapPin, ShieldCheck, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,6 +10,7 @@ import { AskQuestion } from "@/components/public/ask-question";
 import { BookingCard, type PublicRoom } from "@/components/public/booking-card";
 import { LocationMap } from "@/components/public/location-map";
 import { MobileBookingBar } from "@/components/public/mobile-booking-bar";
+import { ReviewsSection } from "@/components/public/reviews-section";
 import { RoomsSection, type RoomCard } from "@/components/public/rooms-section";
 import { SelectedRoomProvider } from "@/components/public/selected-room-context";
 import { SocialLinks } from "@/components/public/social-links";
@@ -40,12 +41,25 @@ type Listing = {
   room_types: PublicRoom[];
 };
 
+export type ReviewItem = {
+  id: string;
+  guest_name: string;
+  rating: number;
+  comment: string | null;
+  operator_reply: string | null;
+  operator_replied_at: string | null;
+  submitted_at: string;
+};
+type ReviewsData = { avg_rating: number | null; review_count: number; reviews: ReviewItem[] };
+const EMPTY_REVIEWS: ReviewsData = { avg_rating: null, review_count: 0, reviews: [] };
+
 async function getListing(slug: string): Promise<{
   listing: Listing;
   coverUrl: string | null;
   ogImageUrl: string | null;
   rooms: RoomCard[];
   spacePhotos: SpacePhoto[];
+  reviews: ReviewsData;
   preview: boolean;
 } | null> {
   const supabase = createAnonClient();
@@ -96,7 +110,12 @@ async function getListing(slug: string): Promise<{
     .filter((p) => typeof p?.path === "string" && p.path.length > 0)
     .map((p) => ({ url: publicUrl(p.path), caption: p.caption ?? "" }));
 
-  return { listing, coverUrl, ogImageUrl, rooms, spacePhotos, preview };
+  // Public reviews (S5): a standalone definer read so we never touch the money-path
+  // get_public_listing RPC. Only ever returns submitted reviews. Skipped for admin preview below.
+  const { data: reviewsData } = await supabase.rpc("get_public_reviews", { p_slug: slug });
+  const reviews = (reviewsData as unknown as ReviewsData | null) ?? EMPTY_REVIEWS;
+
+  return { listing, coverUrl, ogImageUrl, rooms, spacePhotos, reviews, preview };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -145,7 +164,7 @@ export default async function PublicBookingPage({
   const { slug } = await params;
   const result = await getListing(slug);
   if (!result) notFound();
-  const { listing, coverUrl, rooms, spacePhotos, preview } = result;
+  const { listing, coverUrl, rooms, spacePhotos, reviews, preview } = result;
   const { property } = listing;
 
   // Attribution tag from the inbound link (?src=tuloy). Carried into the booking so the operator
@@ -276,8 +295,22 @@ export default async function PublicBookingPage({
                     is a free operator-set boolean with no verification, so displaying it next to our name
                     would publish an unverified government credential. Re-add only behind admin-verified
                     proof (fold into the verification-doc flow). */}
-                <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-caption font-medium text-white backdrop-blur">
-                  <ShieldCheck className="size-3.5 shrink-0" /> Verified by Tuloy
+                <span className="mt-4 inline-flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-caption font-medium text-white backdrop-blur">
+                    <ShieldCheck className="size-3.5 shrink-0" /> Verified by Tuloy
+                  </span>
+                  {reviews.review_count > 0 && reviews.avg_rating != null && (
+                    <a
+                      href="#reviews"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-caption font-medium text-white backdrop-blur transition-colors hover:bg-white/25"
+                    >
+                      <Star className="size-3.5 shrink-0 fill-current" />
+                      {reviews.avg_rating.toFixed(1)}
+                      <span className="text-white/70">
+                        ({reviews.review_count} review{reviews.review_count === 1 ? "" : "s"})
+                      </span>
+                    </a>
+                  )}
                 </span>
                 {property.description && (
                   <p className="mt-4 max-w-md text-body-md leading-relaxed text-white/75">
@@ -322,6 +355,12 @@ export default async function PublicBookingPage({
             <SpaceGallery photos={spacePhotos} />
 
             <AmenitiesSection amenities={property.amenities} />
+
+            <ReviewsSection
+              avgRating={reviews.avg_rating}
+              reviewCount={reviews.review_count}
+              reviews={reviews.reviews}
+            />
 
             {hasGoodToKnow && (
               <section className="flex flex-col gap-4">
