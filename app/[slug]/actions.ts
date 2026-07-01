@@ -246,8 +246,9 @@ export type GatewayCheckoutResult =
 // Tuloy's 2.5% to the Master at capture — funds never touch a Tuloy balance, and the operator's share
 // settles to their own sub-account (they self-withdraw). Dormant until XENDIT_SECRET_KEY +
 // XENDIT_MASTER_ACCOUNT_ID are set AND the operator's kyc_status is LIVE. Confirmation is the Session
-// webhook → confirm_booking_gateway (Slice 2c); the redirect is UX only. NOT yet wired to the pay
-// button (the caller still uses the aggregator path) and UNVERIFIED end-to-end — needs a LIVE operator.
+// webhook → confirm_booking_gateway (Slice 2c); the redirect is UX only. Wired to the guest pay button
+// (booking-card.tsx, gated on accepts_online_payment) and verified end-to-end in Xendit test mode; stays
+// dormant in prod until the platform keys are set and an operator reaches kyc_status='LIVE'.
 export async function createXenditCheckout(bookingId: string): Promise<GatewayCheckoutResult> {
   if (!z.uuid().safeParse(bookingId).success) {
     return { ok: false, error: "Something went wrong. Please try again." };
@@ -300,17 +301,20 @@ export async function createXenditCheckout(bookingId: string): Promise<GatewayCh
   const property = booking.property as { slug: string; name: string } | null;
   const slug = property?.slug ?? "";
 
+  // Return URLs must be HTTPS (Xendit rejects http://). Prefer the canonical SITE_URL (HTTPS in every
+  // environment, incl. local via the ngrok tunnel); fall back to the request origin.
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const proto = h.get("x-forwarded-proto") ?? "https";
-  const origin = `${proto}://${host}`;
+  const origin = env.SITE_URL ?? `${proto}://${host}`;
 
   try {
     // One flat-commission split rule per booking (commission is a per-stay peso amount), routing
     // Tuloy's cut to the Master. Then a Payment Session on the operator's sub-account with it attached.
     const rule = await createSplitRule({
       secretKey: env.XENDIT_SECRET_KEY,
-      name: `Tuloy commission ${bookingId}`,
+      // Xendit split-rule names allow only letters/numbers/spaces — strip the booking UUID's hyphens.
+      name: `Tuloy commission ${bookingId.replace(/-/g, "")}`,
       routes: [
         {
           flatAmount: split.commission,
@@ -350,7 +354,8 @@ export async function createXenditCheckout(bookingId: string): Promise<GatewayCh
       .eq("id", bookingId)
       .single();
     return { ok: true, checkoutUrl: existing?.gateway_checkout_url ?? session.sessionUrl };
-  } catch {
+  } catch (e) {
+    console.error("[xendit-checkout] failed:", e instanceof Error ? e.message : e);
     return { ok: false, error: "Couldn't start the payment. Please try again." };
   }
 }

@@ -5,7 +5,12 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
-import { createPublicBooking, submitProof, type PublicPaymentMethod } from "@/app/[slug]/actions";
+import {
+  createPublicBooking,
+  createXenditCheckout,
+  submitProof,
+  type PublicPaymentMethod,
+} from "@/app/[slug]/actions";
 import { useSelectedRoom } from "@/components/public/selected-room-context";
 import { isRangeBookable, unitsAvailableOn } from "@/lib/availability";
 import { formatDateShort, fromDateStr, toDateStr, todayStr } from "@/lib/dates";
@@ -43,12 +48,15 @@ export function BookingCard({
   propertyName,
   area,
   minStayNights = MIN_STAY_NIGHTS,
+  acceptsOnlinePayment = false,
 }: {
   rooms: PublicRoom[];
   propertyName: string;
   area: string | null;
   // Per-property guest-facing minimum stay. Defaults to MIN_STAY_NIGHTS as a safety net.
   minStayNights?: number;
+  // The host is LIVE on Xendit → the guest pays online at Xendit checkout instead of the manual flow.
+  acceptsOnlinePayment?: boolean;
 }) {
   const { selectedRoomId: roomId, setSelectedRoomId: setRoomId } = useSelectedRoom();
   // Attribution tag from the inbound link (?src=tuloy). Read client-side (lazy init) so the listing
@@ -179,14 +187,27 @@ export function BookingCard({
       source,
       termsAccepted: tos,
     });
+    if (!res.ok) {
+      setPending(false);
+      setError(res.error);
+      return;
+    }
+    // Online-payment host: send the guest straight to Xendit checkout — their share settles to their
+    // own account and Tuloy's 2.5% splits off at capture. If it can't start, fall back to the manual flow.
+    if (acceptsOnlinePayment) {
+      const checkout = await createXenditCheckout(res.bookingId);
+      if (checkout.ok) {
+        window.location.href = checkout.checkoutUrl;
+        return; // navigating away — keep the button pending
+      }
+      setError(checkout.error);
+    }
     setPending(false);
-    if (res.ok) {
-      setBookingId(res.bookingId);
-      setMethods(res.paymentMethods);
-      setDeposit(res.deposit);
-      setHoldExpiresAt(res.holdExpiresAt);
-      setStep("payment");
-    } else setError(res.error);
+    setBookingId(res.bookingId);
+    setMethods(res.paymentMethods);
+    setDeposit(res.deposit);
+    setHoldExpiresAt(res.holdExpiresAt);
+    setStep("payment");
   }
 
   async function sendProof() {
