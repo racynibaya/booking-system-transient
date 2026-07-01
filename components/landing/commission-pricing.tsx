@@ -31,7 +31,7 @@ const INCLUDED = [
 // it back here.
 export function CommissionPricing() {
   return (
-    <section id="pricing" className="px-6 py-24">
+    <section id="pricing" className="scroll-mt-20 px-6 py-24">
       <div className="mx-auto max-w-2xl">
         <Reveal className="relative isolate overflow-hidden rounded-xl border border-hairline bg-canvas px-8 pt-12 pb-10 text-center shadow-e3 sm:px-12">
           {/* Soft sea-glass glow behind the headline number — depth without a hard box edge. */}

@@ -25,7 +25,7 @@ const STEPS: { n: string; icon: LucideIcon; title: string; body: string }[] = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-surface-soft/60 px-6 py-24">
+    <section id="how-it-works" className="scroll-mt-20 bg-surface-soft/60 px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <Reveal className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <span className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
