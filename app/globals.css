@@ -531,36 +531,30 @@ body {
    IntersectionObserver when scrolled into view; the fade+rise itself is pure CSS, so no
    animation library ships to the client. Reduced-motion users see content immediately and are
    never left hidden if JS is slow. Easing matches the prior motion spring. */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.5s var(--ease-spring),
-    transform 0.5s var(--ease-spring);
-}
-.reveal.is-in {
-  opacity: 1;
-  transform: none;
-}
-
+/* Content is VISIBLE by default — the entrance is a pure-CSS keyframe that only HOLDS its end
+   state. So content can never be left hidden if JS/the IntersectionObserver doesn't run (the bug
+   that shipped when this relied on a JS-toggled `.is-in`: above-the-fold heroes stayed opacity:0
+   until scrolled). StaggerItem offsets its start via --stagger-i. */
+.reveal,
 .stagger-item {
-  opacity: 0;
-  transform: translateY(18px);
-  transition:
-    opacity 0.5s var(--ease-spring),
-    transform 0.5s var(--ease-spring);
-  transition-delay: calc(var(--stagger-i, 0) * 50ms);
+  animation: reveal-rise 0.6s var(--ease-spring) both;
 }
-.stagger.is-in .stagger-item {
-  opacity: 1;
-  transform: none;
+.stagger-item {
+  animation-delay: calc(var(--stagger-i, 0) * 50ms);
 }
-
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .stagger-item {
-    opacity: 1;
-    transform: none;
-    transition: none;
+    animation: none;
   }
 }
