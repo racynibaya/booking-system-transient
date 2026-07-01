@@ -876,7 +876,18 @@ export type Database = {
         Args: { p_days: number; p_from: string };
         Returns: string;
       };
+      admin_action_center: { Args: never; Returns: Json };
+      admin_activity_feed: {
+        Args: never;
+        Returns: {
+          at: string;
+          kind: string;
+          subtitle: string;
+          title: string;
+        }[];
+      };
       admin_dashboard_overview: { Args: never; Returns: Json };
+      admin_finance_overview: { Args: never; Returns: Json };
       admin_list_operators: {
         Args: never;
         Returns: {
@@ -889,6 +900,23 @@ export type Database = {
           verification_note: string;
           verification_status: Database["public"]["Enums"]["tenant_verification"];
           xendit_kyc_status: Database["public"]["Enums"]["xendit_account_status"];
+        }[];
+      };
+      admin_list_payouts: {
+        Args: { p_limit?: number; p_offset?: number; p_status?: string };
+        Returns: {
+          clear_eta: string;
+          created_at: string;
+          deposit_amount: number;
+          guest_name: string;
+          id: string;
+          operator_commission: number;
+          operator_name: string;
+          owner_payout: number;
+          property_name: string;
+          status: Database["public"]["Enums"]["payout_ledger_status"];
+          stay_value: number;
+          total_count: number;
         }[];
       };
       admin_notification_recipients: {
