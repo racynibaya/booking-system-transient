@@ -16,7 +16,10 @@ import { createClient } from "@/lib/supabase/server";
 // them, leaving the user unauthenticated on the next request.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const next = searchParams.get("next") ?? "/dashboard";
+  // Only accept a same-origin relative path (single leading "/", never "//" or a scheme) so a crafted
+  // magic-link ?next= can't bounce the user to an attacker origin after their session is minted.
+  const nextParam = searchParams.get("next") ?? "/dashboard";
+  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const code = searchParams.get("code");

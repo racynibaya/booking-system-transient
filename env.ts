@@ -28,19 +28,7 @@ export const env = createEnv({
     // NOTE: the subscription-enforcement switch moved OUT of env into the DB (public.billing_config,
     // enforcement_mode off|dry_run|enforce) so the SQL money rail is self-contained and the live
     // booking-engine guard can read it. There is no SUBSCRIPTION_ENFORCEMENT env var anymore.
-    // --- PayMongo (Phase 2a spike) --- operator-as-merchant gateway. Optional so the app
-    // boots without them (dev/CI/non-gateway prod). The checkout action + webhook handler
-    // fail gracefully when unset. SPIKE NOTE: these are a SINGLE sandbox account's keys; in
-    // Phase 2b the operator's keys move to a per-tenant encrypted store, NOT env.
-    PAYMONGO_SECRET_KEY: z.string().min(1).optional(),
-    PAYMONGO_WEBHOOK_SECRET: z.string().min(1).optional(),
-    // --- PayMongo PLATFORM account (operator subscription billing) --- a SEPARATE money rail from the
-    // per-tenant gateway above: operators pay TULOY for the software, on Tuloy's OWN PayMongo account.
-    // The platform secret key signs the subscription checkout; the platform whsk_ verifies its webhook.
-    // Optional → the subscription checkout is dormant when unset (the plan CTA falls back to Messenger).
-    PAYMONGO_PLATFORM_SECRET_KEY: z.string().min(1).optional(),
-    PAYMONGO_PLATFORM_WEBHOOK_SECRET: z.string().min(1).optional(),
-    // --- Public base URL (Phase 2b) --- the stable origin we register PayMongo webhooks against
+    // --- Public base URL --- the stable origin used for webhook registration
     // (https://SITE_URL/api/webhooks/paymongo/{token}). Unlike the per-request checkout return URL,
     // a registered webhook URL is persisted at PayMongo, so it must NOT be derived from the request
     // origin (which could be a preview deploy or localhost). Optional so the app boots without the
@@ -71,10 +59,6 @@ export const env = createEnv({
     EMAIL_FROM: process.env.EMAIL_FROM,
     ADMIN_ALERT_EMAIL: process.env.ADMIN_ALERT_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
-    PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
-    PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
-    PAYMONGO_PLATFORM_SECRET_KEY: process.env.PAYMONGO_PLATFORM_SECRET_KEY,
-    PAYMONGO_PLATFORM_WEBHOOK_SECRET: process.env.PAYMONGO_PLATFORM_WEBHOOK_SECRET,
     SITE_URL: process.env.SITE_URL,
     XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
     XENDIT_CALLBACK_TOKEN: process.env.XENDIT_CALLBACK_TOKEN,
