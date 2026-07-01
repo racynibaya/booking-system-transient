@@ -71,21 +71,39 @@ export const paymentMethodInput = z
   });
 export type PaymentMethodInput = z.infer<typeof paymentMethodInput>;
 
-// Operator Xendit KYC (OWNED onboarding / account_verification). Text fields only — the 7 KYC document
-// files ride in FormData and are validated server-side. Entity type (SOLE_PROPRIETORSHIP), country PH,
-// and the lodging industry code are fixed server-side. Also collects the operator's payout destination
-// (where they self-withdraw) and the Tuloy ToS acceptance (the custody-clause agreement).
+// Operator Xendit KYC (MANAGED onboarding / account_verification). Text fields only — the identity
+// document files (selfie, ID front/back, and DTI + BIR for a sole proprietorship) ride in FormData and
+// are validated server-side. Country PH and the lodging industry code are fixed server-side. Also
+// collects the operator's payout destination (they self-withdraw) and the Tuloy operator-agreement
+// acceptance (the custody clause). Supports both a government-ID-only host (INDIVIDUAL) and a
+// DTI-registered host (SOLE_PROPRIETORSHIP).
 export const xenditKycInput = z.object({
+  entity_type: z.enum(["INDIVIDUAL", "SOLE_PROPRIETORSHIP"]),
   legal_name: z.string().trim().min(1, "Your full legal name is required").max(120),
   trading_name: z.string().trim().min(1, "Your property/business name is required").max(120),
+  business_description: optionalText(200),
   given_names: z.string().trim().min(1, "First name is required").max(100),
   surname: z.string().trim().min(1, "Last name is required").max(100),
+  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter your date of birth"),
   email: z.email("Enter a valid email").max(120),
-  phone_number: optionalText(20),
+  mobile_number: z.string().trim().min(7, "Mobile number is required").max(20),
   street_line1: z.string().trim().min(1, "Street address is required").max(180),
   city: z.string().trim().min(1, "City/town is required").max(80),
   province_state: z.string().trim().min(1, "Province is required").max(80),
   postal_code: z.string().trim().min(1, "Postal code is required").max(12),
+  id_type: z.enum([
+    "PH_PHILSYS_PHYSICAL",
+    "PH_PHILSYS_DIGITAL",
+    "PH_UMID",
+    "PH_DRIVERS_LICENSE",
+    "PH_SSS_OR_GSIS",
+    "PH_PRC_LICENSE",
+    "PH_POSTAL_ID",
+    "PH_VOTER_ID",
+    "PH_ACR_OR_IMMIGRANT_COR",
+    "PASSPORT",
+  ]),
+  id_number: z.string().trim().min(1, "ID number is required").max(40),
   // Payout destination — where the operator withdraws their balance to (they control withdrawals).
   payout_channel_code: z.string().trim().min(1, "Choose where to get paid").max(40),
   payout_account_number: z.string().trim().min(1, "Account number is required").max(40),
