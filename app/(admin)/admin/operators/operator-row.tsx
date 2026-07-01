@@ -384,7 +384,7 @@ export function OperatorRow({ op }: { op: AdminOperator }) {
                     </p>
                   </div>
                   <a
-                    href={`/${listing.slug}`}
+                    href={`/preview/${listing.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0 text-caption text-primary underline"

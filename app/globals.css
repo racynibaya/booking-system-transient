@@ -525,3 +525,42 @@ body {
     --rdp-day_button-height: 36px;
   }
 }
+
+/* ---- Scroll-reveal primitives (CSS replacement for the motion library) ------
+   <Reveal> and <Stagger>/<StaggerItem> (components/motion) toggle `.is-in` via an
+   IntersectionObserver when scrolled into view; the fade+rise itself is pure CSS, so no
+   animation library ships to the client. Reduced-motion users see content immediately and are
+   never left hidden if JS is slow. Easing matches the prior motion spring. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.5s var(--ease-spring),
+    transform 0.5s var(--ease-spring);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.stagger-item {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.5s var(--ease-spring),
+    transform 0.5s var(--ease-spring);
+  transition-delay: calc(var(--stagger-i, 0) * 50ms);
+}
+.stagger.is-in .stagger-item {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .stagger-item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

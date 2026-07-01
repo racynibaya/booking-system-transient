@@ -1,6 +1,6 @@
 import { CornerDownRight } from "lucide-react";
 
-import type { ReviewItem } from "@/app/[slug]/page";
+import type { ReviewItem } from "@/components/public/listing-view";
 import { ReviewSummary } from "@/components/public/review-summary";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { StarRating } from "@/components/ui/star-rating";
