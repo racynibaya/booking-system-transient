@@ -6,10 +6,12 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { CommissionPricing } from "@/components/landing/commission-pricing";
 import { FinalCta } from "@/components/landing/final-cta";
 import { SiteFooter } from "@/components/landing/site-footer";
+import { HashScroll } from "@/components/landing/hash-scroll";
 
 export default function AboutPage() {
   return (
     <>
+      <HashScroll />
       <SiteHeader />
       <main className="flex-1">
         <Hero />
