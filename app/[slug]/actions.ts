@@ -13,6 +13,7 @@ import { sendEmail } from "@/lib/email/resend";
 import { guestRequestReceivedEmail } from "@/lib/email/templates";
 import { computeXenditSplit, meetsMinStay, MIN_STAY_NIGHTS } from "@/lib/pricing";
 import { TERMS_VERSION } from "@/lib/legal/version";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from "@/lib/validation";
 import { createPaymentSession, createSplitRule } from "@/lib/xendit/client";
@@ -73,6 +74,11 @@ export async function createPublicBooking(input: PublicBookingInput): Promise<Bo
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your details." };
   }
   const d = parsed.data;
+
+  // Throttle anonymous hold creation per IP so nobody can flood inventory with junk holds.
+  if (!(await rateLimit(`pub:booking:${await clientIp()}`, 12, 300))) {
+    return { ok: false, error: "Too many requests. Please wait a moment and try again." };
+  }
 
   if (!d.termsAccepted) {
     return { ok: false, error: "Please accept the Terms to book." };
@@ -433,6 +439,11 @@ export async function createInquiry(
     return { ok: false, error: "Please add your name, email, and question." };
   }
   const { slug, guestName, guestEmail, guestPhone, message } = parsed.data;
+
+  // Throttle inquiries per IP (each one fans out an operator email — spam + cost guard).
+  if (!(await rateLimit(`pub:inquiry:${await clientIp()}`, 8, 300))) {
+    return { ok: false, error: "Too many requests. Please wait a moment and try again." };
+  }
 
   const admin = createServiceClient();
   const { data: prop } = await admin
