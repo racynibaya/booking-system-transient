@@ -219,6 +219,9 @@
   --animate-aurora-drift: aurora-drift 22s ease-in-out infinite;
   /* Barangay coverage marquee on the operator landing — slow, continuous, hover-pausable. */
   --animate-marquee: marquee 50s linear infinite;
+  /* Operator top-nav "More" dropdown: a quick scale+fade pop from its trigger (top-right
+     origin set on the panel) so the menu reads as emerging from the button, not snapping in. */
+  --animate-menu-pop: menu-pop 0.16s var(--ease-spring);
 
   /* Shared easing token — the brand's signature ease-out spring, reused across
      CSS transitions and motion/react springs so all motion shares one rhythm. */
@@ -253,6 +256,17 @@
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -423,7 +437,8 @@ body {
   .animate-card-rise,
   .animate-kenburns,
   .animate-aurora-drift,
-  .animate-marquee {
+  .animate-marquee,
+  .animate-menu-pop {
     animation: none;
   }
 }
