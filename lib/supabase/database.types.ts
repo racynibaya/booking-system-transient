@@ -876,6 +876,16 @@ export type Database = {
         Args: { p_days: number; p_from: string };
         Returns: string;
       };
+      admin_action_center: { Args: never; Returns: Json };
+      admin_activity_feed: {
+        Args: never;
+        Returns: {
+          at: string;
+          kind: string;
+          subtitle: string;
+          title: string;
+        }[];
+      };
       admin_dashboard_overview: { Args: never; Returns: Json };
       admin_list_operators: {
         Args: never;

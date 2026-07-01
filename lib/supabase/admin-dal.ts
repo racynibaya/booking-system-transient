@@ -85,6 +85,20 @@ export type DashboardOverview = {
     by_area: { area: string; properties: number }[];
   };
   upcoming: { next7: number; next7_guests: number; next30: number; next30_guests: number };
+  // G. Commission / payout money — the real revenue post-D10, from the payout ledger.
+  finance: {
+    commission_total: number;
+    commission_30d: number;
+    owner_payout_pending: number;
+    payouts: {
+      clearing: number;
+      payable: number;
+      paid: number;
+      failed: number;
+      refunded: number;
+      clawed_back: number;
+    };
+  };
 };
 
 // The whole command-center dashboard in one self-guarded round-trip.
@@ -93,4 +107,39 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverview | 
   const { data, error } = await supabase.rpc("admin_dashboard_overview");
   if (error || !data) return null;
   return data as unknown as DashboardOverview;
+});
+
+// One sample row inside an action-center bucket. `id` is the tenant / ledger / thread id the row
+// points at; the UI links it to the relevant section.
+export type ActionItem = { id: string; label: string; sublabel: string };
+export type ActionBucket = { count: number; items: ActionItem[] };
+
+// The consolidated "needs me now" surface — only buckets an admin genuinely acts on.
+export type ActionCenter = {
+  pending_kyc: ActionBucket;
+  changes_requested: ActionBucket;
+  gcash_reverify: ActionBucket;
+  failed_payouts: ActionBucket;
+  aging_inquiries: ActionBucket;
+};
+
+export const getActionCenter = cache(async (): Promise<ActionCenter | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_action_center");
+  if (error || !data) return null;
+  return data as unknown as ActionCenter;
+});
+
+// Platform activity pulse: operator signups, booking confirmations, submitted reviews.
+export type ActivityEvent = {
+  kind: "operator_signup" | "booking_confirmed" | "review_submitted";
+  title: string;
+  subtitle: string;
+  at: string;
+};
+
+export const getActivityFeed = cache(async (): Promise<ActivityEvent[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_activity_feed");
+  return (data ?? []) as unknown as ActivityEvent[];
 });
