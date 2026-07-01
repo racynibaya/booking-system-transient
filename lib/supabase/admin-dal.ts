@@ -85,6 +85,20 @@ export type DashboardOverview = {
     by_area: { area: string; properties: number }[];
   };
   upcoming: { next7: number; next7_guests: number; next30: number; next30_guests: number };
+  // G. Commission / payout money — the real revenue post-D10, from the payout ledger.
+  finance: {
+    commission_total: number;
+    commission_30d: number;
+    owner_payout_pending: number;
+    payouts: {
+      clearing: number;
+      payable: number;
+      paid: number;
+      failed: number;
+      refunded: number;
+      clawed_back: number;
+    };
+  };
 };
 
 // The whole command-center dashboard in one self-guarded round-trip.
@@ -94,3 +108,92 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverview | 
   if (error || !data) return null;
   return data as unknown as DashboardOverview;
 });
+
+// One sample row inside an action-center bucket. `id` is the tenant / ledger / thread id the row
+// points at; the UI links it to the relevant section.
+export type ActionItem = { id: string; label: string; sublabel: string };
+export type ActionBucket = { count: number; items: ActionItem[] };
+
+// The consolidated "needs me now" surface — only buckets an admin genuinely acts on.
+export type ActionCenter = {
+  pending_kyc: ActionBucket;
+  changes_requested: ActionBucket;
+  gcash_reverify: ActionBucket;
+  failed_payouts: ActionBucket;
+  aging_inquiries: ActionBucket;
+};
+
+export const getActionCenter = cache(async (): Promise<ActionCenter | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_action_center");
+  if (error || !data) return null;
+  return data as unknown as ActionCenter;
+});
+
+// Platform activity pulse: operator signups, booking confirmations, submitted reviews.
+export type ActivityEvent = {
+  kind: "operator_signup" | "booking_confirmed" | "review_submitted";
+  title: string;
+  subtitle: string;
+  at: string;
+};
+
+export const getActivityFeed = cache(async (): Promise<ActivityEvent[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_activity_feed");
+  return (data ?? []) as unknown as ActivityEvent[];
+});
+
+// --- Finance section (Slice 2) — all sourced from the payout ledger -------------------------------
+
+export type PayoutStatus = "clearing" | "payable" | "paid" | "failed" | "refunded" | "clawed_back";
+
+export type FinanceOverview = {
+  commission: { total: number; d30: number; d7: number };
+  gross: {
+    stay_value: number;
+    deposits: number;
+    service_fees: number;
+    paymongo_fees: number;
+    owner_payouts: number;
+  };
+  pending_owner_payout: number;
+  // Keyed by PayoutStatus; only statuses present in the ledger appear.
+  by_status: Partial<Record<PayoutStatus, { count: number; owner_payout: number }>>;
+  trend: { label: string; value: number }[];
+};
+
+export const getFinanceOverview = cache(async (): Promise<FinanceOverview | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_finance_overview");
+  if (error || !data) return null;
+  return data as unknown as FinanceOverview;
+});
+
+export type PayoutRow = {
+  id: string;
+  operator_name: string;
+  guest_name: string;
+  property_name: string;
+  stay_value: number;
+  deposit_amount: number;
+  operator_commission: number;
+  owner_payout: number;
+  status: PayoutStatus;
+  clear_eta: string;
+  created_at: string;
+  total_count: number;
+};
+
+// Paginated, optionally status-filtered ledger rows. `total_count` (window count) rides on each row.
+export const listPayouts = cache(
+  async (opts: { status?: string; limit?: number; offset?: number } = {}): Promise<PayoutRow[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("admin_list_payouts", {
+      p_status: opts.status ?? undefined,
+      p_limit: opts.limit ?? 50,
+      p_offset: opts.offset ?? 0,
+    });
+    return (data ?? []) as unknown as PayoutRow[];
+  },
+);

@@ -1,6 +1,15 @@
-import { ArrowRight, CalendarCheck, Coins, Hourglass, Receipt } from "lucide-react";
-import Link from "next/link";
+import {
+  CalendarCheck,
+  CircleDashed,
+  Coins,
+  HandCoins,
+  Hourglass,
+  Receipt,
+  Wallet,
+} from "lucide-react";
 
+import { ActionCenter } from "@/components/admin/action-center";
+import { ActivityFeed } from "@/components/admin/activity-feed";
 import { DashboardGreeting } from "@/components/admin/dashboard-greeting";
 import { FunnelPanel } from "@/components/admin/funnel-panel";
 import { KpiCard } from "@/components/admin/kpi-card";
@@ -8,7 +17,12 @@ import { RevenueHero } from "@/components/admin/revenue-hero";
 import { SupplyPanel } from "@/components/admin/supply-panel";
 import { TrendBars } from "@/components/admin/trend-bars";
 import { UpcomingPanel } from "@/components/admin/upcoming-panel";
-import { getDashboardOverview, requireAdmin } from "@/lib/supabase/admin-dal";
+import {
+  getActionCenter,
+  getActivityFeed,
+  getDashboardOverview,
+  requireAdmin,
+} from "@/lib/supabase/admin-dal";
 
 const peso = (n: number) =>
   new Intl.NumberFormat("en-PH", {
@@ -17,30 +31,13 @@ const peso = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
-// A review-queue row: a count that links into /admin/operators. Highlighted in Rausch when there's
-// something waiting, quiet when there's nothing to do.
-function ReviewRow({ label, value, hint }: { label: string; value: number; hint: string }) {
-  const active = value > 0;
-  return (
-    <Link
-      href="/admin/operators"
-      className="group flex items-center justify-between gap-3 rounded-md border border-hairline bg-canvas px-4 py-3 transition-colors hover:border-border-strong focus-visible:border-primary focus-visible:outline-none"
-    >
-      <div className="flex flex-col">
-        <span className="text-body-sm font-medium text-ink">{label}</span>
-        <span className="text-caption-sm text-muted">{active ? hint : "All clear"}</span>
-      </div>
-      <span className="flex items-center gap-1.5">
-        <span className={`text-display-sm ${active ? "text-primary" : "text-ink"}`}>{value}</span>
-        <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </Link>
-  );
-}
-
 export default async function AdminOverviewPage() {
   const tenant = await requireAdmin();
-  const overview = await getDashboardOverview();
+  const [overview, actionCenter, activity] = await Promise.all([
+    getDashboardOverview(),
+    getActionCenter(),
+    getActivityFeed(),
+  ]);
 
   if (!overview) {
     return (
@@ -51,7 +48,7 @@ export default async function AdminOverviewPage() {
     );
   }
 
-  const { financials, operators, bookings, trend, supply, upcoming } = overview;
+  const { financials, operators, bookings, trend, supply, upcoming, finance } = overview;
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,7 +61,39 @@ export default async function AdminOverviewPage() {
         operators={operators}
       />
 
-      {/* Headline money KPIs. */}
+      {/* Commission / payout money — the real revenue post-D10. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <KpiCard
+          label="Commission earned"
+          value={peso(finance.commission_total)}
+          caption={`${peso(finance.commission_30d)} last 30d`}
+          icon={HandCoins}
+          accent="green"
+        />
+        <KpiCard
+          label="Owner payouts pending"
+          value={peso(finance.owner_payout_pending)}
+          caption={`${finance.payouts.clearing + finance.payouts.payable} accruing`}
+          icon={Wallet}
+          accent="amber"
+        />
+        <KpiCard
+          label="Payouts paid"
+          value={finance.payouts.paid}
+          caption={finance.payouts.failed > 0 ? `${finance.payouts.failed} failed` : "none failed"}
+          icon={Coins}
+          accent="blue"
+        />
+        <KpiCard
+          label="Payouts clearing"
+          value={finance.payouts.clearing}
+          caption="funds in flight"
+          icon={CircleDashed}
+          accent="purple"
+        />
+      </div>
+
+      {/* Headline booking money KPIs. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
           label="Deposits collected"
@@ -101,23 +130,17 @@ export default async function AdminOverviewPage() {
         <SupplyPanel supply={supply} />
       </div>
 
-      {/* Action center — the verification queue. */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title-md text-ink">Needs review</h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <ReviewRow label="Pending review" value={operators.pending} hint="Waiting to go live" />
-          <ReviewRow
-            label="Changes requested"
-            value={operators.changes_requested}
-            hint="Sent back for fixes"
-          />
-          <ReviewRow
-            label="GCash re-verify"
-            value={operators.gcash_flagged}
-            hint="Payout changed — re-check"
-          />
+      {/* Action center (signature) + platform pulse. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {actionCenter ? (
+            <ActionCenter data={actionCenter} />
+          ) : (
+            <p className="text-body-sm text-muted">Couldn&rsquo;t load the action center.</p>
+          )}
         </div>
-      </section>
+        <ActivityFeed events={activity} />
+      </div>
     </div>
   );
 }
