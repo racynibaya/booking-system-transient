@@ -106,7 +106,7 @@ export function guestConfirmedEmail(b: ConfirmationBooking): { subject: string; 
   return {
     subject: "Your booking is confirmed 🎉",
     html: shell(
-      `You're confirmed, ${b.guestName}!`,
+      `You're confirmed, ${escapeHtml(b.guestName)}!`,
       `Your ${n}-night stay is locked in — here's everything you need.`,
       rows,
       "Need to change something? Just reply to this email to reach your host. See you in San Juan!",
@@ -133,7 +133,7 @@ export function guestRequestReceivedEmail(
   return {
     subject: "We got your booking request 🙌",
     html: shell(
-      `Got your request, ${b.guestName}!`,
+      `Got your request, ${escapeHtml(b.guestName)}!`,
       `Your ${n}-night request is held${window}. Pay your deposit and upload your payment screenshot on your booking page to lock in these dates.`,
       rows,
       "Finish on your booking page before the hold expires — once we receive your payment, your host confirms.",
@@ -158,7 +158,7 @@ export function guestDepositReminderEmail(b: ConfirmationBooking): {
   return {
     subject: "Your hold is about to expire ⏳",
     html: shell(
-      `Almost there, ${b.guestName}`,
+      `Almost there, ${escapeHtml(b.guestName)}`,
       "Your dates are still held — but not for long. Pay your deposit and upload your payment screenshot on your booking page to secure them before the hold expires.",
       rows,
       "Once we receive your payment, your host confirms. Didn't mean to book? Ignore this and the hold releases on its own.",
@@ -182,7 +182,7 @@ export function guestCancelledEmail(
   return {
     subject: "Your booking has been cancelled",
     html: shell(
-      `Booking cancelled, ${b.guestName}`,
+      `Booking cancelled, ${escapeHtml(b.guestName)}`,
       `The stay below has been cancelled and those dates released.${note} If this is unexpected, just reply to this email to reach your host.`,
       rows,
       "Still want to come? You're welcome to book again anytime.",
@@ -196,9 +196,9 @@ export function operatorBookingEmail(b: ConfirmationBooking): { subject: string;
   // effort the moment it lands, not have it disappear into "just another reservation".
   const fromTuloy = b.source === "tuloy";
   const rows =
-    row("Guest", b.guestName) +
-    row("Phone", b.guestPhone || "—") +
-    row("Email", b.guestEmail || "—") +
+    row("Guest", escapeHtml(b.guestName)) +
+    row("Phone", escapeHtml(b.guestPhone || "—")) +
+    row("Email", escapeHtml(b.guestEmail || "—")) +
     row("Check-in", prettyDate(b.checkIn)) +
     row("Check-out", prettyDate(b.checkOut)) +
     row("Guests", String(b.numGuests)) +

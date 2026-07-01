@@ -1,0 +1,17 @@
+title = "Tuloy gitleaks config"
+
+# Start from gitleaks' built-in rule set, then allowlist known-safe test material so the CI
+# secret-scan stays signal (a real key committed) without false-positives on unit-test dummies.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Unit-test dummy tokens and fixtures — not real secrets"
+paths = [
+  '''.*\.test\.ts$''',
+  '''tests/fixtures/.*''',
+]
+regexes = [
+  # signature.test.ts uses this fake Xendit callback token to exercise verifyCallbackToken.
+  '''xnd_callback_tok_abc123''',
+]
