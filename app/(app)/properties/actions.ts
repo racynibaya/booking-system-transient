@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordConsent } from "@/lib/legal/consent";
+import { requestConsentMeta } from "@/lib/legal/consent-request";
 import { slugify, suffixSlug } from "@/lib/slug";
 import { getCurrentTenant, requireUser } from "@/lib/supabase/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -90,6 +92,27 @@ export async function createProperty(input: PropertyInput): Promise<ActionResult
   }
   if (!createdId) {
     return { ok: false, error: "Couldn't make a unique link — try a different name." };
+  }
+
+  // First-listing consent (the two-step clickwrap): record the operator's affirmation once, on their
+  // first published listing. Deduped on context so re-creates don't stack rows. Best-effort — must
+  // not fail an otherwise-successful listing.
+  try {
+    const { data: existing } = await supabase
+      .from("tenant_consents")
+      .select("id")
+      .eq("tenant_id", t.tenantId)
+      .eq("context", "operator_listing")
+      .limit(1);
+    if (!existing || existing.length === 0) {
+      await recordConsent(supabase, {
+        tenantId: t.tenantId,
+        context: "operator_listing",
+        meta: await requestConsentMeta(),
+      });
+    }
+  } catch (e) {
+    console.error("[consent] failed to record operator_listing", e);
   }
 
   revalidatePath("/properties");

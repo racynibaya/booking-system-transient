@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { notifyAdminsPayoutChanged } from "@/lib/email/gcash-alert";
 import { getCurrentTenant, getXenditAccount, requireUser } from "@/lib/supabase/dal";
+import { recordConsent } from "@/lib/legal/consent";
+import { requestConsentMeta } from "@/lib/legal/consent-request";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
   createPayout,
@@ -243,6 +245,22 @@ export async function submitXenditKyc(formData: FormData): Promise<ActionResult>
 
   const { error } = await admin.from("tenant_xendit_accounts").update(fields).eq("id", account.id);
   if (error) return { ok: false, error: "Couldn't save — please try again." };
+
+  // Persist the operator-agreement acceptance (the validated tos_accepted) as an immutable consent
+  // audit record — the clickwrap evidence (context/legal-content.md §4). Best-effort: a consent-log
+  // hiccup must not fail an otherwise-successful KYC submission.
+  const tenant = await getCurrentTenant();
+  if (tenant) {
+    try {
+      await recordConsent(await createClient(), {
+        tenantId: tenant.id,
+        context: "operator_agreement",
+        meta: await requestConsentMeta(),
+      });
+    } catch (e) {
+      console.error("[consent] failed to record operator_agreement", e);
+    }
+  }
 
   revalidatePath("/settings");
   return { ok: true };

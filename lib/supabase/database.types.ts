@@ -95,6 +95,7 @@ export type Database = {
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version: string | null;
           total_amount: number | null;
         };
         Insert: {
@@ -118,6 +119,7 @@ export type Database = {
           source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version?: string | null;
           total_amount?: number | null;
         };
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           source?: string | null;
           status?: Database["public"]["Enums"]["booking_status"];
           tenant_id?: string;
+          terms_version?: string | null;
           total_amount?: number | null;
         };
         Relationships: [
@@ -627,6 +630,44 @@ export type Database = {
           },
         ];
       };
+      tenant_consents: {
+        Row: {
+          accepted_at: string;
+          context: Database["public"]["Enums"]["consent_context"];
+          id: string;
+          ip: string | null;
+          tenant_id: string;
+          terms_version: string;
+          user_agent: string | null;
+        };
+        Insert: {
+          accepted_at?: string;
+          context: Database["public"]["Enums"]["consent_context"];
+          id?: string;
+          ip?: string | null;
+          tenant_id: string;
+          terms_version: string;
+          user_agent?: string | null;
+        };
+        Update: {
+          accepted_at?: string;
+          context?: Database["public"]["Enums"]["consent_context"];
+          id?: string;
+          ip?: string | null;
+          tenant_id?: string;
+          terms_version?: string;
+          user_agent?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_consents_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenant_payment_methods: {
         Row: {
           account_name: string | null;
@@ -986,6 +1027,7 @@ export type Database = {
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version: string | null;
           total_amount: number | null;
         };
         SetofOptions: {
@@ -1024,6 +1066,7 @@ export type Database = {
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version: string | null;
           total_amount: number | null;
         };
         SetofOptions: {
@@ -1065,6 +1108,7 @@ export type Database = {
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version: string | null;
           total_amount: number | null;
         };
         SetofOptions: {
@@ -1159,6 +1203,7 @@ export type Database = {
           source: string | null;
           status: Database["public"]["Enums"]["booking_status"];
           tenant_id: string;
+          terms_version: string | null;
           total_amount: number | null;
         };
         SetofOptions: {
@@ -1179,6 +1224,7 @@ export type Database = {
         | "expired"
         | "completed"
         | "no_show";
+      consent_context: "operator_signup" | "operator_agreement" | "operator_listing";
       payment_kind: "deposit" | "balance";
       payment_method_type: "gcash" | "maya" | "bank" | "grabpay";
       payout_ledger_status:
@@ -1336,6 +1382,7 @@ export const Constants = {
         "completed",
         "no_show",
       ],
+      consent_context: ["operator_signup", "operator_agreement", "operator_listing"],
       payment_kind: ["deposit", "balance"],
       payment_method_type: ["gcash", "maya", "bank", "grabpay"],
       payout_ledger_status: [

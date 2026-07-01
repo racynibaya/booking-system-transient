@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -22,10 +23,12 @@ export function PropertyForm({
   defaultValues,
   action,
   submitLabel,
+  requireConsent = false,
 }: {
   defaultValues?: Partial<PropertyInput>;
   action: (input: PropertyInput) => Promise<ActionResult>;
   submitLabel: string;
+  requireConsent?: boolean;
 }) {
   const {
     register,
@@ -49,6 +52,7 @@ export function PropertyForm({
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [customAmenity, setCustomAmenity] = useState("");
+  const [consent, setConsent] = useState(false);
 
   // Amenities is a controlled array field (the rest of the form uses register).
   // useWatch (not watch()) so the React Compiler can memoize this component.
@@ -271,9 +275,35 @@ export function PropertyForm({
         />
       </div>
 
+      {requireConsent && (
+        <label className="flex items-start gap-2.5 text-body-sm text-muted">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0"
+          />
+          <span>
+            I confirm I&rsquo;ve read and agree to Tuloy&rsquo;s{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              className="text-primary underline underline-offset-2 hover:text-primary-active"
+            >
+              Operator Agreement
+            </Link>
+            .
+          </span>
+        </label>
+      )}
+
       {formError && <p className="text-body-sm text-error">{formError}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="self-start">
+      <Button
+        type="submit"
+        disabled={isSubmitting || (requireConsent && !consent)}
+        className="self-start"
+      >
         {isSubmitting ? "Saving…" : submitLabel}
       </Button>
     </form>

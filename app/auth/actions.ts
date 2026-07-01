@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { recordConsent } from "@/lib/legal/consent";
+import { requestConsentMeta } from "@/lib/legal/consent-request";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type AuthResult = { error: string } | { notice: string };
 
@@ -19,7 +21,7 @@ const credentials = z.object({
 // email confirmation ON, signUp returns no session → we ask them to confirm.
 export async function passwordAuth(
   mode: "signin" | "signup",
-  input: { email: string; password: string; name?: string },
+  input: { email: string; password: string; name?: string; tosAccepted?: boolean },
 ): Promise<AuthResult> {
   const parsed = credentials.safeParse(input);
   if (!parsed.success) {
@@ -31,6 +33,7 @@ export async function passwordAuth(
   if (mode === "signup") {
     const name = input.name?.trim();
     if (!name) return { error: "Enter your name or business name." };
+    if (!input.tosAccepted) return { error: "Please accept the Terms to create your account." };
     // Stored in raw_user_meta_data → the handle_new_user trigger writes it to tenants.name.
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -38,6 +41,30 @@ export async function passwordAuth(
       options: { data: { name } },
     });
     if (error) return { error: error.message };
+
+    // Record the signup consent (the checkbox). No session yet when email confirmation is on, so
+    // write it via service-role, keyed to the freshly-created tenant. Best-effort — never block signup.
+    const newUserId = data.user?.id;
+    if (newUserId) {
+      try {
+        const admin = createServiceClient();
+        const { data: t } = await admin
+          .from("tenants")
+          .select("id")
+          .eq("user_id", newUserId)
+          .single();
+        if (t) {
+          await recordConsent(admin, {
+            tenantId: t.id as string,
+            context: "operator_signup",
+            meta: await requestConsentMeta(),
+          });
+        }
+      } catch (e) {
+        console.error("[consent] failed to record operator_signup", e);
+      }
+    }
+
     if (!data.session) return { notice: "Check your email to confirm your account." };
   } else {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
