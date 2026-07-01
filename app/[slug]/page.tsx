@@ -2,6 +2,7 @@ import { ArrowLeft, LogIn, LogOut, MapPin, ShieldCheck, Star } from "lucide-reac
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { Reveal } from "@/components/motion";
@@ -53,70 +54,76 @@ export type ReviewItem = {
 type ReviewsData = { avg_rating: number | null; review_count: number; reviews: ReviewItem[] };
 const EMPTY_REVIEWS: ReviewsData = { avg_rating: null, review_count: 0, reviews: [] };
 
-async function getListing(slug: string): Promise<{
-  listing: Listing;
-  coverUrl: string | null;
-  ogImageUrl: string | null;
-  rooms: RoomCard[];
-  spacePhotos: SpacePhoto[];
-  reviews: ReviewsData;
-  preview: boolean;
-} | null> {
-  const supabase = createAnonClient();
-  const { data } = await supabase.rpc("get_public_listing", { p_slug: slug });
-  let listing = data as unknown as Listing | null;
+// Memoized per request so generateMetadata and the page body share one fetch instead of each
+// running get_public_listing + get_public_reviews (React cache() dedupes within a render pass).
+const getListing = cache(
+  async (
+    slug: string,
+  ): Promise<{
+    listing: Listing;
+    coverUrl: string | null;
+    ogImageUrl: string | null;
+    rooms: RoomCard[];
+    spacePhotos: SpacePhoto[];
+    reviews: ReviewsData;
+    preview: boolean;
+  } | null> => {
+    const supabase = createAnonClient();
+    const { data } = await supabase.rpc("get_public_listing", { p_slug: slug });
+    let listing = data as unknown as Listing | null;
 
-  // Admin preview: an unverified/suspended listing is dark to the public (get_public_listing gates
-  // on approved), but an admin can see the real guest-facing page to vet it before approving.
-  // admin_preview_listing self-guards on is_admin, so anonymous visitors still fall through to 404.
-  let preview = false;
-  if (!listing?.property) {
-    const authed = await createClient();
-    const { data: previewData } = await authed.rpc("admin_preview_listing", { p_slug: slug });
-    listing = previewData as unknown as Listing | null;
-    if (!listing?.property) return null;
-    preview = true;
-  }
+    // Admin preview: an unverified/suspended listing is dark to the public (get_public_listing gates
+    // on approved), but an admin can see the real guest-facing page to vet it before approving.
+    // admin_preview_listing self-guards on is_admin, so anonymous visitors still fall through to 404.
+    let preview = false;
+    if (!listing?.property) {
+      const authed = await createClient();
+      const { data: previewData } = await authed.rpc("admin_preview_listing", { p_slug: slug });
+      listing = previewData as unknown as Listing | null;
+      if (!listing?.property) return null;
+      preview = true;
+    }
 
-  const publicUrl = (path: string) =>
-    supabase.storage.from("property-images").getPublicUrl(path).data.publicUrl;
+    const publicUrl = (path: string) =>
+      supabase.storage.from("property-images").getPublicUrl(path).data.publicUrl;
 
-  const path = listing.property.cover_image_path;
-  const coverUrl = path ? publicUrl(path) : null;
+    const path = listing.property.cover_image_path;
+    const coverUrl = path ? publicUrl(path) : null;
 
-  // Share-preview image: a fixed 1200×630 crop via Supabase's image transform endpoint.
-  // Messenger only renders a link's image inline when the dimensions are declared (see
-  // generateMetadata) and dislikes oversized source images, so we hand it an exact-size crop
-  // rather than the full-resolution cover used by the hero.
-  const ogImageUrl = path
-    ? supabase.storage
-        .from("property-images")
-        .getPublicUrl(path, { transform: { width: 1200, height: 630, resize: "cover" } }).data
-        .publicUrl
-    : null;
+    // Share-preview image: a fixed 1200×630 crop via Supabase's image transform endpoint.
+    // Messenger only renders a link's image inline when the dimensions are declared (see
+    // generateMetadata) and dislikes oversized source images, so we hand it an exact-size crop
+    // rather than the full-resolution cover used by the hero.
+    const ogImageUrl = path
+      ? supabase.storage
+          .from("property-images")
+          .getPublicUrl(path, { transform: { width: 1200, height: 630, resize: "cover" } }).data
+          .publicUrl
+      : null;
 
-  // Resolve each room's stored photo paths to public URLs for the showcase section.
-  const rooms: RoomCard[] = listing.room_types.map((r) => ({
-    id: r.id,
-    name: r.name,
-    capacity: r.capacity,
-    base_price: r.base_price,
-    description: r.description,
-    photoUrls: (r.photos ?? []).map(publicUrl),
-  }));
+    // Resolve each room's stored photo paths to public URLs for the showcase section.
+    const rooms: RoomCard[] = listing.room_types.map((r) => ({
+      id: r.id,
+      name: r.name,
+      capacity: r.capacity,
+      base_price: r.base_price,
+      description: r.description,
+      photoUrls: (r.photos ?? []).map(publicUrl),
+    }));
 
-  // Property "space" gallery (kitchen, common areas, view): resolve each captioned path to a URL.
-  const spacePhotos: SpacePhoto[] = (listing.property.photos ?? [])
-    .filter((p) => typeof p?.path === "string" && p.path.length > 0)
-    .map((p) => ({ url: publicUrl(p.path), caption: p.caption ?? "" }));
+    // Property "space" gallery (kitchen, common areas, view): resolve each captioned path to a URL.
+    const spacePhotos: SpacePhoto[] = (listing.property.photos ?? [])
+      .filter((p) => typeof p?.path === "string" && p.path.length > 0)
+      .map((p) => ({ url: publicUrl(p.path), caption: p.caption ?? "" }));
 
-  // Public reviews (S5): a standalone definer read so we never touch the money-path
-  // get_public_listing RPC. Only ever returns submitted reviews. Skipped for admin preview below.
-  const { data: reviewsData } = await supabase.rpc("get_public_reviews", { p_slug: slug });
-  const reviews = (reviewsData as unknown as ReviewsData | null) ?? EMPTY_REVIEWS;
+    // Public reviews (S5): a standalone definer read so we never touch the money-path
+    // get_public_listing RPC. Only ever returns submitted reviews. Skipped for admin preview below.
+    const { data: reviewsData } = await supabase.rpc("get_public_reviews", { p_slug: slug });
+    const reviews = (reviewsData as unknown as ReviewsData | null) ?? EMPTY_REVIEWS;
 
-  return { listing, coverUrl, ogImageUrl, rooms, spacePhotos, reviews, preview };
-}
+    return { listing, coverUrl, ogImageUrl, rooms, spacePhotos, reviews, preview };
+  },
+);
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
