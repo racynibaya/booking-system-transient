@@ -58,3 +58,5 @@ next-env.d.ts
 
 presentation
 scripts
+# Local-only dev demo routes (never ship)
+/app/dev/
